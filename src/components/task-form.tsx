@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Modal } from '@/components/ui/modal'
+import { TaskHistoryPanel } from '@/components/task-history-panel'
 import type { Task } from '@/lib/types/database'
 
 interface Department {
@@ -26,6 +27,7 @@ export function TaskForm({ task, projectId, departments, open, onClose, onSucces
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [versionConflict, setVersionConflict] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
 
   const isEdit = !!task
 
@@ -180,6 +182,11 @@ export function TaskForm({ task, projectId, departments, open, onClose, onSucces
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <div className="flex justify-end gap-2">
+            {isEdit && task && (
+              <Button type="button" variant="secondary" onClick={() => setShowHistory(true)}>
+                History
+              </Button>
+            )}
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancel
             </Button>
@@ -188,6 +195,14 @@ export function TaskForm({ task, projectId, departments, open, onClose, onSucces
             </Button>
           </div>
         </form>
+      )}
+
+      {isEdit && task && (
+        <TaskHistoryPanel
+          taskId={task.id}
+          isOpen={showHistory}
+          onClose={() => setShowHistory(false)}
+        />
       )}
     </Modal>
   )
