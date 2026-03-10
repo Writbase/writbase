@@ -4,6 +4,8 @@ import type { AgentContext } from '../../_shared/types.ts'
 import { z } from 'https://deno.land/x/zod@v3.23.8/mod.ts'
 import { handleInfo } from '../tools/info.ts'
 import { handleGetTasks } from '../tools/get-tasks.ts'
+import { handleAddTask } from '../tools/add-task.ts'
+import { handleUpdateTask } from '../tools/update-task.ts'
 
 /** Placeholder result returned by all tools until real implementations land. */
 function notImplemented(toolName: string) {
@@ -112,7 +114,7 @@ export async function createMcpServerForAgent(
       due_date: z.string().optional().describe('Due date as ISO 8601 string'),
       status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled']).optional().describe('Initial status'),
     },
-    async () => notImplemented('add_task')
+    async (params) => handleAddTask(params, ctx, supabase)
   )
 
   // 4. update_task
@@ -129,7 +131,7 @@ export async function createMcpServerForAgent(
       due_date: z.string().optional().describe('New due date as ISO 8601'),
       status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled']).optional().describe('New status'),
     },
-    async () => notImplemented('update_task')
+    async (params) => handleUpdateTask(params, ctx, supabase)
   )
 
   // ── MANAGER TOOLS (manager role only) ──────────────────────────────
