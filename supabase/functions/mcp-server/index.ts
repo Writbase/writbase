@@ -8,6 +8,14 @@ import type { AgentContext } from '../_shared/types.ts'
 
 const app = new Hono()
 
+// ── Request ID middleware ─────────────────────────────────────────────
+app.use('*', async (c, next) => {
+  const requestId = crypto.randomUUID()
+  c.set('requestId', requestId)
+  c.header('X-Request-ID', requestId)
+  await next()
+})
+
 // ── Origin policy ─────────────────────────────────────────────────────
 // Allow missing Origin (CLI agents) but reject unauthorized browser Origins.
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean)
@@ -16,7 +24,7 @@ app.use('*', async (c, next) => {
   const origin = c.req.header('Origin')
   if (origin && ALLOWED_ORIGINS.length > 0 && !ALLOWED_ORIGINS.includes(origin)) {
     return c.json(
-      { error: { code: 'forbidden', message: 'Origin not allowed.' } },
+      { error: { code: 'forbidden', message: 'Origin not allowed.', request_id: c.get('requestId') } },
       403
     )
   }
@@ -36,7 +44,7 @@ app.options('*', (c) => {
 
 // ── Health check (no auth required) ───────────────────────────────────
 app.get('/health', (c) => {
-  return c.json({ status: 'ok', service: 'writbase-mcp-server' })
+  return c.json({ status: 'ok', service: 'writbase-mcp-server', request_id: c.get('requestId') })
 })
 
 // ── Auth + rate limit on all /mcp routes ──────────────────────────────
@@ -47,8 +55,11 @@ app.use('/mcp/*', rateLimitMiddleware)
 
 // ── POST /mcp — main MCP request endpoint ─────────────────────────────
 app.post('/mcp', async (c) => {
+  const requestId = c.get('requestId') as string
   const agentContext = c.get('agentContext') as AgentContext
   const supabase = createServiceClient()
+
+  console.log(`[${requestId}] POST /mcp agent=${agentContext.agentKeyId}`)
 
   // Create a per-request MCP server scoped to this agent
   const mcpServer = await createMcpServerForAgent(agentContext, supabase)
@@ -80,8 +91,11 @@ app.post('/mcp', async (c) => {
 
 // ── GET /mcp — SSE endpoint for server-to-client notifications ────────
 app.get('/mcp', async (c) => {
+  const requestId = c.get('requestId') as string
   const agentContext = c.get('agentContext') as AgentContext
   const supabase = createServiceClient()
+
+  console.log(`[${requestId}] GET /mcp (SSE) agent=${agentContext.agentKeyId}`)
 
   const mcpServer = await createMcpServerForAgent(agentContext, supabase)
 
@@ -103,8 +117,10 @@ app.get('/mcp', async (c) => {
 
 // ── DELETE /mcp — session cleanup ─────────────────────────────────────
 app.delete('/mcp', async (c) => {
+  const requestId = c.get('requestId') as string
+  console.log(`[${requestId}] DELETE /mcp session cleanup`)
   // Session cleanup — the Streamable HTTP transport handles this
-  return c.json({ status: 'session_closed' })
+  return c.json({ status: 'session_closed', request_id: requestId })
 })
 
 // ── Serve ─────────────────────────────────────────────────────────────

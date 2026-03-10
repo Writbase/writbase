@@ -12,6 +12,7 @@ import type { Task } from '@/lib/types/database'
 interface Department {
   id: string
   name: string
+  is_archived?: boolean
 }
 
 interface TaskFormProps {
@@ -164,11 +165,20 @@ export function TaskForm({ task, projectId, departments, open, onClose, onSucces
             defaultValue={task?.department_id ?? ''}
           >
             <option value="">None</option>
-            {departments.map((d) => (
+            {departments.filter((d) => !d.is_archived).map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name}
               </option>
             ))}
+            {/* Show archived department for existing task if it references one */}
+            {isEdit && task?.department_id && !departments.find((d) => d.id === task.department_id && !d.is_archived) && (() => {
+              const archived = departments.find((d) => d.id === task.department_id)
+              return archived ? (
+                <option key={archived.id} value={archived.id} disabled>
+                  {archived.name} (Archived)
+                </option>
+              ) : null
+            })()}
           </Select>
 
           <Input

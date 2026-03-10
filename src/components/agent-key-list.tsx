@@ -61,14 +61,36 @@ export function AgentKeyList() {
 
       <div className="mt-6">
         {loading && (
-          <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-            Loading...
+          <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center gap-4 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
+              <div className="h-3 w-20 animate-pulse rounded bg-slate-300 dark:bg-slate-600" />
+              <div className="h-3 w-24 animate-pulse rounded bg-slate-300 dark:bg-slate-600" />
+              <div className="h-3 w-16 animate-pulse rounded bg-slate-300 dark:bg-slate-600" />
+              <div className="h-3 w-16 animate-pulse rounded bg-slate-300 dark:bg-slate-600" />
+              <div className="h-3 w-20 animate-pulse rounded bg-slate-300 dark:bg-slate-600" />
+              <div className="h-3 w-16 animate-pulse rounded bg-slate-300 dark:bg-slate-600" />
+            </div>
+            <div className="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 px-4 py-3">
+                  <div className="h-4 w-28 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+                  <div className="h-4 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+                  <div className="h-5 w-16 animate-pulse rounded-full bg-slate-200 dark:bg-slate-700" />
+                  <div className="h-5 w-16 animate-pulse rounded-full bg-slate-200 dark:bg-slate-700" />
+                  <div className="h-4 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+                  <div className="h-4 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
-            {error}
+          <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center dark:border-red-800 dark:bg-red-900/20">
+            <p className="mb-3 text-sm text-red-700 dark:text-red-400">{error}</p>
+            <Button variant="secondary" onClick={() => { setError(null); fetchKeys() }}>
+              Retry
+            </Button>
           </div>
         )}
 

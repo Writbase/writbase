@@ -144,18 +144,24 @@ export function Sidebar({ userEmail }: SidebarProps) {
               + Add
             </button>
           </div>
-          <select
-            value={selectedProject}
-            onChange={(e) => setSearchParam('project', e.target.value)}
-            className="mt-1 block w-full rounded-md border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          >
-            <option value="">All projects</option>
-            {activeProjects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+          {activeProjects.length === 0 ? (
+            <p className="mt-1 text-xs text-slate-500">
+              No projects yet. Click &quot;+ Add&quot; to create your first project.
+            </p>
+          ) : (
+            <select
+              value={selectedProject}
+              onChange={(e) => setSearchParam('project', e.target.value)}
+              className="mt-1 block w-full rounded-md border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">All projects</option>
+              {activeProjects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Department selector */}

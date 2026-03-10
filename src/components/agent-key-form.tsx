@@ -42,7 +42,22 @@ export function AgentKeyForm({ onClose, onSuccess }: AgentKeyFormProps) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      // Fallback: select text for manual copy
+      // Fallback: use a temporary textarea for older browsers / non-HTTPS
+      try {
+        const textarea = document.createElement('textarea')
+        textarea.value = createdKey
+        textarea.style.position = 'fixed'
+        textarea.style.opacity = '0'
+        document.body.appendChild(textarea)
+        textarea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textarea)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      } catch {
+        // Last resort: prompt user to copy manually
+        window.prompt('Copy this key:', createdKey)
+      }
     }
   }
 

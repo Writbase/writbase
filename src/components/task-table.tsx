@@ -11,6 +11,7 @@ import type { Priority, Status } from '@/lib/types/enums'
 interface Department {
   id: string
   name: string
+  is_archived?: boolean
 }
 
 interface TaskTableProps {
@@ -75,7 +76,9 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
 
   const [tasks, setTasks] = useState<Task[]>([])
   const [departments, setDepartments] = useState<Department[]>([])
+  const [allDepartments, setAllDepartments] = useState<(Department & { is_archived?: boolean })[]>([])
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
   const [offset, setOffset] = useState(0)
   const [hasMore, setHasMore] = useState(false)
 
@@ -87,6 +90,7 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
 
   const fetchTasks = useCallback(async (currentOffset: number) => {
     setLoading(true)
+    setFetchError(null)
     try {
       const params = new URLSearchParams()
       params.set('projectId', projectId)
@@ -97,19 +101,18 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
       params.set('offset', String(currentOffset))
 
       const res = await fetch(`/api/tasks?${params.toString()}`)
-      if (res.ok) {
-        const json = await res.json()
-        const items: Task[] = json.data ?? []
-        if (items.length > PAGE_SIZE) {
-          setHasMore(true)
-          setTasks(items.slice(0, PAGE_SIZE))
-        } else {
-          setHasMore(false)
-          setTasks(items)
-        }
+      if (!res.ok) throw new Error('Failed to load tasks')
+      const json = await res.json()
+      const items: Task[] = json.data ?? []
+      if (items.length > PAGE_SIZE) {
+        setHasMore(true)
+        setTasks(items.slice(0, PAGE_SIZE))
+      } else {
+        setHasMore(false)
+        setTasks(items)
       }
-    } catch {
-      // fail silently
+    } catch (err) {
+      setFetchError(err instanceof Error ? err.message : 'Failed to load tasks')
     }
     setLoading(false)
   }, [projectId, departmentId, sortBy, sortOrder])
@@ -119,7 +122,9 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
       const res = await fetch('/api/departments')
       if (res.ok) {
         const json = await res.json()
-        setDepartments((json.data ?? []).filter((d: Department & { is_archived?: boolean }) => !d.is_archived))
+        const all = json.data ?? []
+        setAllDepartments(all)
+        setDepartments(all.filter((d: Department & { is_archived?: boolean }) => !d.is_archived))
       }
     } catch {
       // fail silently
@@ -177,10 +182,11 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
     fetchTasks(offset)
   }
 
-  function getDepartmentName(depId: string | null): string {
-    if (!depId) return '-'
-    const dep = departments.find((d) => d.id === depId)
-    return dep?.name ?? '-'
+  function getDepartmentInfo(depId: string | null): { name: string; isArchived: boolean } {
+    if (!depId) return { name: '-', isArchived: false }
+    const dep = allDepartments.find((d) => d.id === depId)
+    if (!dep) return { name: '-', isArchived: false }
+    return { name: dep.name, isArchived: !!dep.is_archived }
   }
 
   function renderSortIcon(column: SortColumn) {
@@ -208,9 +214,33 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
         <Button onClick={handleAddTask}>Add Task</Button>
       </div>
 
-      {loading && tasks.length === 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-          Loading tasks...
+      {fetchError ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center dark:border-red-800 dark:bg-red-900/20">
+          <p className="mb-3 text-sm text-red-700 dark:text-red-400">{fetchError}</p>
+          <Button variant="secondary" onClick={() => fetchTasks(offset)}>
+            Retry
+          </Button>
+        </div>
+      ) : loading && tasks.length === 0 ? (
+        <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-4 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
+            <div className="h-3 w-16 animate-pulse rounded bg-slate-300 dark:bg-slate-600" />
+            <div className="h-3 flex-1 animate-pulse rounded bg-slate-300 dark:bg-slate-600" />
+            <div className="h-3 w-24 animate-pulse rounded bg-slate-300 dark:bg-slate-600" />
+            <div className="h-3 w-20 animate-pulse rounded bg-slate-300 dark:bg-slate-600" />
+            <div className="h-3 w-20 animate-pulse rounded bg-slate-300 dark:bg-slate-600" />
+          </div>
+          <div className="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 px-4 py-3">
+                <div className="h-5 w-16 animate-pulse rounded-full bg-slate-200 dark:bg-slate-700" />
+                <div className="h-4 flex-1 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+                <div className="h-4 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+                <div className="h-4 w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+                <div className="h-5 w-20 animate-pulse rounded-full bg-slate-200 dark:bg-slate-700" />
+              </div>
+            ))}
+          </div>
         </div>
       ) : tasks.length === 0 ? (
         <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
@@ -257,7 +287,13 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
                       )}
                     </td>
                     <td className="whitespace-nowrap px-4 py-2.5 text-slate-600 dark:text-slate-400">
-                      {getDepartmentName(task.department_id)}
+                      {(() => {
+                        const dept = getDepartmentInfo(task.department_id)
+                        if (dept.isArchived) {
+                          return <span className="text-slate-400 dark:text-slate-500">{dept.name} <span className="text-xs">(Archived)</span></span>
+                        }
+                        return dept.name
+                      })()}
                     </td>
                     <td className="whitespace-nowrap px-4 py-2.5 text-slate-600 dark:text-slate-400">
                       {task.due_date ? formatRelativeDate(task.due_date) : '-'}
@@ -304,7 +340,7 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
       <TaskForm
         task={editingTask}
         projectId={projectId}
-        departments={departments}
+        departments={allDepartments}
         open={showForm}
         onClose={handleFormClose}
         onSuccess={handleFormSuccess}

@@ -5,6 +5,7 @@ export interface WritBaseError {
   fields?: Record<string, string>
   current_version?: number
   retry_after?: number
+  request_id?: string
 }
 
 export const ErrorCodes = {
