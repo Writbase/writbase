@@ -2,6 +2,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AgentContext } from '../../_shared/types.ts'
 import { z } from 'https://deno.land/x/zod@v3.23.8/mod.ts'
+import { handleInfo } from '../tools/info.ts'
+import { handleGetTasks } from '../tools/get-tasks.ts'
 
 /** Placeholder result returned by all tools until real implementations land. */
 function notImplemented(toolName: string) {
@@ -72,7 +74,7 @@ export async function createMcpServerForAgent(
     'info',
     `Returns agent identity, role, permissions, and system info. ${projectHint}. ${deptHint}`,
     {},
-    async () => notImplemented('info')
+    async () => handleInfo(ctx, supabase)
   )
 
   // 2. get_tasks
@@ -90,7 +92,7 @@ export async function createMcpServerForAgent(
       cursor: z.string().optional().describe('Pagination cursor from previous response'),
       updated_after: z.string().optional().describe('ISO 8601 timestamp to filter tasks updated after'),
     },
-    async () => notImplemented('get_tasks')
+    async (params) => handleGetTasks(params, ctx, supabase)
   )
 
   // 3. add_task
