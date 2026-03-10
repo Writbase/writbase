@@ -6,13 +6,11 @@ import { handleInfo } from '../tools/info.ts'
 import { handleGetTasks } from '../tools/get-tasks.ts'
 import { handleAddTask } from '../tools/add-task.ts'
 import { handleUpdateTask } from '../tools/update-task.ts'
-
-/** Placeholder result returned by all tools until real implementations land. */
-function notImplemented(toolName: string) {
-  return {
-    content: [{ type: 'text' as const, text: `Not implemented yet: ${toolName}` }],
-  }
-}
+import { handleManageAgentKeys } from '../tools/manage-agent-keys.ts'
+import { handleManageAgentPermissions } from '../tools/manage-agent-permissions.ts'
+import { handleGetProvenance } from '../tools/get-provenance.ts'
+import { handleManageProjects } from '../tools/manage-projects.ts'
+import { handleManageDepartments } from '../tools/manage-departments.ts'
 
 /**
  * Build a per-request McpServer whose tool set is scoped to the
@@ -148,7 +146,7 @@ export async function createMcpServerForAgent(
         special_prompt: z.string().optional().describe('Special system prompt (for create/update)'),
         is_active: z.boolean().optional().describe('Active status (for update)'),
       },
-      async () => notImplemented('manage_agent_keys')
+      async (params) => handleManageAgentKeys(params, ctx, supabase)
     )
 
     // 6. manage_agent_permissions
@@ -166,7 +164,7 @@ export async function createMcpServerForAgent(
           can_update: z.boolean().optional(),
         })).optional().describe('Permissions to grant or revoke'),
       },
-      async () => notImplemented('manage_agent_permissions')
+      async (params) => handleManageAgentPermissions(params, ctx, supabase)
     )
 
     // 7. get_provenance
@@ -180,7 +178,7 @@ export async function createMcpServerForAgent(
         limit: z.number().max(50).optional().describe('Max results (default 20, max 50)'),
         cursor: z.string().optional().describe('Pagination cursor'),
       },
-      async () => notImplemented('get_provenance')
+      async (params) => handleGetProvenance(params, ctx, supabase)
     )
 
     // 8. manage_projects
@@ -192,7 +190,7 @@ export async function createMcpServerForAgent(
         project_id: z.string().optional().describe('Target project ID (for rename/archive)'),
         name: z.string().optional().describe('Project name (for create/rename)'),
       },
-      async () => notImplemented('manage_projects')
+      async (params) => handleManageProjects(params, ctx, supabase)
     )
 
     // 9. manage_departments
@@ -204,7 +202,7 @@ export async function createMcpServerForAgent(
         department_id: z.string().optional().describe('Target department ID (for rename/archive)'),
         name: z.string().optional().describe('Department name (for create/rename)'),
       },
-      async () => notImplemented('manage_departments')
+      async (params) => handleManageDepartments(params, ctx, supabase)
     )
   }
 
