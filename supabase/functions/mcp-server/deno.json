@@ -1,0 +1,8 @@
+{
+  "imports": {
+    "hono": "https://deno.land/x/hono@v4.4.0/mod.ts",
+    "hono/": "https://deno.land/x/hono@v4.4.0/",
+    "@modelcontextprotocol/sdk/": "https://esm.sh/@modelcontextprotocol/sdk@latest/",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2"
+  }
+}
