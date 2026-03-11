@@ -1,6 +1,8 @@
 import { Hono } from 'hono'
+import { cors } from 'hono/cors'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import { authMiddleware } from './middleware/auth-middleware.ts'
+import { preAuthRateLimitMiddleware } from './middleware/pre-auth-rate-limit-middleware.ts'
 import { rateLimitMiddleware } from './middleware/rate-limit-middleware.ts'
 import { createMcpServerForAgent } from './schema/dynamic-schema.ts'
 import { createServiceClient } from '../_shared/supabase-client.ts'
@@ -27,43 +29,38 @@ app.use('*', async (c, next) => {
   await next()
 })
 
-// ── Origin policy ─────────────────────────────────────────────────────
-// Allow missing Origin (CLI agents) but reject unauthorized browser Origins.
+// ── CORS policy ──────────────────────────────────────────────────────
+// Requests without Origin (CLI agents, MCP clients) pass through — agent
+// key auth is the security layer for those. Browser requests are validated
+// against ALLOWED_ORIGINS; denied origins receive no Access-Control-Allow-Origin
+// header which causes standard browser CORS enforcement.
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean)
-if (ALLOWED_ORIGINS.length === 0) {
-  logger.warn('ALLOWED_ORIGINS is empty — all browser origins will be accepted')
+const isDev = Deno.env.get('ENVIRONMENT') === 'development'
+
+if (ALLOWED_ORIGINS.length === 0 && !isDev) {
+  logger.warn('ALLOWED_ORIGINS is empty in production — all browser origins will be denied')
 }
 
-app.use('*', async (c, next) => {
-  const origin = c.req.header('Origin')
-  if (origin && ALLOWED_ORIGINS.length > 0 && !ALLOWED_ORIGINS.includes(origin)) {
-    return c.json(
-      { error: { code: 'forbidden', message: 'Origin not allowed.', request_id: c.get('requestId') } },
-      403
-    )
-  }
-  // Set CORS headers for valid origins
-  if (origin && ALLOWED_ORIGINS.includes(origin)) {
-    c.header('Access-Control-Allow-Origin', origin)
-    c.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
-    c.header('Access-Control-Allow-Headers', 'Authorization, Content-Type')
-  }
-  await next()
-})
-
-// ── Preflight ─────────────────────────────────────────────────────────
-app.options('*', (c) => {
-  return c.body(null, 204)
-})
+app.use('*', cors({
+  origin: (origin) => {
+    if (ALLOWED_ORIGINS.length === 0 && isDev) return origin   // dev: allow all
+    if (ALLOWED_ORIGINS.length === 0) return null               // prod: deny all browser origins
+    return ALLOWED_ORIGINS.includes(origin) ? origin : null
+  },
+  allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Authorization', 'Content-Type'],
+}))
 
 // ── Health check (no auth required) ───────────────────────────────────
 app.get('/health', (c) => {
   return c.json({ status: 'ok', service: 'writbase-mcp-server', request_id: c.get('requestId') })
 })
 
-// ── Auth + rate limit on all /mcp routes ──────────────────────────────
+// ── Pre-auth rate limit + Auth + post-auth rate limit on all /mcp routes
+app.use('/mcp', preAuthRateLimitMiddleware)
 app.use('/mcp', authMiddleware)
 app.use('/mcp', rateLimitMiddleware)
+app.use('/mcp/*', preAuthRateLimitMiddleware)
 app.use('/mcp/*', authMiddleware)
 app.use('/mcp/*', rateLimitMiddleware)
 
@@ -97,9 +94,11 @@ app.post('/mcp', async (c) => {
 
   const startMs = performance.now()
   let response: Response
+  let errorCode: string | undefined
   try {
     response = await transport.handleRequest(c.req.raw)
   } catch (err) {
+    errorCode = err instanceof Error ? err.message : 'unknown'
     captureException(err)
     throw err
   }
@@ -109,7 +108,33 @@ app.post('/mcp', async (c) => {
   await transport.close()
   await mcpServer.close()
 
-  logger.info('MCP request completed', { request_id: requestId, agent_key_id: agentContext.keyId, tool: toolName, latency_ms: elapsedMs })
+  const status = errorCode ? 'error' : 'ok'
+  logger.info('MCP request completed', { request_id: requestId, agent_key_id: agentContext.keyId, tool: toolName, latency_ms: elapsedMs, status })
+
+  // Fire-and-forget request log write
+  // Note: waitUntil background tasks don't complete in local dev with `supabase functions serve`
+  try {
+    const logPromise = (async () => {
+      try {
+        await supabase.from('request_log').insert({
+          agent_key_id: agentContext.keyId,
+          tool_name: toolName,
+          latency_ms: elapsedMs,
+          status,
+          error_code: errorCode ?? null,
+        })
+      } catch (err) {
+        logger.error('Background request log write failed', { error: err instanceof Error ? err.message : String(err) })
+      }
+    })()
+    // @ts-ignore — EdgeRuntime.waitUntil exists in Supabase Edge runtime but not in type defs
+    if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+      // @ts-ignore — EdgeRuntime.waitUntil is a Supabase Edge runtime API not in type defs
+      EdgeRuntime.waitUntil(logPromise)
+    }
+  } catch {
+    // Ignore — logging should never break the request
+  }
 
   return response
 })

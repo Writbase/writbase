@@ -97,6 +97,7 @@ export async function createMcpServerForAgent(
       limit: z.number().max(50).optional().describe('Max results (default 20, max 50)'),
       cursor: z.string().optional().describe('Pagination cursor from previous response'),
       updated_after: z.string().optional().describe('ISO 8601 timestamp to filter tasks updated after'),
+      search: z.string().optional().describe('Full-text search query (supports AND/OR/NOT operators)'),
     },
     { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     (params) => handleGetTasks(params, ctx, supabase)

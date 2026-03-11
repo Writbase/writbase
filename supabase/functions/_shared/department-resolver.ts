@@ -32,6 +32,20 @@ export async function resolveDepartment(
   )
 
   if (!hasProjectWide && !deptPerm) {
+    // Provide helpful error with valid departments for this project
+    const validDepts = projectPerms
+      .filter((p) => p.departmentSlug && !p.isDepartmentArchived && hasAction(p, requiredAction))
+      .map((p) => p.departmentSlug!)
+    const validList = [...new Set(validDepts)]
+    if (validList.length > 0) {
+      return {
+        error: {
+          code: 'invalid_department',
+          message: `Department "${departmentInput}" is not valid for project "${projectLabel}". Valid departments: ${validList.join(', ')}.`,
+          recovery: `Use one of the valid departments: ${validList.join(', ')}.`,
+        },
+      }
+    }
     return { error: scopeNotAllowedError(projectLabel, requiredAction === 'update' ? 'update' : requiredAction) }
   }
 

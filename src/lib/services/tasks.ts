@@ -13,6 +13,16 @@ function parseRpcErrorCode(message: string): string | null {
   return message.slice(0, colonIndex);
 }
 
+/**
+ * Extract the human-readable part from 'error_code:message' format.
+ * Falls back to the full message if format doesn't match.
+ */
+function parseRpcErrorMessage(message: string): string {
+  const colonIndex = message.indexOf(':');
+  if (colonIndex === -1) return message;
+  return message.slice(colonIndex + 1).trim() || message;
+}
+
 export interface TaskWithRelations extends Task {
   projects?: { name: string } | null;
   departments?: { name: string } | null;
@@ -29,6 +39,7 @@ export async function listTasks(
     sortOrder?: 'asc' | 'desc';
     limit?: number;
     offset?: number;
+    search?: string;
   } = {},
 ): Promise<TaskWithRelations[]> {
   let query = supabase.from('tasks').select('*, projects(name), departments(name)');
@@ -37,6 +48,8 @@ export async function listTasks(
   if (filters.departmentId) query = query.eq('department_id', filters.departmentId);
   if (filters.status) query = query.eq('status', filters.status);
   if (filters.priority) query = query.eq('priority', filters.priority);
+  if (filters.search)
+    query = query.textSearch('search_vector', filters.search, { type: 'websearch' });
 
   const sortBy = filters.sortBy ?? 'created_at';
   const sortOrder = filters.sortOrder ?? 'desc';
@@ -112,7 +125,7 @@ export async function createTask(
       throw new AppError('department_not_found', 'Department not found', 404);
     if (code === 'department_archived')
       throw new AppError('department_archived', 'Cannot create tasks in an archived department');
-    throw error;
+    throw new AppError(code ?? 'internal_error', parseRpcErrorMessage(error.message));
   }
 
   return data as Task;
@@ -174,8 +187,9 @@ export async function updateTask(
   if (error) {
     const code = parseRpcErrorCode(error.message);
     if (code === 'task_not_found') throw new AppError('task_not_found', 'Task not found', 404);
-    if (code === 'version_conflict') throw new AppError('version_conflict', error.message, 409);
-    throw error;
+    if (code === 'version_conflict')
+      throw new AppError('version_conflict', parseRpcErrorMessage(error.message), 409);
+    throw new AppError(code ?? 'internal_error', parseRpcErrorMessage(error.message));
   }
 
   return data as Task;

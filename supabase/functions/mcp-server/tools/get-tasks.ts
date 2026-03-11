@@ -17,6 +17,7 @@ interface GetTasksParams {
   limit?: number
   cursor?: string
   updated_after?: string
+  search?: string
 }
 
 // UUID v4 pattern
@@ -82,6 +83,7 @@ export async function handleGetTasks(
     p_cursor_created_at: cursorCreatedAt,
     p_cursor_id: cursorId,
     p_limit: limit,
+    p_search: params.search || null,
   }).abortSignal(AbortSignal.timeout(10_000))
 
   if (error) {

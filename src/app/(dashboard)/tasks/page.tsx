@@ -1,3 +1,4 @@
+import { ErrorBoundary } from '@/components/error-boundary';
 import { TaskTable } from '@/components/task-table';
 
 interface TasksPageProps {
@@ -25,5 +26,9 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
     );
   }
 
-  return <TaskTable projectId={projectId} departmentId={departmentId} />;
+  return (
+    <ErrorBoundary>
+      <TaskTable projectId={projectId} departmentId={departmentId} />
+    </ErrorBoundary>
+  );
 }

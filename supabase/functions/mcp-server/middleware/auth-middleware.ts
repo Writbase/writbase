@@ -1,9 +1,11 @@
 import type { Context, Next } from 'hono'
 import { parseAgentKey, authenticateAgent } from '../../_shared/auth.ts'
 import { createServiceClient } from '../../_shared/supabase-client.ts'
+import { recordAuthFailure } from '../../_shared/auth-rate-limit.ts'
 import type { WritBaseError } from '../../_shared/errors.ts'
 import type { AgentContext } from '../../_shared/types.ts'
 import { logger } from '../../_shared/logger.ts'
+import { getClientIp } from './pre-auth-rate-limit-middleware.ts'
 
 type AppEnv = {
   Variables: {
@@ -44,6 +46,11 @@ export async function authMiddleware(c: Context<AppEnv>, next: Next) {
     logger.info('Agent authenticated', { request_id: c.get('requestId'), agent_key_id: agentContext.keyId, role: agentContext.role })
     await next()
   } catch (err) {
+    // Record auth failure for pre-auth rate limiting (fire-and-forget)
+    const ip = getClientIp(c)
+    const supabase = createServiceClient()
+    recordAuthFailure(supabase, ip).catch(() => {})
+
     // WritBaseError instances have a `code` property
     const wbErr = err as WritBaseError
     if (wbErr.code) {

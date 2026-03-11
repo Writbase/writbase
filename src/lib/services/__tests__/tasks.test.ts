@@ -124,7 +124,7 @@ describe('updateTask', () => {
         updatedById: 'user-1',
         source: 'ui',
       }),
-    ).rejects.toThrow('version_conflict');
+    ).rejects.toThrow('Version conflict');
   });
 
   it('throws task_not_found when task does not exist', async () => {

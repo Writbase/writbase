@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { EventLog } from '@/lib/types/database';
 import type { ActorType, Source } from '@/lib/types/enums';
+import { apiGet } from '@/lib/utils/api-client';
 import { formatRelativeTime } from '@/lib/utils/format';
 
 const HISTORY_PAGE_SIZE = 50;
@@ -81,11 +82,11 @@ export function TaskHistoryPanel({ taskId, isOpen, onClose }: TaskHistoryPanelPr
       setError(null);
       setOffset(0);
       try {
-        const res = await fetch(`/api/tasks/${taskId}/history?limit=${HISTORY_PAGE_SIZE}&offset=0`);
-        if (!res.ok) throw new Error('Failed to load history');
-        const json = (await res.json()) as { data?: EventLog[] };
+        const data = await apiGet<EventLog[]>(
+          `/api/tasks/${taskId}/history?limit=${HISTORY_PAGE_SIZE}&offset=0`,
+        );
         if (!cancelled) {
-          const items: EventLog[] = json.data ?? [];
+          const items: EventLog[] = data ?? [];
           items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
           setEvents(items);
           setHasMore(items.length === HISTORY_PAGE_SIZE);
@@ -108,12 +109,10 @@ export function TaskHistoryPanel({ taskId, isOpen, onClose }: TaskHistoryPanelPr
   async function loadMore() {
     setLoadingMore(true);
     try {
-      const res = await fetch(
+      const data = await apiGet<EventLog[]>(
         `/api/tasks/${taskId}/history?limit=${HISTORY_PAGE_SIZE}&offset=${offset}`,
       );
-      if (!res.ok) throw new Error('Failed to load history');
-      const json = (await res.json()) as { data?: EventLog[] };
-      const items: EventLog[] = json.data ?? [];
+      const items: EventLog[] = data ?? [];
       items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setEvents((prev) => [...prev, ...items]);
       setHasMore(items.length === HISTORY_PAGE_SIZE);

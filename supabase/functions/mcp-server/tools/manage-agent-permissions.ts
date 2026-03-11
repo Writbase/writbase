@@ -71,6 +71,26 @@ async function grantPermissions(
     return mcpError(validationError({ permissions: 'At least one permission row is required for grant.' }))
   }
 
+  // Block permission grants on inactive keys (pending approval or deactivated)
+  const { data: targetKey, error: keyError } = await supabase
+    .from('agent_keys')
+    .select('is_active')
+    .eq('id', params.key_id)
+    .abortSignal(AbortSignal.timeout(10_000))
+    .single()
+
+  if (keyError || !targetKey) {
+    return mcpError(validationError({ key_id: 'Target agent key not found.' }))
+  }
+
+  if (!targetKey.is_active) {
+    return mcpError({
+      code: 'validation_error',
+      message: 'Cannot grant permissions to an inactive key. The key must be activated first.',
+      recovery: 'Ask an admin to activate the key via the dashboard, then retry.',
+    })
+  }
+
   // Validate each granted row against the per-row subset constraint
   for (const row of params.permissions) {
     if (!row.project_id) {
@@ -176,48 +196,66 @@ async function revokePermissions(
     return mcpError(validationError({ permissions: 'At least one permission row is required for revoke.' }))
   }
 
-  const revoked = []
-
+  // Validate all rows upfront
   for (const row of params.permissions) {
     if (!row.project_id) {
       return mcpError(validationError({ project_id: 'project_id is required in each permission row.' }))
     }
+  }
 
-    let query = supabase
-      .from('agent_permissions')
-      .delete()
-      .eq('agent_key_id', params.key_id)
-      .eq('project_id', row.project_id)
+  // Fetch all permissions for this key in one query
+  const { data: existing, error: fetchError } = await supabase
+    .from('agent_permissions')
+    .select('id, project_id, department_id, can_read, can_create, can_update')
+    .eq('agent_key_id', params.key_id)
+    .abortSignal(AbortSignal.timeout(10_000))
 
-    if (row.department_id) {
-      query = query.eq('department_id', row.department_id)
-    } else {
-      query = query.is('department_id', null)
-    }
+  if (fetchError) {
+    return mcpError(internalError(fetchError.message))
+  }
 
-    const { data, error } = await query.select().abortSignal(AbortSignal.timeout(10_000))
+  // Match requested revocations to existing permission IDs
+  const toRevoke = (existing ?? []).filter((perm) =>
+    params.permissions!.some((req) =>
+      req.project_id === perm.project_id &&
+      (req.department_id ?? null) === perm.department_id
+    )
+  )
 
-    if (error) {
-      return mcpError(internalError(error.message))
-    }
-
-    for (const deleted of data ?? []) {
-      revoked.push(deleted)
-      await logEvent(supabase, {
-        eventCategory: 'admin',
-        targetType: 'agent_key',
-        targetId: params.key_id,
-        eventType: 'permission_revoked',
-        oldValue: { project_id: deleted.project_id, department_id: deleted.department_id },
-        actorType: 'agent',
-        actorId: ctx.keyId,
-        actorLabel: ctx.name,
-        source: 'mcp',
-      })
+  if (toRevoke.length === 0) {
+    return {
+      content: [{ type: 'text' as const, text: JSON.stringify({ revoked: [] }) }],
     }
   }
 
+  // Batch delete by IDs
+  const ids = toRevoke.map((p) => p.id)
+  const { error: deleteError } = await supabase
+    .from('agent_permissions')
+    .delete()
+    .in('id', ids)
+    .abortSignal(AbortSignal.timeout(10_000))
+
+  if (deleteError) {
+    return mcpError(internalError(deleteError.message))
+  }
+
+  // Log events for each revoked permission
+  for (const deleted of toRevoke) {
+    await logEvent(supabase, {
+      eventCategory: 'admin',
+      targetType: 'agent_key',
+      targetId: params.key_id,
+      eventType: 'permission_revoked',
+      oldValue: { project_id: deleted.project_id, department_id: deleted.department_id },
+      actorType: 'agent',
+      actorId: ctx.keyId,
+      actorLabel: ctx.name,
+      source: 'mcp',
+    })
+  }
+
   return {
-    content: [{ type: 'text' as const, text: JSON.stringify({ revoked }) }],
+    content: [{ type: 'text' as const, text: JSON.stringify({ revoked: toRevoke }) }],
   }
 }

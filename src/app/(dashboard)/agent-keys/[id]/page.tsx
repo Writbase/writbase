@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AgentKeyDetailEditor } from '@/components/agent-key-detail-editor';
+import { ErrorBoundary } from '@/components/error-boundary';
 import { PermissionEditor } from '@/components/permission-editor';
 import { Badge } from '@/components/ui/badge';
 import { getAgentKeyPermissions } from '@/lib/services/agent-keys';
@@ -83,28 +84,32 @@ export default async function AgentKeyDetailPage({ params }: PageProps) {
 
       <div className="rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Settings</h2>
-        <AgentKeyDetailEditor
-          keyId={key.id}
-          initialName={key.name}
-          initialPrompt={key.special_prompt ?? ''}
-          initialActive={key.is_active}
-        />
+        <ErrorBoundary>
+          <AgentKeyDetailEditor
+            keyId={key.id}
+            initialName={key.name}
+            initialPrompt={key.special_prompt ?? ''}
+            initialActive={key.is_active}
+          />
+        </ErrorBoundary>
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Permissions</h2>
-        <PermissionEditor
-          keyId={key.id}
-          initialPermissions={permissions.map((p) => ({
-            projectId: p.project_id,
-            projectName: p.projects?.name ?? 'Unknown',
-            departmentId: p.department_id,
-            departmentName: p.departments?.name ?? null,
-            canRead: p.can_read,
-            canCreate: p.can_create,
-            canUpdate: p.can_update,
-          }))}
-        />
+        <ErrorBoundary>
+          <PermissionEditor
+            keyId={key.id}
+            initialPermissions={permissions.map((p) => ({
+              projectId: p.project_id,
+              projectName: p.projects?.name ?? 'Unknown',
+              departmentId: p.department_id,
+              departmentName: p.departments?.name ?? null,
+              canRead: p.can_read,
+              canCreate: p.can_create,
+              canUpdate: p.can_update,
+            }))}
+          />
+        </ErrorBoundary>
       </div>
     </div>
   );

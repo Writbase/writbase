@@ -2,12 +2,25 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createAgentKey,
   getAgentKeyPermissions,
+  hashSecret,
   listAgentKeys,
   rotateAgentKey,
   updateAgentKey,
   updateAgentKeyPermissions,
 } from '../agent-keys';
 import { createMockSupabase } from './mock-supabase';
+
+// Shared test vector — must match Edge Function's hashSecret output
+// echo -n "test-secret-for-parity-check" | sha256sum
+const PARITY_INPUT = 'test-secret-for-parity-check';
+const PARITY_EXPECTED = 'b7371a1a49db6eabfe56f6ab89b4df795ddb39d559a28653d0cdd1421ce73311';
+
+describe('hashSecret parity', () => {
+  it('produces the expected SHA-256 hex digest (matches Edge Function implementation)', async () => {
+    const result = await hashSecret(PARITY_INPUT);
+    expect(result).toBe(PARITY_EXPECTED);
+  });
+});
 
 describe('listAgentKeys', () => {
   it('returns keys sorted by created_at desc', async () => {
@@ -213,6 +226,7 @@ describe('getAgentKeyPermissions', () => {
 describe('updateAgentKeyPermissions', () => {
   it('calls update_agent_permissions RPC and logs event', async () => {
     const mock = createMockSupabase();
+    mock.addResponse({ is_active: true }); // is_active check
     mock.addResponse(null);
     mock.addResponse(null);
 
@@ -232,6 +246,7 @@ describe('updateAgentKeyPermissions', () => {
 
   it('throws on RPC error', async () => {
     const mock = createMockSupabase();
+    mock.addResponse({ is_active: true }); // is_active check
     mock.addResponse(null, { message: 'rpc failed' });
 
     await expect(
@@ -241,5 +256,18 @@ describe('updateAgentKeyPermissions', () => {
         actorId: 'user-1',
       }),
     ).rejects.toThrow();
+  });
+
+  it('throws when updating permissions on an inactive key', async () => {
+    const mock = createMockSupabase();
+    mock.addResponse({ is_active: false });
+
+    await expect(
+      updateAgentKeyPermissions(mock, {
+        keyId: 'k1',
+        permissions: [{ projectId: 'p1', canRead: true, canCreate: false, canUpdate: false }],
+        actorId: 'user-1',
+      }),
+    ).rejects.toThrow('Cannot update permissions on an inactive key');
   });
 });

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { Department, Task } from '@/lib/types/database';
 import type { Priority, Status } from '@/lib/types/enums';
+import { apiGet } from '@/lib/utils/api-client';
 import { formatDate, formatRelativeDate } from '@/lib/utils/format';
 
 interface TaskTableProps {
@@ -67,12 +68,31 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const sortBy = (searchParams.get('sortBy') as SortColumn | null) ?? 'created_at';
   const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc' | null) ?? 'desc';
   const filterStatus = (searchParams.get('status') as Status | null) ?? undefined;
   const filterPriority = (searchParams.get('priority') as Priority | null) ?? undefined;
+
+  function handleSearchChange(value: string) {
+    setSearchInput(value);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setSearch(value);
+      setOffset(0);
+    }, 300);
+  }
+
+  // Clean up debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, []);
 
   const fetchTasks = useCallback(
     async (currentOffset: number, signal?: AbortSignal) => {
@@ -86,13 +106,11 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
         params.set('sortOrder', sortOrder);
         if (filterStatus) params.set('status', filterStatus);
         if (filterPriority) params.set('priority', filterPriority);
+        if (search) params.set('search', search);
         params.set('limit', String(PAGE_SIZE + 1));
         params.set('offset', String(currentOffset));
 
-        const res = await fetch(`/api/tasks?${params.toString()}`, { signal });
-        if (!res.ok) throw new Error('Failed to load tasks');
-        const json = (await res.json()) as { data?: Task[] };
-        const items: Task[] = json.data ?? [];
+        const items = (await apiGet<Task[]>(`/api/tasks?${params.toString()}`, signal)) ?? [];
         if (items.length > PAGE_SIZE) {
           setHasMore(true);
           setTasks(items.slice(0, PAGE_SIZE));
@@ -106,17 +124,13 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
       }
       setLoading(false);
     },
-    [projectId, departmentId, sortBy, sortOrder, filterStatus, filterPriority],
+    [projectId, departmentId, sortBy, sortOrder, filterStatus, filterPriority, search],
   );
 
   const fetchDepartments = useCallback(async () => {
     try {
-      const res = await fetch('/api/departments');
-      if (res.ok) {
-        const json = (await res.json()) as { data?: Department[] };
-        const all = json.data ?? [];
-        setAllDepartments(all);
-      }
+      const all = (await apiGet<Department[]>('/api/departments')) ?? [];
+      setAllDepartments(all);
     } catch {
       // fail silently
     }
@@ -124,18 +138,15 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
 
   const fetchSettings = useCallback(async () => {
     try {
-      const res = await fetch('/api/settings');
-      if (res.ok) {
-        const json = (await res.json()) as { data?: { department_required?: boolean } };
-        setDepartmentRequired(json.data?.department_required ?? false);
-      }
+      const settings = await apiGet<{ department_required?: boolean }>('/api/settings');
+      setDepartmentRequired(settings?.department_required ?? false);
     } catch {
       // fail silently — defaults to false
     }
   }, []);
 
   useEffect(() => {
-    setOffset(0);
+    setOffset(0); // eslint-disable-line react-hooks/set-state-in-effect -- reset pagination when filters change
     const controller = new AbortController();
     void fetchTasks(0, controller.signal);
     return () => {
@@ -144,13 +155,13 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
   }, [fetchTasks]);
 
   useEffect(() => {
-    void fetchDepartments();
+    void fetchDepartments(); // eslint-disable-line react-hooks/set-state-in-effect -- setState in async fetch callbacks is intentional
     void fetchSettings();
   }, [fetchDepartments, fetchSettings]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset selection when task list changes
   useEffect(() => {
-    setSelectedIndex(-1);
+    setSelectedIndex(-1); // eslint-disable-line react-hooks/set-state-in-effect -- reset selection when task data changes
   }, [tasks]);
 
   function handleFilterChange(key: 'status' | 'priority', value: string) {
@@ -260,6 +271,16 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Tasks</h1>
         <div className="flex items-center gap-3">
+          <input
+            type="search"
+            value={searchInput}
+            onChange={(e) => {
+              handleSearchChange(e.target.value);
+            }}
+            placeholder="Search tasks..."
+            aria-label="Search tasks"
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm placeholder:text-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+          />
           <select
             value={filterStatus ?? ''}
             onChange={(e) => {
@@ -350,6 +371,13 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
                   {columns.map((col) => (
                     <th
                       key={col.key}
+                      aria-sort={
+                        sortBy === col.key
+                          ? sortOrder === 'asc'
+                            ? 'ascending'
+                            : 'descending'
+                          : 'none'
+                      }
                       onClick={() => {
                         handleSort(col.key);
                       }}

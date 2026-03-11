@@ -1,13 +1,26 @@
-import crypto from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AgentKey, AgentPermission } from '@/lib/types/database';
 import type { AgentRole } from '@/lib/types/enums';
 import { logEvent } from './event-log';
 
-function generateKey(keyId: string): { fullKey: string; prefix: string; hash: string } {
-  const secret = crypto.randomBytes(32).toString('hex'); // 64 hex chars
-  const hash = crypto.createHash('sha256').update(secret).digest('hex'); // hash SECRET only
-  const prefix = secret.slice(0, 8); // first 8 chars of secret
+export async function hashSecret(secret: string): Promise<string> {
+  const data = new TextEncoder().encode(secret);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function generateKey(
+  keyId: string,
+): Promise<{ fullKey: string; prefix: string; hash: string }> {
+  const randomBytes = new Uint8Array(32);
+  crypto.getRandomValues(randomBytes);
+  const secret = Array.from(randomBytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+  const hash = await hashSecret(secret);
+  const prefix = secret.slice(0, 8);
   const fullKey = `wb_${keyId}_${secret}`;
   return { fullKey, prefix, hash };
 }
@@ -36,7 +49,7 @@ export async function createAgentKey(
   },
 ): Promise<{ key: Omit<AgentKey, 'key_hash'>; fullKey: string }> {
   const keyId = crypto.randomUUID();
-  const { fullKey, prefix, hash } = generateKey(keyId);
+  const { fullKey, prefix, hash } = await generateKey(keyId);
 
   const { data, error } = await supabase
     .from('agent_keys')
@@ -116,7 +129,7 @@ export async function rotateAgentKey(
   supabase: SupabaseClient,
   params: { id: string; actorId: string },
 ): Promise<{ key: Omit<AgentKey, 'key_hash'>; fullKey: string }> {
-  const { fullKey, prefix, hash } = generateKey(params.id);
+  const { fullKey, prefix, hash } = await generateKey(params.id);
 
   const { data, error } = await supabase
     .from('agent_keys')
@@ -177,6 +190,17 @@ export async function updateAgentKeyPermissions(
     actorId: string;
   },
 ): Promise<void> {
+  // Block permission grants on inactive keys (pending approval or deactivated)
+  const { data: targetKey } = await supabase
+    .from('agent_keys')
+    .select('is_active')
+    .eq('id', params.keyId)
+    .single();
+
+  if (targetKey && !targetKey.is_active && params.permissions.length > 0) {
+    throw new Error('Cannot update permissions on an inactive key. Activate the key first.');
+  }
+
   const rows = params.permissions.map((p) => ({
     project_id: p.projectId,
     department_id: p.departmentId ?? null,

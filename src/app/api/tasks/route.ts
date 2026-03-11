@@ -11,6 +11,7 @@ const taskQuerySchema = z.object({
   priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
   sortBy: z.enum(['created_at', 'updated_at', 'due_date', 'priority', 'status']).optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),
+  search: z.string().max(200).optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -37,6 +38,7 @@ export async function GET(request: NextRequest) {
       priority: searchParams.get('priority') ?? undefined,
       sortBy: searchParams.get('sortBy') ?? undefined,
       sortOrder: searchParams.get('sortOrder') ?? undefined,
+      search: searchParams.get('search') ?? undefined,
     });
 
     if (!parsed.success) {

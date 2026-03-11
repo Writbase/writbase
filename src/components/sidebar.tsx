@@ -12,6 +12,7 @@ import { SidebarProjectSelector } from '@/components/sidebar-project-selector';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 import type { Department, Project } from '@/lib/types/database';
+import { apiGet } from '@/lib/utils/api-client';
 
 interface SidebarProps {
   userEmail?: string;
@@ -44,13 +45,8 @@ export function Sidebar({ userEmail }: SidebarProps) {
 
   const fetchProjects = useCallback(async () => {
     try {
-      const res = await fetch('/api/projects');
-      if (!res.ok) {
-        toast.error('Failed to load projects');
-        return;
-      }
-      const json = (await res.json()) as { data?: Project[] };
-      setProjects(json.data ?? []);
+      const data = await apiGet<Project[]>('/api/projects');
+      setProjects(data ?? []);
     } catch {
       toast.error('Failed to load projects');
     }
@@ -58,13 +54,8 @@ export function Sidebar({ userEmail }: SidebarProps) {
 
   const fetchDepartments = useCallback(async () => {
     try {
-      const res = await fetch('/api/departments');
-      if (!res.ok) {
-        toast.error('Failed to load departments');
-        return;
-      }
-      const json = (await res.json()) as { data?: Department[] };
-      setDepartments(json.data ?? []);
+      const data = await apiGet<Department[]>('/api/departments');
+      setDepartments(data ?? []);
     } catch {
       toast.error('Failed to load departments');
     }

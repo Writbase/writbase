@@ -127,7 +127,7 @@ async function createKey(
     eventCategory: 'admin',
     targetType: 'agent_key',
     targetId: keyData.keyId,
-    eventType: 'agent_key_created',
+    eventType: requireApproval ? 'agent_key.pending_approval' : 'agent_key_created',
     actorType: 'agent',
     actorId: ctx.keyId,
     actorLabel: ctx.name,
@@ -145,6 +145,9 @@ async function createKey(
         is_active: isActive,
         pending_approval: requireApproval,
         warning: 'Store this key securely. It will NOT be shown again.',
+        ...(requireApproval && {
+          guidance: 'This key requires human approval before it can be used. An admin must activate it via the dashboard.',
+        }),
       }),
     }],
   }

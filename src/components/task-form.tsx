@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { createTaskAction, updateTaskAction } from '@/app/(dashboard)/actions/task-actions';
 import { TaskHistoryPanel } from '@/components/task-history-panel';
@@ -34,6 +35,7 @@ export function TaskForm({
   onClose,
   onSuccess,
 }: TaskFormProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [versionConflict, setVersionConflict] = useState(false);
@@ -87,7 +89,7 @@ export function TaskForm({
   }
 
   function handleRefresh() {
-    window.location.reload();
+    router.refresh();
   }
 
   return (

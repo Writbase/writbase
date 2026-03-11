@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { updateAgentKeyPermissionsAction } from '@/app/(dashboard)/actions/agent-key-actions';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
+import { apiGet } from '@/lib/utils/api-client';
 
 interface PermissionRow {
   projectId: string;
@@ -42,18 +43,12 @@ export function PermissionEditor({ keyId, initialPermissions }: PermissionEditor
   const fetchOptions = useCallback(async () => {
     setLoading(true);
     try {
-      const [projRes, deptRes] = await Promise.all([
-        fetch('/api/projects'),
-        fetch('/api/departments'),
+      const [projData, deptData] = await Promise.all([
+        apiGet<ProjectOption[]>('/api/projects'),
+        apiGet<DepartmentOption[]>('/api/departments'),
       ]);
-      if (projRes.ok) {
-        const projJson = (await projRes.json()) as { data?: ProjectOption[] };
-        setProjects(projJson.data ?? []);
-      }
-      if (deptRes.ok) {
-        const deptJson = (await deptRes.json()) as { data?: DepartmentOption[] };
-        setDepartments(deptJson.data ?? []);
-      }
+      setProjects(projData ?? []);
+      setDepartments(deptData ?? []);
     } catch {
       // Selectors will just be empty
     } finally {

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import type { AgentKey } from '@/lib/types/database';
+import { apiGet } from '@/lib/utils/api-client';
 import { formatRelativeTime } from '@/lib/utils/format';
 
 type KeyRow = Omit<AgentKey, 'key_hash'>;
@@ -20,10 +21,8 @@ export function AgentKeyList() {
   const fetchKeys = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/agent-keys');
-      if (!res.ok) throw new Error('Failed to fetch keys');
-      const json = (await res.json()) as { data?: KeyRow[] };
-      setKeys(json.data ?? []);
+      const data = await apiGet<KeyRow[]>('/api/agent-keys');
+      setKeys(data ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
