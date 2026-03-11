@@ -89,6 +89,7 @@ export interface AppSettings {
   id: string;
   department_required: boolean;
   require_human_approval_for_agent_keys: boolean;
+  max_agent_keys_per_manager: number | null;
   created_at: string;
   updated_at: string;
 }

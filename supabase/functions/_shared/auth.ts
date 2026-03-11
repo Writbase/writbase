@@ -4,6 +4,18 @@ import type { AgentContext, AgentKeyRecord, AgentPermission } from './types.ts'
 import { unauthorizedError, inactiveKeyError } from './errors.ts'
 import { logger } from './logger.ts'
 
+/** Shape of a row returned by the permissions query with joined projects/departments. */
+interface PermissionRow {
+  id: string
+  project_id: string
+  department_id: string | null
+  can_read: boolean
+  can_create: boolean
+  can_update: boolean
+  projects: { slug: string; name: string; is_archived: boolean } | null
+  departments: { slug: string; name: string; is_archived: boolean } | null
+}
+
 const KEY_PREFIX_RE = /^Bearer wb_([0-9a-f-]{36})_([0-9a-f]{64})$/
 
 /**
@@ -144,8 +156,7 @@ export async function loadPermissions(
     throw new Error(`Failed to load permissions: ${error.message}`)
   }
 
-  // deno-lint-ignore no-explicit-any
-  return (data ?? []).map((row: any) => ({
+  return ((data ?? []) as unknown as PermissionRow[]).map((row) => ({
     id: row.id,
     projectId: row.project_id,
     projectSlug: row.projects?.slug ?? '',

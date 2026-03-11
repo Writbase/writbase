@@ -57,6 +57,18 @@ const eslintConfig = defineConfig([
       "no-unused-vars": "off",
     },
   },
+  // Relax strict type-safety rules in test files (mocks return any)
+  {
+    files: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    rules: {
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-argument": "off",
+      "@typescript-eslint/require-await": "off",
+    },
+  },
   // Disable ESLint rules that overlap with Biome (must be last)
   biomeConfig,
 ]);

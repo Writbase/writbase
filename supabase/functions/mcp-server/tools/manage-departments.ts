@@ -3,7 +3,7 @@ import type { AgentContext } from '../../_shared/types.ts'
 import { mcpError, insufficientManagerScopeError, validationError } from '../../_shared/errors.ts'
 import { validateDepartmentInput } from '../../_shared/validation.ts'
 import { logEvent } from '../../_shared/event-log.ts'
-import { generateSlug, ensureUniqueSlug } from '../../_shared/slug.ts'
+import { generateSlug, insertWithUniqueSlug, updateWithUniqueSlug } from '../../_shared/slug.ts'
 
 interface ManageDepartmentsParams {
   action: string
@@ -45,21 +45,15 @@ async function createDepartment(
   }
 
   const baseSlug = generateSlug(params.name)
-  const slug = await ensureUniqueSlug(supabase, baseSlug, 'departments')
 
-  const { data, error } = await supabase
-    .from('departments')
-    .insert({
+  let data: Record<string, unknown>
+  try {
+    data = await insertWithUniqueSlug(supabase, 'departments', {
       name: params.name.trim(),
-      slug,
       is_archived: false,
-    })
-    .select()
-    .abortSignal(AbortSignal.timeout(10_000))
-    .single()
-
-  if (error) {
-    return mcpError({ code: 'internal_error', message: error.message })
+    }, baseSlug)
+  } catch (err) {
+    return mcpError({ code: 'internal_error', message: (err as Error).message })
   }
 
   await logEvent(supabase, {
@@ -109,18 +103,14 @@ async function renameDepartment(
   }
 
   const baseSlug = generateSlug(params.name)
-  const slug = await ensureUniqueSlug(supabase, baseSlug, 'departments', params.department_id)
 
-  const { data, error } = await supabase
-    .from('departments')
-    .update({ name: params.name.trim(), slug })
-    .eq('id', params.department_id)
-    .select()
-    .abortSignal(AbortSignal.timeout(10_000))
-    .single()
-
-  if (error) {
-    return mcpError({ code: 'internal_error', message: error.message })
+  let data: Record<string, unknown>
+  try {
+    data = await updateWithUniqueSlug(supabase, 'departments', params.department_id, {
+      name: params.name.trim(),
+    }, baseSlug)
+  } catch (err) {
+    return mcpError({ code: 'internal_error', message: (err as Error).message })
   }
 
   await logEvent(supabase, {

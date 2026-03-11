@@ -19,34 +19,90 @@ export function generateSlug(name: string): string {
   return slug
 }
 
-const MAX_SLUG_ATTEMPTS = 100
+const MAX_SLUG_RETRIES = 3
 
 /**
- * Ensure slug uniqueness by appending -N suffix if needed.
- * Throws on database errors or if uniqueness cannot be achieved.
+ * Attempt an INSERT, retrying with a suffixed slug on unique constraint
+ * violation (Postgres error 23505). This avoids the TOCTOU race condition
+ * inherent in SELECT-then-INSERT.
+ *
+ * If the conflict is on (name) rather than (slug), throws a user-facing error.
  */
-export async function ensureUniqueSlug(supabase: SupabaseClient, baseSlug: string, table: string, excludeId?: string): Promise<string> {
+export async function insertWithUniqueSlug(
+  supabase: SupabaseClient,
+  table: string,
+  data: Record<string, unknown>,
+  baseSlug: string,
+  maxRetries = MAX_SLUG_RETRIES
+): Promise<Record<string, unknown>> {
   let slug = baseSlug
   let suffix = 1
 
-  for (let attempt = 0; attempt < MAX_SLUG_ATTEMPTS; attempt++) {
-    let query = supabase.from(table).select('id').eq('slug', slug)
-    if (excludeId) {
-      query = query.neq('id', excludeId)
-    }
-    const { data, error } = await query.limit(1)
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const { data: row, error } = await supabase
+      .from(table)
+      .insert({ ...data, slug })
+      .select()
+      .single()
 
-    if (error) {
-      throw new Error(`Failed to check slug uniqueness in "${table}": ${error.message}`)
+    if (!error) return row
+
+    if (error.code === '23505') {
+      if (error.details?.includes('(name)') || error.message?.includes('(name)')) {
+        throw new Error(`A ${table.slice(0, -1)} with this name already exists.`)
+      }
+      // Slug conflict — retry with suffix
+      suffix++
+      slug = `${baseSlug}-${suffix}`
+      continue
     }
 
-    if (!data || data.length === 0) {
-      return slug
-    }
-
-    suffix++
-    slug = `${baseSlug}-${suffix}`
+    throw error
   }
 
-  throw new Error(`Could not generate unique slug for "${baseSlug}" in "${table}" after ${MAX_SLUG_ATTEMPTS} attempts`)
+  throw new Error(`Could not generate unique slug for "${baseSlug}" in "${table}" after ${maxRetries} retries`)
+}
+
+/**
+ * Attempt an UPDATE with a new slug, retrying with a suffixed slug on unique
+ * constraint violation (Postgres error 23505). This avoids the TOCTOU race
+ * condition inherent in SELECT-then-UPDATE.
+ *
+ * If the conflict is on (name) rather than (slug), throws a user-facing error.
+ */
+export async function updateWithUniqueSlug(
+  supabase: SupabaseClient,
+  table: string,
+  id: string,
+  updates: Record<string, unknown>,
+  baseSlug: string,
+  maxRetries = MAX_SLUG_RETRIES
+): Promise<Record<string, unknown>> {
+  let slug = baseSlug
+  let suffix = 1
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const { data: row, error } = await supabase
+      .from(table)
+      .update({ ...updates, slug })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (!error) return row
+
+    if (error.code === '23505') {
+      if (error.details?.includes('(name)') || error.message?.includes('(name)')) {
+        throw new Error(`A ${table.slice(0, -1)} with this name already exists.`)
+      }
+      // Slug conflict — retry with suffix
+      suffix++
+      slug = `${baseSlug}-${suffix}`
+      continue
+    }
+
+    throw error
+  }
+
+  throw new Error(`Could not generate unique slug for "${baseSlug}" in "${table}" after ${maxRetries} retries`)
 }

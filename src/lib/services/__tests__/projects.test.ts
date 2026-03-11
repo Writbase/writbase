@@ -29,11 +29,9 @@ describe('listProjects', () => {
 describe('createProject', () => {
   it('generates slug and inserts project', async () => {
     const mock = createMockSupabase();
-    // First call: slug uniqueness check (no existing slugs)
-    mock.addResponse([]);
-    // Second call: insert
+    // First call: insertWithUniqueSlug (direct INSERT, no SELECT check)
     mock.addResponse({ id: 'p1', name: 'My Project', slug: 'my-project' });
-    // Third call: logEvent
+    // Second call: logEvent
     mock.addResponse(null);
 
     const result = await createProject(mock, { name: 'My Project', createdBy: 'user-1' });

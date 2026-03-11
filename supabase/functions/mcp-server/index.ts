@@ -67,7 +67,11 @@ app.post('/mcp', async (c) => {
   const agentContext = c.get('agentContext')
   const supabase = createServiceClient()
 
-  logger.info('POST /mcp', { request_id: requestId, agent_key_id: agentContext.keyId, role: agentContext.role })
+  // Parse body early so we can extract the tool name for logging
+  const body = await c.req.json()
+  const toolName = body.method === 'tools/call' ? body.params?.name ?? 'unknown' : body.method ?? 'unknown'
+
+  logger.info('POST /mcp', { request_id: requestId, agent_key_id: agentContext.keyId, role: agentContext.role, tool: toolName })
 
   // Create a per-request MCP server scoped to this agent
   const mcpServer = await createMcpServerForAgent(agentContext, supabase)
@@ -81,18 +85,21 @@ app.post('/mcp', async (c) => {
   await mcpServer.connect(transport)
 
   // Handle the incoming request through the transport
-  const body = await c.req.json()
   const req = new Request(c.req.url, {
     method: 'POST',
     headers: c.req.raw.headers,
     body: JSON.stringify(body),
   })
 
+  const startMs = performance.now()
   const response = await transport.handleRequest(req)
+  const elapsedMs = Math.round(performance.now() - startMs)
 
   // Close the transport after handling
   await transport.close()
   await mcpServer.close()
+
+  logger.info('MCP request completed', { request_id: requestId, agent_key_id: agentContext.keyId, tool: toolName, latency_ms: elapsedMs })
 
   return response
 })

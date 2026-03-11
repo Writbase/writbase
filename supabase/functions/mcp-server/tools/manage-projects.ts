@@ -3,7 +3,7 @@ import type { AgentContext } from '../../_shared/types.ts'
 import { mcpError, insufficientManagerScopeError, validationError } from '../../_shared/errors.ts'
 import { validateProjectInput } from '../../_shared/validation.ts'
 import { logEvent } from '../../_shared/event-log.ts'
-import { generateSlug, ensureUniqueSlug } from '../../_shared/slug.ts'
+import { generateSlug, insertWithUniqueSlug, updateWithUniqueSlug } from '../../_shared/slug.ts'
 
 interface ManageProjectsParams {
   action: string
@@ -45,21 +45,15 @@ async function createProject(
   }
 
   const baseSlug = generateSlug(params.name)
-  const slug = await ensureUniqueSlug(supabase, baseSlug, 'projects')
 
-  const { data, error } = await supabase
-    .from('projects')
-    .insert({
+  let data: Record<string, unknown>
+  try {
+    data = await insertWithUniqueSlug(supabase, 'projects', {
       name: params.name.trim(),
-      slug,
       is_archived: false,
-    })
-    .select()
-    .abortSignal(AbortSignal.timeout(10_000))
-    .single()
-
-  if (error) {
-    return mcpError({ code: 'internal_error', message: error.message })
+    }, baseSlug)
+  } catch (err) {
+    return mcpError({ code: 'internal_error', message: (err as Error).message })
   }
 
   await logEvent(supabase, {
@@ -109,18 +103,14 @@ async function renameProject(
   }
 
   const baseSlug = generateSlug(params.name)
-  const slug = await ensureUniqueSlug(supabase, baseSlug, 'projects', params.project_id)
 
-  const { data, error } = await supabase
-    .from('projects')
-    .update({ name: params.name.trim(), slug })
-    .eq('id', params.project_id)
-    .select()
-    .abortSignal(AbortSignal.timeout(10_000))
-    .single()
-
-  if (error) {
-    return mcpError({ code: 'internal_error', message: error.message })
+  let data: Record<string, unknown>
+  try {
+    data = await updateWithUniqueSlug(supabase, 'projects', params.project_id, {
+      name: params.name.trim(),
+    }, baseSlug)
+  } catch (err) {
+    return mcpError({ code: 'internal_error', message: (err as Error).message })
   }
 
   await logEvent(supabase, {

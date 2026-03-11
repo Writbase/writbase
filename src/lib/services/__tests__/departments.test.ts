@@ -28,11 +28,9 @@ describe('listDepartments', () => {
 describe('createDepartment', () => {
   it('generates slug and inserts department', async () => {
     const mock = createMockSupabase();
-    // Slug uniqueness check
-    mock.addResponse([]);
-    // Insert
+    // First call: insertWithUniqueSlug (direct INSERT, no SELECT check)
     mock.addResponse({ id: 'd1', name: 'Engineering', slug: 'engineering' });
-    // logEvent
+    // Second call: logEvent
     mock.addResponse(null);
 
     const result = await createDepartment(mock, { name: 'Engineering', createdBy: 'user-1' });

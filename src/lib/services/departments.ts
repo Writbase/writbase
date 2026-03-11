@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Department } from '@/lib/types/database';
-import { generateSlug } from '@/lib/utils/slug';
+import { generateSlug, insertWithUniqueSlug } from '@/lib/utils/slug';
 import { logEvent } from './event-log';
 
 export async function listDepartments(supabase: SupabaseClient): Promise<Department[]> {
@@ -13,43 +13,21 @@ export async function listDepartments(supabase: SupabaseClient): Promise<Departm
   return data as Department[];
 }
 
-const MAX_SLUG_ATTEMPTS = 100;
-
-async function generateUniqueSlug(supabase: SupabaseClient, name: string): Promise<string> {
-  const baseSlug = generateSlug(name);
-  let slug = baseSlug;
-  let suffix = 1;
-
-  for (let i = 0; i < MAX_SLUG_ATTEMPTS; i++) {
-    const { data } = await supabase.from('departments').select('id').eq('slug', slug).limit(1);
-    const rows = data as { id: string }[] | null;
-
-    if (!rows || rows.length === 0) return slug;
-    suffix++;
-    slug = `${baseSlug}-${suffix}`;
-  }
-
-  throw new Error(`Failed to generate unique slug after ${MAX_SLUG_ATTEMPTS} attempts`);
-}
-
 export async function createDepartment(
   supabase: SupabaseClient,
   params: { name: string; createdBy: string },
 ): Promise<Department> {
-  const slug = await generateUniqueSlug(supabase, params.name);
+  const baseSlug = generateSlug(params.name);
 
-  const result = await supabase
-    .from('departments')
-    .insert({
+  const department = (await insertWithUniqueSlug(
+    supabase,
+    'departments',
+    {
       name: params.name,
-      slug,
       created_by: params.createdBy,
-    })
-    .select()
-    .single();
-
-  if (result.error) throw result.error;
-  const department = result.data as Department;
+    },
+    baseSlug,
+  )) as unknown as Department;
 
   await logEvent(supabase, {
     eventCategory: 'admin',

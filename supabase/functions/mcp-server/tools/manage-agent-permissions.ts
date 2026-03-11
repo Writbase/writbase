@@ -4,6 +4,18 @@ import { mcpError, selfModificationDeniedError, insufficientManagerScopeError, v
 import { logEvent } from '../../_shared/event-log.ts'
 import { checkDominance, type PermissionGrant } from '../../_shared/permissions.ts'
 
+/** Shape of a row returned by the permissions list query with joined projects/departments. */
+interface PermissionListRow {
+  id: string
+  project_id: string
+  department_id: string | null
+  can_read: boolean
+  can_create: boolean
+  can_update: boolean
+  projects: { slug: string; name: string } | null
+  departments: { slug: string; name: string } | null
+}
+
 interface ManageAgentPermissionsParams {
   action: string
   key_id: string
@@ -52,8 +64,7 @@ async function listPermissions(
     return mcpError({ code: 'internal_error', message: error.message })
   }
 
-  // deno-lint-ignore no-explicit-any
-  const permissions = (data ?? []).map((row: any) => ({
+  const permissions = ((data ?? []) as unknown as PermissionListRow[]).map((row) => ({
     id: row.id,
     project_id: row.project_id,
     project_slug: row.projects?.slug ?? null,
@@ -95,6 +106,40 @@ async function grantPermissions(
     }
   }
 
+  // Check for archived projects (warning, not blocking)
+  const projectIds = [...new Set(params.permissions.map(r => r.project_id!))]
+  const { data: projects } = await supabase
+    .from('projects')
+    .select('id, name, is_archived')
+    .in('id', projectIds)
+    .abortSignal(AbortSignal.timeout(10_000))
+
+  const archivedWarnings: string[] = []
+  for (const proj of projects ?? []) {
+    if (proj.is_archived) {
+      archivedWarnings.push(`Project "${proj.name}" is archived. Granted permissions will be inert until the project is unarchived.`)
+    }
+  }
+
+  // Check for archived departments (warning, not blocking)
+  const deptIds = params.permissions
+    .map(r => r.department_id)
+    .filter((id): id is string => id != null)
+
+  if (deptIds.length > 0) {
+    const { data: depts } = await supabase
+      .from('departments')
+      .select('id, name, is_archived')
+      .in('id', [...new Set(deptIds)])
+      .abortSignal(AbortSignal.timeout(10_000))
+
+    for (const dept of depts ?? []) {
+      if (dept.is_archived) {
+        archivedWarnings.push(`Department "${dept.name}" is archived. Tasks cannot be created in this department until it is unarchived.`)
+      }
+    }
+  }
+
   // Upsert permission rows (project_id validated above)
   const upsertRows = params.permissions.map((row) => ({
     agent_key_id: params.key_id,
@@ -132,8 +177,13 @@ async function grantPermissions(
     })
   }
 
+  const result: Record<string, unknown> = { granted: data }
+  if (archivedWarnings.length > 0) {
+    result.warnings = archivedWarnings
+  }
+
   return {
-    content: [{ type: 'text' as const, text: JSON.stringify({ granted: data }) }],
+    content: [{ type: 'text' as const, text: JSON.stringify(result) }],
   }
 }
 

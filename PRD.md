@@ -397,7 +397,7 @@ MCP is a first-class interface.
 
 ### Transport and protocol
 
-* **Transport**: Streamable HTTP (standalone HTTP+SSE transport deprecated per 2025-03-26 MCP spec). Streamable HTTP still uses SSE internally for streaming responses. Use `mcp-lite` library (zero-dependency, designed for edge runtimes) or official `@modelcontextprotocol/sdk`.
+* **Transport**: Streamable HTTP (standalone HTTP+SSE transport deprecated per 2025-03-26 MCP spec). Streamable HTTP still uses SSE internally for streaming responses. Uses `@modelcontextprotocol/sdk` (canonical SDK) with Hono for HTTP routing. Originally considered `mcp-lite` but the official SDK provides better protocol compliance and maintenance.
 * **Stateless**: Each tool call is independently authenticated. No sessions.
 * **Error handling**: Errors returned in tool result objects (not protocol-level). Each error includes recovery guidance telling the agent what to do next.
 
@@ -885,6 +885,9 @@ Minimum internal API surface:
 * `PATCH /api/agent-keys/:id`
 * `POST /api/agent-keys/:id/rotate`
 * `GET /api/event-log` (admin/manager access)
+
+> **Implementation note:** The human-facing API uses Next.js Server Actions for mutations (POST/PATCH operations) and Route Handlers for reads (GET operations). This is the idiomatic Next.js App Router pattern. The REST endpoints listed above are implemented as: GET routes via `/api/*` Route Handlers, mutations via Server Actions in `src/app/(dashboard)/actions/`.
+
 * `GET /api/mcp/info`
 * `POST /api/mcp/get_tasks`
 * `POST /api/mcp/add_task`

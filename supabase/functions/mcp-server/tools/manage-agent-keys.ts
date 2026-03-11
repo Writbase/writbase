@@ -71,15 +71,37 @@ async function createKey(
     })
   }
 
-  const keyData = await generateAgentKey()
-
-  // Check if approval is required
+  // Check settings: approval requirement and max keys limit
   const { data: settings } = await supabase
     .from('app_settings')
-    .select('require_human_approval_for_agent_keys')
+    .select('require_human_approval_for_agent_keys, max_agent_keys_per_manager')
     .abortSignal(AbortSignal.timeout(10_000))
     .single()
   const requireApproval: boolean = settings?.require_human_approval_for_agent_keys ?? false
+  const maxKeys: number | null = settings?.max_agent_keys_per_manager ?? 20
+
+  // Enforce max agent keys per manager
+  if (maxKeys !== null) {
+    const { count, error: countError } = await supabase
+      .from('agent_keys')
+      .select('id', { count: 'exact', head: true })
+      .eq('created_by', ctx.keyId)
+      .abortSignal(AbortSignal.timeout(10_000))
+
+    if (countError) {
+      return mcpError({ code: 'internal_error', message: countError.message })
+    }
+
+    if ((count ?? 0) >= maxKeys) {
+      return mcpError({
+        code: 'validation_error',
+        message: `Maximum of ${maxKeys} agent keys per manager reached.`,
+        recovery: 'Deactivate or remove unused keys before creating new ones.',
+      })
+    }
+  }
+
+  const keyData = await generateAgentKey()
 
   const isActive = requireApproval ? false : true
 
