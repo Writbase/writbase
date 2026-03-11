@@ -1,37 +1,37 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { toast } from 'sonner'
-import { createDepartmentAction } from '@/app/(dashboard)/actions/department-actions'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { createDepartmentAction } from '@/app/(dashboard)/actions/department-actions';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface DepartmentFormProps {
-  onClose: () => void
-  onSuccess?: () => void
+  onClose: () => void;
+  onSuccess?: () => void;
 }
 
 export function DepartmentForm({ onClose, onSuccess }: DepartmentFormProps) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
 
-    const formData = new FormData(e.currentTarget)
-    const result = await createDepartmentAction(formData)
+    const formData = new FormData(e.currentTarget);
+    const result = await createDepartmentAction(formData);
 
     if (result.success) {
-      toast.success('Department created')
-      onSuccess?.()
-      onClose()
+      toast.success('Department created');
+      onSuccess?.();
+      onClose();
     } else {
-      toast.error(result.error ?? 'Failed to create department')
+      toast.error(result.error ?? 'Failed to create department');
     }
 
-    setLoading(false)
+    setLoading(false);
   }
 
   return (
@@ -54,5 +54,5 @@ export function DepartmentForm({ onClose, onSuccess }: DepartmentFormProps) {
         </Button>
       </div>
     </form>
-  )
+  );
 }

@@ -1,0 +1,16 @@
+glob_matcher: doublestar
+
+pre-commit:
+  parallel: true
+  commands:
+    biome:
+      glob: "src/**/*.{ts,tsx}"
+      run: npx biome check --no-errors-on-unmatched --diagnostic-level=error {staged_files}
+    eslint:
+      glob: "src/**/*.{ts,tsx}"
+      run: npx eslint {staged_files}
+    typecheck:
+      run: npx tsc --noEmit
+    deno-lint:
+      glob: "supabase/functions/**/*.ts"
+      run: deno lint {staged_files}

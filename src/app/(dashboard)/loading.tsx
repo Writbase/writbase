@@ -7,7 +7,7 @@ function SkeletonRow() {
       <div className="h-4 w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
       <div className="h-5 w-20 animate-pulse rounded-full bg-slate-200 dark:bg-slate-700" />
     </div>
-  )
+  );
 }
 
 export default function DashboardLoading() {
@@ -39,5 +39,5 @@ export default function DashboardLoading() {
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,165 +1,167 @@
-'use client'
+'use client';
 
-import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { toast } from 'sonner'
-import { createClient } from '@/lib/supabase/client'
-import { Modal } from '@/components/ui/modal'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { ProjectForm } from '@/components/project-form'
-import { DepartmentForm } from '@/components/department-form'
-import { updateProjectAction } from '@/app/(dashboard)/actions/project-actions'
-import { updateDepartmentAction } from '@/app/(dashboard)/actions/department-actions'
+import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import { updateDepartmentAction } from '@/app/(dashboard)/actions/department-actions';
+import { updateProjectAction } from '@/app/(dashboard)/actions/project-actions';
+import { DepartmentForm } from '@/components/department-form';
+import { ProjectForm } from '@/components/project-form';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Modal } from '@/components/ui/modal';
+import { createClient } from '@/lib/supabase/client';
 
 interface Project {
-  id: string
-  name: string
-  is_archived: boolean
+  id: string;
+  name: string;
+  is_archived: boolean;
 }
 
 interface Department {
-  id: string
-  name: string
-  is_archived: boolean
+  id: string;
+  name: string;
+  is_archived: boolean;
 }
 
 interface SidebarProps {
-  userEmail?: string
+  userEmail?: string;
 }
 
 const navLinks = [
   { href: '/tasks', label: 'Tasks' },
   { href: '/agent-keys', label: 'Agent Keys' },
-]
+];
 
 export function Sidebar({ userEmail }: SidebarProps) {
-  const pathname = usePathname()
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  const [projects, setProjects] = useState<Project[]>([])
-  const [departments, setDepartments] = useState<Department[]>([])
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
 
-  const [showProjectModal, setShowProjectModal] = useState(false)
-  const [showDepartmentModal, setShowDepartmentModal] = useState(false)
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [showDepartmentModal, setShowDepartmentModal] = useState(false);
 
-  const [editingProject, setEditingProject] = useState<{ id: string; name: string } | null>(null)
-  const [editingDepartment, setEditingDepartment] = useState<{ id: string; name: string } | null>(null)
+  const [editingProject, setEditingProject] = useState<{ id: string; name: string } | null>(null);
+  const [editingDepartment, setEditingDepartment] = useState<{ id: string; name: string } | null>(
+    null,
+  );
 
-  const selectedProject = searchParams.get('project') ?? ''
-  const selectedDepartment = searchParams.get('department') ?? ''
+  const selectedProject = searchParams.get('project') ?? '';
+  const selectedDepartment = searchParams.get('department') ?? '';
 
   const fetchProjects = useCallback(async () => {
     try {
-      const res = await fetch('/api/projects')
+      const res = await fetch('/api/projects');
       if (res.ok) {
-        const json = await res.json()
-        setProjects(json.data ?? [])
+        const json = await res.json();
+        setProjects(json.data ?? []);
       }
     } catch {
       // API may not be ready yet — fail silently
     }
-  }, [])
+  }, []);
 
   const fetchDepartments = useCallback(async () => {
     try {
-      const res = await fetch('/api/departments')
+      const res = await fetch('/api/departments');
       if (res.ok) {
-        const json = await res.json()
-        setDepartments(json.data ?? [])
+        const json = await res.json();
+        setDepartments(json.data ?? []);
       }
     } catch {
       // API may not be ready yet — fail silently
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    fetchProjects()
-    fetchDepartments()
-  }, [fetchProjects, fetchDepartments])
+    fetchProjects();
+    fetchDepartments();
+  }, [fetchProjects, fetchDepartments]);
 
   function setSearchParam(key: string, value: string) {
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(searchParams.toString());
     if (value) {
-      params.set(key, value)
+      params.set(key, value);
     } else {
-      params.delete(key)
+      params.delete(key);
     }
-    router.push(`${pathname}?${params.toString()}`)
+    router.push(`${pathname}?${params.toString()}`);
   }
 
   async function handleSignOut() {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/login')
-    router.refresh()
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push('/login');
+    router.refresh();
   }
 
   async function handleRenameProject(id: string, newName: string) {
-    const formData = new FormData()
-    formData.set('id', id)
-    formData.set('name', newName)
-    const result = await updateProjectAction(formData)
+    const formData = new FormData();
+    formData.set('id', id);
+    formData.set('name', newName);
+    const result = await updateProjectAction(formData);
     if (result.success) {
-      toast.success('Project renamed')
-      setEditingProject(null)
-      fetchProjects()
+      toast.success('Project renamed');
+      setEditingProject(null);
+      fetchProjects();
     } else {
-      toast.error(result.error ?? 'Failed to rename project')
+      toast.error(result.error ?? 'Failed to rename project');
     }
   }
 
   async function handleArchiveProject(id: string) {
-    const formData = new FormData()
-    formData.set('id', id)
-    formData.set('isArchived', 'true')
-    const result = await updateProjectAction(formData)
+    const formData = new FormData();
+    formData.set('id', id);
+    formData.set('isArchived', 'true');
+    const result = await updateProjectAction(formData);
     if (result.success) {
-      toast.success('Project archived')
+      toast.success('Project archived');
       if (selectedProject === id) {
-        setSearchParam('project', '')
+        setSearchParam('project', '');
       }
-      fetchProjects()
+      fetchProjects();
     } else {
-      toast.error(result.error ?? 'Failed to archive project')
+      toast.error(result.error ?? 'Failed to archive project');
     }
   }
 
   async function handleRenameDepartment(id: string, newName: string) {
-    const formData = new FormData()
-    formData.set('id', id)
-    formData.set('name', newName)
-    const result = await updateDepartmentAction(formData)
+    const formData = new FormData();
+    formData.set('id', id);
+    formData.set('name', newName);
+    const result = await updateDepartmentAction(formData);
     if (result.success) {
-      toast.success('Department renamed')
-      setEditingDepartment(null)
-      fetchDepartments()
+      toast.success('Department renamed');
+      setEditingDepartment(null);
+      fetchDepartments();
     } else {
-      toast.error(result.error ?? 'Failed to rename department')
+      toast.error(result.error ?? 'Failed to rename department');
     }
   }
 
   async function handleArchiveDepartment(id: string) {
-    const formData = new FormData()
-    formData.set('id', id)
-    formData.set('isArchived', 'true')
-    const result = await updateDepartmentAction(formData)
+    const formData = new FormData();
+    formData.set('id', id);
+    formData.set('isArchived', 'true');
+    const result = await updateDepartmentAction(formData);
     if (result.success) {
-      toast.success('Department archived')
+      toast.success('Department archived');
       if (selectedDepartment === id) {
-        setSearchParam('department', '')
+        setSearchParam('department', '');
       }
-      fetchDepartments()
+      fetchDepartments();
     } else {
-      toast.error(result.error ?? 'Failed to archive department')
+      toast.error(result.error ?? 'Failed to archive department');
     }
   }
 
-  const activeProjects = projects.filter((p) => !p.is_archived)
-  const activeDepartments = departments.filter((d) => !d.is_archived)
+  const activeProjects = projects.filter((p) => !p.is_archived);
+  const activeDepartments = departments.filter((d) => !d.is_archived);
 
   const sidebarContent = (
     <div className="flex h-full flex-col bg-slate-900 text-slate-100">
@@ -178,7 +180,7 @@ export function Sidebar({ userEmail }: SidebarProps) {
       {/* Navigation */}
       <nav className="mt-4 space-y-1 px-3">
         {navLinks.map((link) => {
-          const isActive = pathname.startsWith(link.href)
+          const isActive = pathname.startsWith(link.href);
           return (
             <Link
               key={link.href}
@@ -192,7 +194,7 @@ export function Sidebar({ userEmail }: SidebarProps) {
             >
               {link.label}
             </Link>
-          )
+          );
         })}
       </nav>
 
@@ -247,8 +249,18 @@ export function Sidebar({ userEmail }: SidebarProps) {
                     aria-label={`Rename ${p.name}`}
                     title="Rename"
                   >
-                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    <svg
+                      className="h-3.5 w-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                      />
                     </svg>
                   </button>
                   <button
@@ -257,8 +269,18 @@ export function Sidebar({ userEmail }: SidebarProps) {
                     aria-label={`Archive ${p.name}`}
                     title="Archive"
                   >
-                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                    <svg
+                      className="h-3.5 w-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+                      />
                     </svg>
                   </button>
                 </span>
@@ -310,8 +332,18 @@ export function Sidebar({ userEmail }: SidebarProps) {
                     aria-label={`Rename ${d.name}`}
                     title="Rename"
                   >
-                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    <svg
+                      className="h-3.5 w-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                      />
                     </svg>
                   </button>
                   <button
@@ -320,8 +352,18 @@ export function Sidebar({ userEmail }: SidebarProps) {
                     aria-label={`Archive ${d.name}`}
                     title="Archive"
                   >
-                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                    <svg
+                      className="h-3.5 w-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+                      />
                     </svg>
                   </button>
                 </span>
@@ -336,9 +378,7 @@ export function Sidebar({ userEmail }: SidebarProps) {
 
       {/* User / Sign out */}
       <div className="border-t border-slate-700 px-4 py-4">
-        {userEmail && (
-          <p className="mb-2 truncate text-xs text-slate-400">{userEmail}</p>
-        )}
+        {userEmail && <p className="mb-2 truncate text-xs text-slate-400">{userEmail}</p>}
         <Button
           variant="ghost"
           onClick={handleSignOut}
@@ -349,15 +389,8 @@ export function Sidebar({ userEmail }: SidebarProps) {
       </div>
 
       {/* Modals */}
-      <Modal
-        open={showProjectModal}
-        onClose={() => setShowProjectModal(false)}
-        title="New Project"
-      >
-        <ProjectForm
-          onClose={() => setShowProjectModal(false)}
-          onSuccess={() => fetchProjects()}
-        />
+      <Modal open={showProjectModal} onClose={() => setShowProjectModal(false)} title="New Project">
+        <ProjectForm onClose={() => setShowProjectModal(false)} onSuccess={() => fetchProjects()} />
       </Modal>
 
       <Modal
@@ -380,8 +413,8 @@ export function Sidebar({ userEmail }: SidebarProps) {
         {editingProject && (
           <form
             onSubmit={(e) => {
-              e.preventDefault()
-              handleRenameProject(editingProject.id, editingProject.name)
+              e.preventDefault();
+              handleRenameProject(editingProject.id, editingProject.name);
             }}
             className="space-y-4"
           >
@@ -389,9 +422,7 @@ export function Sidebar({ userEmail }: SidebarProps) {
               id="rename-project"
               label="Project Name"
               value={editingProject.name}
-              onChange={(e) =>
-                setEditingProject({ ...editingProject, name: e.target.value })
-              }
+              onChange={(e) => setEditingProject({ ...editingProject, name: e.target.value })}
               autoFocus
             />
             <div className="flex justify-end gap-2">
@@ -415,8 +446,8 @@ export function Sidebar({ userEmail }: SidebarProps) {
         {editingDepartment && (
           <form
             onSubmit={(e) => {
-              e.preventDefault()
-              handleRenameDepartment(editingDepartment.id, editingDepartment.name)
+              e.preventDefault();
+              handleRenameDepartment(editingDepartment.id, editingDepartment.name);
             }}
             className="space-y-4"
           >
@@ -424,9 +455,7 @@ export function Sidebar({ userEmail }: SidebarProps) {
               id="rename-department"
               label="Department Name"
               value={editingDepartment.name}
-              onChange={(e) =>
-                setEditingDepartment({ ...editingDepartment, name: e.target.value })
-              }
+              onChange={(e) => setEditingDepartment({ ...editingDepartment, name: e.target.value })}
               autoFocus
             />
             <div className="flex justify-end gap-2">
@@ -441,7 +470,7 @@ export function Sidebar({ userEmail }: SidebarProps) {
         )}
       </Modal>
     </div>
-  )
+  );
 
   return (
     <>
@@ -451,12 +480,7 @@ export function Sidebar({ userEmail }: SidebarProps) {
         className="fixed left-4 top-4 z-40 rounded-md bg-slate-900 p-2 text-white md:hidden"
         aria-label="Open menu"
       >
-        <svg
-          className="h-5 w-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
+        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -483,5 +507,5 @@ export function Sidebar({ userEmail }: SidebarProps) {
         {sidebarContent}
       </aside>
     </>
-  )
+  );
 }

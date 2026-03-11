@@ -1,19 +1,26 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { agentKeySchema, agentKeyUpdateSchema, permissionsUpdateSchema } from '@/lib/utils/validation';
 import {
   createAgentKey,
-  updateAgentKey,
   rotateAgentKey,
+  updateAgentKey,
   updateAgentKeyPermissions,
 } from '@/lib/services/agent-keys';
+import { createClient } from '@/lib/supabase/server';
+import {
+  agentKeySchema,
+  agentKeyUpdateSchema,
+  permissionsUpdateSchema,
+} from '@/lib/utils/validation';
 
 export async function createAgentKeyAction(formData: FormData) {
   try {
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
       return { success: false, error: 'Unauthorized' };
     }
@@ -45,7 +52,10 @@ export async function createAgentKeyAction(formData: FormData) {
 export async function updateAgentKeyAction(formData: FormData) {
   try {
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
       return { success: false, error: 'Unauthorized' };
     }
@@ -83,7 +93,10 @@ export async function updateAgentKeyAction(formData: FormData) {
 export async function rotateAgentKeyAction(keyId: string) {
   try {
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
       return { success: false, error: 'Unauthorized' };
     }
@@ -112,7 +125,10 @@ export async function updateAgentKeyPermissionsAction(data: {
 }) {
   try {
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
       return { success: false, error: 'Unauthorized' };
     }

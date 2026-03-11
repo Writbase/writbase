@@ -1,18 +1,18 @@
-import { notFound } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { getAgentKeyPermissions } from '@/lib/services/agent-keys'
-import { Badge } from '@/components/ui/badge'
-import { AgentKeyDetailEditor } from '@/components/agent-key-detail-editor'
-import { PermissionEditor } from '@/components/permission-editor'
-import Link from 'next/link'
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { AgentKeyDetailEditor } from '@/components/agent-key-detail-editor';
+import { PermissionEditor } from '@/components/permission-editor';
+import { Badge } from '@/components/ui/badge';
+import { getAgentKeyPermissions } from '@/lib/services/agent-keys';
+import { createClient } from '@/lib/supabase/server';
 
 interface PageProps {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }
 
 export default async function AgentKeyDetailPage({ params }: PageProps) {
-  const { id } = await params
-  const supabase = await createClient()
+  const { id } = await params;
+  const supabase = await createClient();
 
   const { data: key, error } = await supabase
     .from('agent_keys')
@@ -20,13 +20,13 @@ export default async function AgentKeyDetailPage({ params }: PageProps) {
       'id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by',
     )
     .eq('id', id)
-    .single()
+    .single();
 
   if (error || !key) {
-    notFound()
+    notFound();
   }
 
-  const permissions = await getAgentKeyPermissions(supabase, id)
+  const permissions = await getAgentKeyPermissions(supabase, id);
 
   return (
     <div className="space-y-8">
@@ -42,16 +42,12 @@ export default async function AgentKeyDetailPage({ params }: PageProps) {
       <div className="rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-              {key.name}
-            </h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{key.name}</h1>
             <div className="mt-2 flex items-center gap-3">
               <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs dark:bg-slate-800">
                 {key.key_prefix}...
               </code>
-              <Badge color={key.role === 'manager' ? 'purple' : 'blue'}>
-                {key.role}
-              </Badge>
+              <Badge color={key.role === 'manager' ? 'purple' : 'blue'}>{key.role}</Badge>
               <Badge color={key.is_active ? 'green' : 'red'}>
                 {key.is_active ? 'Active' : 'Inactive'}
               </Badge>
@@ -66,17 +62,13 @@ export default async function AgentKeyDetailPage({ params }: PageProps) {
           </div>
           <div>
             <span className="font-medium">Last used:</span>{' '}
-            {key.last_used_at
-              ? new Date(key.last_used_at).toLocaleDateString()
-              : 'Never'}
+            {key.last_used_at ? new Date(key.last_used_at).toLocaleDateString() : 'Never'}
           </div>
         </div>
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-          Settings
-        </h2>
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Settings</h2>
         <AgentKeyDetailEditor
           keyId={key.id}
           initialName={key.name}
@@ -86,9 +78,7 @@ export default async function AgentKeyDetailPage({ params }: PageProps) {
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-          Permissions
-        </h2>
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Permissions</h2>
         <PermissionEditor
           keyId={key.id}
           initialPermissions={permissions.map((p) => ({
@@ -103,5 +93,5 @@ export default async function AgentKeyDetailPage({ params }: PageProps) {
         />
       </div>
     </div>
-  )
+  );
 }

@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AgentKey, AgentPermission } from '@/lib/types/database';
 import type { AgentRole } from '@/lib/types/enums';
@@ -17,7 +17,9 @@ export async function listAgentKeys(
 ): Promise<Omit<AgentKey, 'key_hash'>[]> {
   const { data, error } = await supabase
     .from('agent_keys')
-    .select('id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by')
+    .select(
+      'id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by',
+    )
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -45,7 +47,9 @@ export async function createAgentKey(
       special_prompt: params.specialPrompt ?? null,
       created_by: params.createdBy,
     })
-    .select('id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by')
+    .select(
+      'id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by',
+    )
     .single();
 
   if (error) throw error;
@@ -83,7 +87,9 @@ export async function updateAgentKey(
     .from('agent_keys')
     .update(updates)
     .eq('id', params.id)
-    .select('id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by')
+    .select(
+      'id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by',
+    )
     .single();
 
   if (error) throw error;
@@ -112,7 +118,9 @@ export async function rotateAgentKey(
     .from('agent_keys')
     .update({ key_hash: hash, key_prefix: prefix })
     .eq('id', params.id)
-    .select('id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by')
+    .select(
+      'id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by',
+    )
     .single();
 
   if (error) throw error;
@@ -134,7 +142,9 @@ export async function rotateAgentKey(
 export async function getAgentKeyPermissions(
   supabase: SupabaseClient,
   keyId: string,
-): Promise<(AgentPermission & { projects?: { name: string }; departments?: { name: string } | null })[]> {
+): Promise<
+  (AgentPermission & { projects?: { name: string }; departments?: { name: string } | null })[]
+> {
   const { data, error } = await supabase
     .from('agent_permissions')
     .select('*, projects(name), departments(name)')
@@ -177,9 +187,7 @@ export async function updateAgentKeyPermissions(
       can_update: p.canUpdate,
     }));
 
-    const { error: insertError } = await supabase
-      .from('agent_permissions')
-      .insert(rows);
+    const { error: insertError } = await supabase.from('agent_permissions').insert(rows);
 
     if (insertError) throw insertError;
   }

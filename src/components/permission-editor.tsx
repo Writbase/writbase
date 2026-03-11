@@ -1,75 +1,72 @@
-'use client'
+'use client';
 
-import { useCallback, useEffect, useState } from 'react'
-import { updateAgentKeyPermissionsAction } from '@/app/(dashboard)/actions/agent-key-actions'
-import { Button } from '@/components/ui/button'
-import { Select } from '@/components/ui/select'
+import { useCallback, useEffect, useState } from 'react';
+import { updateAgentKeyPermissionsAction } from '@/app/(dashboard)/actions/agent-key-actions';
+import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 
 interface PermissionRow {
-  projectId: string
-  projectName: string
-  departmentId: string | null
-  departmentName: string | null
-  canRead: boolean
-  canCreate: boolean
-  canUpdate: boolean
+  projectId: string;
+  projectName: string;
+  departmentId: string | null;
+  departmentName: string | null;
+  canRead: boolean;
+  canCreate: boolean;
+  canUpdate: boolean;
 }
 
 interface ProjectOption {
-  id: string
-  name: string
+  id: string;
+  name: string;
 }
 
 interface DepartmentOption {
-  id: string
-  name: string
+  id: string;
+  name: string;
 }
 
 interface PermissionEditorProps {
-  keyId: string
-  initialPermissions: PermissionRow[]
+  keyId: string;
+  initialPermissions: PermissionRow[];
 }
 
-export function PermissionEditor({
-  keyId,
-  initialPermissions,
-}: PermissionEditorProps) {
-  const [rows, setRows] = useState<PermissionRow[]>(initialPermissions)
-  const [projects, setProjects] = useState<ProjectOption[]>([])
-  const [departments, setDepartments] = useState<DepartmentOption[]>([])
-  const [loading, setLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
+export function PermissionEditor({ keyId, initialPermissions }: PermissionEditorProps) {
+  const [rows, setRows] = useState<PermissionRow[]>(initialPermissions);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
   const fetchOptions = useCallback(async () => {
-    setLoading(true)
+    setLoading(true);
     try {
       const [projRes, deptRes] = await Promise.all([
         fetch('/api/projects'),
         fetch('/api/departments'),
-      ])
+      ]);
       if (projRes.ok) {
-        const projJson = await projRes.json()
-        setProjects(projJson.data ?? [])
+        const projJson = await projRes.json();
+        setProjects(projJson.data ?? []);
       }
       if (deptRes.ok) {
-        const deptJson = await deptRes.json()
-        setDepartments(deptJson.data ?? [])
+        const deptJson = await deptRes.json();
+        setDepartments(deptJson.data ?? []);
       }
     } catch {
       // Selectors will just be empty
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    fetchOptions()
-  }, [fetchOptions])
+    fetchOptions();
+  }, [fetchOptions]);
 
   function addRow() {
-    if (projects.length === 0) return
+    if (projects.length === 0) return;
     setRows((prev) => [
       ...prev,
       {
@@ -81,23 +78,21 @@ export function PermissionEditor({
         canCreate: false,
         canUpdate: false,
       },
-    ])
+    ]);
   }
 
   function removeRow(index: number) {
-    setRows((prev) => prev.filter((_, i) => i !== index))
+    setRows((prev) => prev.filter((_, i) => i !== index));
   }
 
   function updateRow(index: number, updates: Partial<PermissionRow>) {
-    setRows((prev) =>
-      prev.map((row, i) => (i === index ? { ...row, ...updates } : row)),
-    )
+    setRows((prev) => prev.map((row, i) => (i === index ? { ...row, ...updates } : row)));
   }
 
   async function handleSave() {
-    setSaving(true)
-    setError(null)
-    setSaved(false)
+    setSaving(true);
+    setError(null);
+    setSaved(false);
 
     const result = await updateAgentKeyPermissionsAction({
       keyId,
@@ -108,16 +103,16 @@ export function PermissionEditor({
         canCreate: r.canCreate,
         canUpdate: r.canUpdate,
       })),
-    })
+    });
 
     if (result.success) {
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
     } else {
-      setError(result.error ?? 'Failed to save permissions')
+      setError(result.error ?? 'Failed to save permissions');
     }
 
-    setSaving(false)
+    setSaving(false);
   }
 
   return (
@@ -148,13 +143,11 @@ export function PermissionEditor({
                     <Select
                       value={row.projectId}
                       onChange={(e) => {
-                        const proj = projects.find(
-                          (p) => p.id === e.target.value,
-                        )
+                        const proj = projects.find((p) => p.id === e.target.value);
                         updateRow(i, {
                           projectId: e.target.value,
                           projectName: proj?.name ?? 'Unknown',
-                        })
+                        });
                       }}
                     >
                       {projects.map((p) => (
@@ -168,12 +161,12 @@ export function PermissionEditor({
                     <Select
                       value={row.departmentId ?? ''}
                       onChange={(e) => {
-                        const val = e.target.value || null
-                        const dept = departments.find((d) => d.id === val)
+                        const val = e.target.value || null;
+                        const dept = departments.find((d) => d.id === val);
                         updateRow(i, {
                           departmentId: val,
                           departmentName: dept?.name ?? null,
-                        })
+                        });
                       }}
                     >
                       <option value="">All departments</option>
@@ -188,9 +181,7 @@ export function PermissionEditor({
                     <input
                       type="checkbox"
                       checked={row.canRead}
-                      onChange={(e) =>
-                        updateRow(i, { canRead: e.target.checked })
-                      }
+                      onChange={(e) => updateRow(i, { canRead: e.target.checked })}
                       className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                     />
                   </td>
@@ -198,9 +189,7 @@ export function PermissionEditor({
                     <input
                       type="checkbox"
                       checked={row.canCreate}
-                      onChange={(e) =>
-                        updateRow(i, { canCreate: e.target.checked })
-                      }
+                      onChange={(e) => updateRow(i, { canCreate: e.target.checked })}
                       className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                     />
                   </td>
@@ -208,9 +197,7 @@ export function PermissionEditor({
                     <input
                       type="checkbox"
                       checked={row.canUpdate}
-                      onChange={(e) =>
-                        updateRow(i, { canUpdate: e.target.checked })
-                      }
+                      onChange={(e) => updateRow(i, { canUpdate: e.target.checked })}
                       className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                     />
                   </td>
@@ -231,23 +218,15 @@ export function PermissionEditor({
       )}
 
       <div className="flex items-center gap-3">
-        <Button
-          variant="secondary"
-          onClick={addRow}
-          disabled={loading || projects.length === 0}
-        >
+        <Button variant="secondary" onClick={addRow} disabled={loading || projects.length === 0}>
           Add Permission
         </Button>
         <Button onClick={handleSave} disabled={saving}>
           {saving ? 'Saving...' : 'Save Permissions'}
         </Button>
-        {saved && (
-          <span className="text-sm text-green-600 dark:text-green-400">
-            Saved!
-          </span>
-        )}
+        {saved && <span className="text-sm text-green-600 dark:text-green-400">Saved!</span>}
       </div>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>
-  )
+  );
 }

@@ -1,14 +1,17 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { projectSchema, projectUpdateSchema } from '@/lib/utils/validation';
 import { createProject, updateProject } from '@/lib/services/projects';
+import { createClient } from '@/lib/supabase/server';
+import { projectSchema, projectUpdateSchema } from '@/lib/utils/validation';
 
 export async function createProjectAction(formData: FormData) {
   try {
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
       return { success: false, error: 'Unauthorized' };
     }
@@ -36,7 +39,10 @@ export async function createProjectAction(formData: FormData) {
 export async function updateProjectAction(formData: FormData) {
   try {
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
       return { success: false, error: 'Unauthorized' };
     }

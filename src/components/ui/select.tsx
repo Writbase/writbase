@@ -1,8 +1,8 @@
-import { type SelectHTMLAttributes, forwardRef } from 'react'
+import { forwardRef, type SelectHTMLAttributes } from 'react';
 
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
-  label?: string
-  error?: string
+  label?: string;
+  error?: string;
 }
 
 const Select = forwardRef<HTMLSelectElement, SelectProps>(
@@ -31,10 +31,10 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
         </select>
         {error && <p className="text-xs text-red-600">{error}</p>}
       </div>
-    )
+    );
   },
-)
+);
 
-Select.displayName = 'Select'
+Select.displayName = 'Select';
 
-export { Select, type SelectProps }
+export { Select, type SelectProps };

@@ -1,63 +1,59 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { Badge } from '@/components/ui/badge'
-import type { EventLog } from '@/lib/types/database'
-import type { ActorType, Source } from '@/lib/types/enums'
+import { useEffect, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import type { EventLog } from '@/lib/types/database';
+import type { ActorType, Source } from '@/lib/types/enums';
 
 interface TaskHistoryPanelProps {
-  taskId: string
-  isOpen: boolean
-  onClose: () => void
+  taskId: string;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 const actorColor: Record<ActorType, 'blue' | 'purple' | 'gray'> = {
   human: 'blue',
   agent: 'purple',
   system: 'gray',
-}
+};
 
 const sourceColor: Record<Source, 'blue' | 'purple' | 'gray' | 'green'> = {
   ui: 'blue',
   mcp: 'purple',
   api: 'green',
   system: 'gray',
-}
+};
 
 function formatRelativeTime(dateStr: string): string {
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffSeconds = Math.floor(diffMs / 1000)
-  const diffMinutes = Math.floor(diffSeconds / 60)
-  const diffHours = Math.floor(diffMinutes / 60)
-  const diffDays = Math.floor(diffHours / 24)
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
 
-  if (diffSeconds < 60) return 'Just now'
-  if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`
-  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`
-  if (diffDays === 1) return 'Yesterday'
-  if (diffDays < 7) return `${diffDays} days ago`
+  if (diffSeconds < 60) return 'Just now';
+  if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
+  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays} days ago`;
 
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function formatEventType(eventType: string): string {
-  return eventType
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
+  return eventType.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function formatFieldName(field: string): string {
-  return field
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
+  return field.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function formatValue(value: unknown): string {
-  if (value === null || value === undefined) return '(empty)'
-  if (typeof value === 'string' && value === '') return '(empty)'
-  return String(value)
+  if (value === null || value === undefined) return '(empty)';
+  if (typeof value === 'string' && value === '') return '(empty)';
+  return String(value);
 }
 
 function SkeletonTimeline() {
@@ -77,63 +73,58 @@ function SkeletonTimeline() {
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 export function TaskHistoryPanel({ taskId, isOpen, onClose }: TaskHistoryPanelProps) {
-  const [events, setEvents] = useState<EventLog[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [events, setEvents] = useState<EventLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
-    let cancelled = false
-    setLoading(true)
-    setError(null)
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
 
     fetch(`/api/tasks/${taskId}/history`)
       .then((res) => {
-        if (!res.ok) throw new Error('Failed to load history')
-        return res.json()
+        if (!res.ok) throw new Error('Failed to load history');
+        return res.json();
       })
       .then((json) => {
         if (!cancelled) {
-          const items: EventLog[] = json.data ?? []
+          const items: EventLog[] = json.data ?? [];
           // Most recent first
-          items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-          setEvents(items)
+          items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          setEvents(items);
         }
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Unknown error')
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Unknown error');
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
+        if (!cancelled) setLoading(false);
+      });
 
     return () => {
-      cancelled = true
-    }
-  }, [taskId, isOpen])
+      cancelled = true;
+    };
+  }, [taskId, isOpen]);
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/40"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
       {/* Panel */}
       <div className="relative z-10 flex h-full w-full max-w-lg flex-col bg-white shadow-2xl dark:bg-slate-900">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-700">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-            Task History
-          </h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Task History</h2>
           <button
             onClick={onClose}
             className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
@@ -176,15 +167,11 @@ export function TaskHistoryPanel({ taskId, isOpen, onClose }: TaskHistoryPanelPr
 
                     {/* Actor + event type */}
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      <Badge color={actorColor[event.actor_type]}>
-                        {event.actor_label}
-                      </Badge>
+                      <Badge color={actorColor[event.actor_type]}>{event.actor_label}</Badge>
                       <span className="text-sm text-slate-700 dark:text-slate-300">
                         {formatEventType(event.event_type)}
                       </span>
-                      <Badge color={sourceColor[event.source]}>
-                        {event.source}
-                      </Badge>
+                      <Badge color={sourceColor[event.source]}>{event.source}</Badge>
                     </div>
 
                     {/* Field change diff */}
@@ -216,5 +203,5 @@ export function TaskHistoryPanel({ taskId, isOpen, onClose }: TaskHistoryPanelPr
         </div>
       </div>
     </div>
-  )
+  );
 }

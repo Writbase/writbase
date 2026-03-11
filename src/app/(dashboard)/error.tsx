@@ -1,18 +1,18 @@
-'use client'
+'use client';
 
-import { useEffect } from 'react'
-import { Button } from '@/components/ui/button'
+import { useEffect } from 'react';
+import { Button } from '@/components/ui/button';
 
 export default function DashboardError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   useEffect(() => {
-    console.error('Dashboard error:', error)
-  }, [error])
+    console.error('Dashboard error:', error);
+  }, [error]);
 
   return (
     <div className="flex min-h-[50vh] items-center justify-center">
@@ -41,5 +41,5 @@ export default function DashboardError({
         <Button onClick={reset}>Try again</Button>
       </div>
     </div>
-  )
+  );
 }

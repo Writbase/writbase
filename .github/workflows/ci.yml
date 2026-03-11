@@ -10,6 +10,7 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci
+      - run: npm run format:check
       - run: npm run lint
       - run: npm run build
       - run: npm test
@@ -20,4 +21,5 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+      - run: deno lint supabase/functions/
       - run: deno test supabase/functions/_shared/ --allow-env --allow-read --config supabase/functions/mcp-server/deno.json

@@ -1,11 +1,11 @@
 import type {
-  Priority,
-  Status,
   ActorType,
-  Source,
-  EventCategory,
-  TargetType,
   AgentRole,
+  EventCategory,
+  Priority,
+  Source,
+  Status,
+  TargetType,
 } from './enums';
 
 export interface Project {

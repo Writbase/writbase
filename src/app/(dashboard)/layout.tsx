@@ -1,19 +1,15 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { Sidebar } from '@/components/sidebar'
+import { redirect } from 'next/navigation';
+import { Sidebar } from '@/components/sidebar';
+import { createClient } from '@/lib/supabase/server';
 
-export default async function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const supabase = await createClient()
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/login')
+    redirect('/login');
   }
 
   return (
@@ -21,5 +17,5 @@ export default async function DashboardLayout({
       <Sidebar userEmail={user.email} />
       <main className="flex-1 overflow-auto p-6 md:p-8">{children}</main>
     </div>
-  )
+  );
 }

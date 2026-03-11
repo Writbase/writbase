@@ -1,15 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { listEvents } from '@/lib/services/event-log';
-import { parsePagination } from '@/lib/utils/pagination';
+import { createClient } from '@/lib/supabase/server';
 import type { EventCategory, TargetType } from '@/lib/types/enums';
+import { parsePagination } from '@/lib/utils/pagination';
 
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: { code: 'unauthorized', message: 'Unauthorized' } }, { status: 401 });
+      return NextResponse.json(
+        { error: { code: 'unauthorized', message: 'Unauthorized' } },
+        { status: 401 },
+      );
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -26,7 +32,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ data: events });
   } catch (err) {
     return NextResponse.json(
-      { error: { code: 'internal_error', message: err instanceof Error ? err.message : 'Unknown error' } },
+      {
+        error: {
+          code: 'internal_error',
+          message: err instanceof Error ? err.message : 'Unknown error',
+        },
+      },
       { status: 500 },
     );
   }

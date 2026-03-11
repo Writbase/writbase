@@ -27,7 +27,10 @@ export const taskCreateSchema = z.object({
   description: z.string().min(3, 'Description must be at least 3 characters').max(5000),
   notes: z.string().max(10000).optional().nullable(),
   dueDate: z.string().datetime().optional().nullable(),
-  status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled']).optional().default('todo'),
+  status: z
+    .enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled'])
+    .optional()
+    .default('todo'),
 });
 
 export const taskUpdateSchema = z

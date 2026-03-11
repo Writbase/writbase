@@ -1,15 +1,15 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  projectSchema,
-  projectUpdateSchema,
-  departmentSchema,
-  departmentUpdateSchema,
-  taskCreateSchema,
-  taskUpdateSchema,
   agentKeySchema,
   agentKeyUpdateSchema,
+  departmentSchema,
+  departmentUpdateSchema,
   permissionSchema,
   permissionsUpdateSchema,
+  projectSchema,
+  projectUpdateSchema,
+  taskCreateSchema,
+  taskUpdateSchema,
 } from '@/lib/utils/validation';
 
 const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
@@ -104,27 +104,19 @@ describe('taskCreateSchema', () => {
   });
 
   it('rejects description over 5000 characters', () => {
-    expect(() =>
-      taskCreateSchema.parse({ ...validTask, description: 'a'.repeat(5001) }),
-    ).toThrow();
+    expect(() => taskCreateSchema.parse({ ...validTask, description: 'a'.repeat(5001) })).toThrow();
   });
 
   it('rejects invalid priority', () => {
-    expect(() =>
-      taskCreateSchema.parse({ ...validTask, priority: 'urgent' }),
-    ).toThrow();
+    expect(() => taskCreateSchema.parse({ ...validTask, priority: 'urgent' })).toThrow();
   });
 
   it('rejects invalid status', () => {
-    expect(() =>
-      taskCreateSchema.parse({ ...validTask, status: 'pending' }),
-    ).toThrow();
+    expect(() => taskCreateSchema.parse({ ...validTask, status: 'pending' })).toThrow();
   });
 
   it('rejects invalid projectId', () => {
-    expect(() =>
-      taskCreateSchema.parse({ ...validTask, projectId: 'not-uuid' }),
-    ).toThrow();
+    expect(() => taskCreateSchema.parse({ ...validTask, projectId: 'not-uuid' })).toThrow();
   });
 
   it('allows null departmentId', () => {
@@ -133,15 +125,11 @@ describe('taskCreateSchema', () => {
   });
 
   it('rejects notes over 10000 characters', () => {
-    expect(() =>
-      taskCreateSchema.parse({ ...validTask, notes: 'a'.repeat(10001) }),
-    ).toThrow();
+    expect(() => taskCreateSchema.parse({ ...validTask, notes: 'a'.repeat(10001) })).toThrow();
   });
 
   it('rejects invalid datetime for dueDate', () => {
-    expect(() =>
-      taskCreateSchema.parse({ ...validTask, dueDate: 'not-a-date' }),
-    ).toThrow();
+    expect(() => taskCreateSchema.parse({ ...validTask, dueDate: 'not-a-date' })).toThrow();
   });
 });
 
@@ -158,21 +146,17 @@ describe('taskUpdateSchema', () => {
   });
 
   it('rejects update with no fields to change (only id and version)', () => {
-    expect(() =>
-      taskUpdateSchema.parse({ id: VALID_UUID, version: 1 }),
-    ).toThrow('At least one field to update is required');
+    expect(() => taskUpdateSchema.parse({ id: VALID_UUID, version: 1 })).toThrow(
+      'At least one field to update is required',
+    );
   });
 
   it('rejects version less than 1', () => {
-    expect(() =>
-      taskUpdateSchema.parse({ ...validUpdate, version: 0 }),
-    ).toThrow();
+    expect(() => taskUpdateSchema.parse({ ...validUpdate, version: 0 })).toThrow();
   });
 
   it('rejects non-integer version', () => {
-    expect(() =>
-      taskUpdateSchema.parse({ ...validUpdate, version: 1.5 }),
-    ).toThrow();
+    expect(() => taskUpdateSchema.parse({ ...validUpdate, version: 1.5 })).toThrow();
   });
 
   it('allows nullable departmentId', () => {
@@ -264,9 +248,7 @@ describe('permissionsUpdateSchema', () => {
   it('accepts valid permissions update', () => {
     const result = permissionsUpdateSchema.parse({
       keyId: VALID_UUID,
-      permissions: [
-        { projectId: VALID_UUID_2, canRead: true, canCreate: false, canUpdate: false },
-      ],
+      permissions: [{ projectId: VALID_UUID_2, canRead: true, canCreate: false, canUpdate: false }],
     });
     expect(result.permissions).toHaveLength(1);
   });
@@ -280,9 +262,7 @@ describe('permissionsUpdateSchema', () => {
   });
 
   it('rejects invalid keyId', () => {
-    expect(() =>
-      permissionsUpdateSchema.parse({ keyId: 'bad', permissions: [] }),
-    ).toThrow();
+    expect(() => permissionsUpdateSchema.parse({ keyId: 'bad', permissions: [] })).toThrow();
   });
 
   it('rejects permission with invalid projectId', () => {

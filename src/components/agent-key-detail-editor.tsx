@@ -1,17 +1,20 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { toast } from 'sonner'
-import { updateAgentKeyAction, rotateAgentKeyAction } from '@/app/(dashboard)/actions/agent-key-actions'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Modal } from '@/components/ui/modal'
+import { useState } from 'react';
+import { toast } from 'sonner';
+import {
+  rotateAgentKeyAction,
+  updateAgentKeyAction,
+} from '@/app/(dashboard)/actions/agent-key-actions';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Modal } from '@/components/ui/modal';
 
 interface AgentKeyDetailEditorProps {
-  keyId: string
-  initialName: string
-  initialPrompt: string
-  initialActive: boolean
+  keyId: string;
+  initialName: string;
+  initialPrompt: string;
+  initialActive: boolean;
 }
 
 export function AgentKeyDetailEditor({
@@ -20,64 +23,59 @@ export function AgentKeyDetailEditor({
   initialPrompt,
   initialActive,
 }: AgentKeyDetailEditorProps) {
-  const [name, setName] = useState(initialName)
-  const [prompt, setPrompt] = useState(initialPrompt)
-  const [isActive, setIsActive] = useState(initialActive)
-  const [loading, setLoading] = useState(false)
-  const [showRotateConfirm, setShowRotateConfirm] = useState(false)
-  const [rotating, setRotating] = useState(false)
-  const [newKey, setNewKey] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
+  const [name, setName] = useState(initialName);
+  const [prompt, setPrompt] = useState(initialPrompt);
+  const [isActive, setIsActive] = useState(initialActive);
+  const [loading, setLoading] = useState(false);
+  const [showRotateConfirm, setShowRotateConfirm] = useState(false);
+  const [rotating, setRotating] = useState(false);
+  const [newKey, setNewKey] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   async function handleRotate() {
-    setRotating(true)
-    const result = await rotateAgentKeyAction(keyId)
+    setRotating(true);
+    const result = await rotateAgentKeyAction(keyId);
     if (result.success && result.data) {
-      setNewKey(result.data.fullKey)
-      setShowRotateConfirm(false)
-      toast.success('Key rotated successfully')
+      setNewKey(result.data.fullKey);
+      setShowRotateConfirm(false);
+      toast.success('Key rotated successfully');
     } else {
-      toast.error(result.error ?? 'Failed to rotate key')
+      toast.error(result.error ?? 'Failed to rotate key');
     }
-    setRotating(false)
+    setRotating(false);
   }
 
   async function handleCopyKey() {
-    if (!newKey) return
-    await navigator.clipboard.writeText(newKey)
-    setCopied(true)
-    toast.success('Key copied to clipboard')
-    setTimeout(() => setCopied(false), 2000)
+    if (!newKey) return;
+    await navigator.clipboard.writeText(newKey);
+    setCopied(true);
+    toast.success('Key copied to clipboard');
+    setTimeout(() => setCopied(false), 2000);
   }
 
   async function handleSave() {
-    setLoading(true)
+    setLoading(true);
 
-    const formData = new FormData()
-    formData.set('id', keyId)
-    formData.set('name', name)
-    formData.set('specialPrompt', prompt)
-    formData.set('isActive', String(isActive))
+    const formData = new FormData();
+    formData.set('id', keyId);
+    formData.set('name', name);
+    formData.set('specialPrompt', prompt);
+    formData.set('isActive', String(isActive));
 
-    const result = await updateAgentKeyAction(formData)
+    const result = await updateAgentKeyAction(formData);
 
     if (result.success) {
-      toast.success('Changes saved')
+      toast.success('Changes saved');
     } else {
-      toast.error(result.error ?? 'Failed to update')
+      toast.error(result.error ?? 'Failed to update');
     }
 
-    setLoading(false)
+    setLoading(false);
   }
 
   return (
     <div className="mt-4 space-y-4">
-      <Input
-        id="key-name"
-        label="Name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
+      <Input id="key-name" label="Name" value={name} onChange={(e) => setName(e.target.value)} />
       <div className="space-y-1">
         <label
           htmlFor="key-prompt"
@@ -129,9 +127,7 @@ export function AgentKeyDetailEditor({
 
       {/* Key rotation */}
       <div className="border-t border-slate-200 pt-4 dark:border-slate-700">
-        <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">
-          Key Rotation
-        </h3>
+        <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">Key Rotation</h3>
         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
           Generate a new secret for this agent key. The current key will stop working immediately.
         </p>
@@ -151,11 +147,7 @@ export function AgentKeyDetailEditor({
             </div>
           </div>
         ) : (
-          <Button
-            variant="danger"
-            className="mt-3"
-            onClick={() => setShowRotateConfirm(true)}
-          >
+          <Button variant="danger" className="mt-3" onClick={() => setShowRotateConfirm(true)}>
             Rotate Key
           </Button>
         )}
@@ -169,8 +161,8 @@ export function AgentKeyDetailEditor({
       >
         <div className="space-y-4">
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            Are you sure? The current key will stop working immediately. Any agents
-            using this key will need to be updated with the new secret.
+            Are you sure? The current key will stop working immediately. Any agents using this key
+            will need to be updated with the new secret.
           </p>
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setShowRotateConfirm(false)}>
@@ -183,5 +175,5 @@ export function AgentKeyDetailEditor({
         </div>
       </Modal>
     </div>
-  )
+  );
 }

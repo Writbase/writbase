@@ -1,22 +1,22 @@
-'use client'
+'use client';
 
-import { useCallback, useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { TaskForm } from '@/components/task-form'
-import type { Task } from '@/lib/types/database'
-import type { Priority, Status } from '@/lib/types/enums'
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
+import { TaskForm } from '@/components/task-form';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import type { Task } from '@/lib/types/database';
+import type { Priority, Status } from '@/lib/types/enums';
 
 interface Department {
-  id: string
-  name: string
-  is_archived?: boolean
+  id: string;
+  name: string;
+  is_archived?: boolean;
 }
 
 interface TaskTableProps {
-  projectId: string
-  departmentId?: string
+  projectId: string;
+  departmentId?: string;
 }
 
 const priorityColor: Record<Priority, 'gray' | 'blue' | 'yellow' | 'red'> = {
@@ -24,7 +24,7 @@ const priorityColor: Record<Priority, 'gray' | 'blue' | 'yellow' | 'red'> = {
   medium: 'blue',
   high: 'yellow',
   critical: 'red',
-}
+};
 
 const statusColor: Record<Status, 'gray' | 'blue' | 'yellow' | 'green' | 'red'> = {
   todo: 'gray',
@@ -32,7 +32,7 @@ const statusColor: Record<Status, 'gray' | 'blue' | 'yellow' | 'green' | 'red'> 
   blocked: 'yellow',
   done: 'green',
   cancelled: 'red',
-}
+};
 
 const statusLabel: Record<Status, string> = {
   todo: 'To Do',
@@ -40,165 +40,172 @@ const statusLabel: Record<Status, string> = {
   blocked: 'Blocked',
   done: 'Done',
   cancelled: 'Cancelled',
-}
+};
 
-const PAGE_SIZE = 25
+const PAGE_SIZE = 25;
 
 function formatDate(dateStr: string): string {
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function formatRelativeDate(dateStr: string): string {
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diffMs = date.getTime() - now.getTime()
-  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = date.getTime() - now.getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0) return 'Today'
-  if (diffDays === 1) return 'Tomorrow'
-  if (diffDays === -1) return 'Yesterday'
-  if (diffDays > 0 && diffDays <= 7) return `In ${diffDays} days`
-  if (diffDays < 0 && diffDays >= -7) return `${Math.abs(diffDays)} days ago`
-  return formatDate(dateStr)
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Tomorrow';
+  if (diffDays === -1) return 'Yesterday';
+  if (diffDays > 0 && diffDays <= 7) return `In ${diffDays} days`;
+  if (diffDays < 0 && diffDays >= -7) return `${Math.abs(diffDays)} days ago`;
+  return formatDate(dateStr);
 }
 
 function truncate(text: string, maxLen: number): string {
-  if (text.length <= maxLen) return text
-  return text.slice(0, maxLen) + '...'
+  if (text.length <= maxLen) return text;
+  return `${text.slice(0, maxLen)}...`;
 }
 
-type SortColumn = 'priority' | 'description' | 'department_id' | 'due_date' | 'created_at' | 'status'
+type SortColumn =
+  | 'priority'
+  | 'description'
+  | 'department_id'
+  | 'due_date'
+  | 'created_at'
+  | 'status';
 
 export function TaskTable({ projectId, departmentId }: TaskTableProps) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [departments, setDepartments] = useState<Department[]>([])
-  const [allDepartments, setAllDepartments] = useState<(Department & { is_archived?: boolean })[]>([])
-  const [loading, setLoading] = useState(true)
-  const [fetchError, setFetchError] = useState<string | null>(null)
-  const [offset, setOffset] = useState(0)
-  const [hasMore, setHasMore] = useState(false)
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [_departments, setDepartments] = useState<Department[]>([]);
+  const [allDepartments, setAllDepartments] = useState<(Department & { is_archived?: boolean })[]>(
+    [],
+  );
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
 
-  const [showForm, setShowForm] = useState(false)
-  const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const [showForm, setShowForm] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
-  const sortBy = (searchParams.get('sortBy') as SortColumn) || 'created_at'
-  const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc'
+  const sortBy = (searchParams.get('sortBy') as SortColumn) || 'created_at';
+  const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc';
 
-  const fetchTasks = useCallback(async (currentOffset: number, signal?: AbortSignal) => {
-    setLoading(true)
-    setFetchError(null)
-    try {
-      const params = new URLSearchParams()
-      params.set('projectId', projectId)
-      if (departmentId) params.set('departmentId', departmentId)
-      params.set('sortBy', sortBy)
-      params.set('sortOrder', sortOrder)
-      params.set('limit', String(PAGE_SIZE + 1))
-      params.set('offset', String(currentOffset))
+  const fetchTasks = useCallback(
+    async (currentOffset: number, signal?: AbortSignal) => {
+      setLoading(true);
+      setFetchError(null);
+      try {
+        const params = new URLSearchParams();
+        params.set('projectId', projectId);
+        if (departmentId) params.set('departmentId', departmentId);
+        params.set('sortBy', sortBy);
+        params.set('sortOrder', sortOrder);
+        params.set('limit', String(PAGE_SIZE + 1));
+        params.set('offset', String(currentOffset));
 
-      const res = await fetch(`/api/tasks?${params.toString()}`, { signal })
-      if (!res.ok) throw new Error('Failed to load tasks')
-      const json = await res.json()
-      const items: Task[] = json.data ?? []
-      if (items.length > PAGE_SIZE) {
-        setHasMore(true)
-        setTasks(items.slice(0, PAGE_SIZE))
-      } else {
-        setHasMore(false)
-        setTasks(items)
+        const res = await fetch(`/api/tasks?${params.toString()}`, { signal });
+        if (!res.ok) throw new Error('Failed to load tasks');
+        const json = await res.json();
+        const items: Task[] = json.data ?? [];
+        if (items.length > PAGE_SIZE) {
+          setHasMore(true);
+          setTasks(items.slice(0, PAGE_SIZE));
+        } else {
+          setHasMore(false);
+          setTasks(items);
+        }
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        setFetchError(err instanceof Error ? err.message : 'Failed to load tasks');
       }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return
-      setFetchError(err instanceof Error ? err.message : 'Failed to load tasks')
-    }
-    setLoading(false)
-  }, [projectId, departmentId, sortBy, sortOrder])
+      setLoading(false);
+    },
+    [projectId, departmentId, sortBy, sortOrder],
+  );
 
   const fetchDepartments = useCallback(async () => {
     try {
-      const res = await fetch('/api/departments')
+      const res = await fetch('/api/departments');
       if (res.ok) {
-        const json = await res.json()
-        const all = json.data ?? []
-        setAllDepartments(all)
-        setDepartments(all.filter((d: Department & { is_archived?: boolean }) => !d.is_archived))
+        const json = await res.json();
+        const all = json.data ?? [];
+        setAllDepartments(all);
+        setDepartments(all.filter((d: Department & { is_archived?: boolean }) => !d.is_archived));
       }
     } catch {
       // fail silently
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    setOffset(0)
-    const controller = new AbortController()
-    fetchTasks(0, controller.signal)
-    return () => controller.abort()
-  }, [fetchTasks])
+    setOffset(0);
+    const controller = new AbortController();
+    fetchTasks(0, controller.signal);
+    return () => controller.abort();
+  }, [fetchTasks]);
 
   useEffect(() => {
-    fetchDepartments()
-  }, [fetchDepartments])
+    fetchDepartments();
+  }, [fetchDepartments]);
 
   function handleSort(column: SortColumn) {
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(searchParams.toString());
     if (sortBy === column) {
-      params.set('sortOrder', sortOrder === 'asc' ? 'desc' : 'asc')
+      params.set('sortOrder', sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
-      params.set('sortBy', column)
-      params.set('sortOrder', 'asc')
+      params.set('sortBy', column);
+      params.set('sortOrder', 'asc');
     }
-    router.push(`?${params.toString()}`)
+    router.push(`?${params.toString()}`);
   }
 
   function handlePrev() {
-    const newOffset = Math.max(0, offset - PAGE_SIZE)
-    setOffset(newOffset)
-    fetchTasks(newOffset)
+    const newOffset = Math.max(0, offset - PAGE_SIZE);
+    setOffset(newOffset);
+    fetchTasks(newOffset);
   }
 
   function handleNext() {
-    const newOffset = offset + PAGE_SIZE
-    setOffset(newOffset)
-    fetchTasks(newOffset)
+    const newOffset = offset + PAGE_SIZE;
+    setOffset(newOffset);
+    fetchTasks(newOffset);
   }
 
   function handleRowClick(task: Task) {
-    setEditingTask(task)
-    setShowForm(true)
+    setEditingTask(task);
+    setShowForm(true);
   }
 
   function handleAddTask() {
-    setEditingTask(null)
-    setShowForm(true)
+    setEditingTask(null);
+    setShowForm(true);
   }
 
   function handleFormClose() {
-    setShowForm(false)
-    setEditingTask(null)
+    setShowForm(false);
+    setEditingTask(null);
   }
 
   function handleFormSuccess() {
-    fetchTasks(offset)
+    fetchTasks(offset);
   }
 
   function getDepartmentInfo(depId: string | null): { name: string; isArchived: boolean } {
-    if (!depId) return { name: '-', isArchived: false }
-    const dep = allDepartments.find((d) => d.id === depId)
-    if (!dep) return { name: '-', isArchived: false }
-    return { name: dep.name, isArchived: !!dep.is_archived }
+    if (!depId) return { name: '-', isArchived: false };
+    const dep = allDepartments.find((d) => d.id === depId);
+    if (!dep) return { name: '-', isArchived: false };
+    return { name: dep.name, isArchived: !!dep.is_archived };
   }
 
   function renderSortIcon(column: SortColumn) {
-    if (sortBy !== column) return null
-    return (
-      <span className="ml-1 text-blue-500">
-        {sortOrder === 'asc' ? '\u2191' : '\u2193'}
-      </span>
-    )
+    if (sortBy !== column) return null;
+    return <span className="ml-1 text-blue-500">{sortOrder === 'asc' ? '\u2191' : '\u2193'}</span>;
   }
 
   const columns: { key: SortColumn; label: string }[] = [
@@ -208,7 +215,7 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
     { key: 'due_date', label: 'Due Date' },
     { key: 'created_at', label: 'Created' },
     { key: 'status', label: 'Status' },
-  ]
+  ];
 
   return (
     <div>
@@ -277,9 +284,7 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
                     }`}
                   >
                     <td className="whitespace-nowrap px-4 py-2.5">
-                      <Badge color={priorityColor[task.priority]}>
-                        {task.priority}
-                      </Badge>
+                      <Badge color={priorityColor[task.priority]}>{task.priority}</Badge>
                     </td>
                     <td className="max-w-xs px-4 py-2.5 text-slate-900 dark:text-slate-100">
                       <div className="font-medium">{truncate(task.description, 80)}</div>
@@ -291,11 +296,15 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
                     </td>
                     <td className="whitespace-nowrap px-4 py-2.5 text-slate-600 dark:text-slate-400">
                       {(() => {
-                        const dept = getDepartmentInfo(task.department_id)
+                        const dept = getDepartmentInfo(task.department_id);
                         if (dept.isArchived) {
-                          return <span className="text-slate-400 dark:text-slate-500">{dept.name} <span className="text-xs">(Archived)</span></span>
+                          return (
+                            <span className="text-slate-400 dark:text-slate-500">
+                              {dept.name} <span className="text-xs">(Archived)</span>
+                            </span>
+                          );
                         }
-                        return dept.name
+                        return dept.name;
                       })()}
                     </td>
                     <td className="whitespace-nowrap px-4 py-2.5 text-slate-600 dark:text-slate-400">
@@ -305,9 +314,7 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
                       {formatDate(task.created_at)}
                     </td>
                     <td className="whitespace-nowrap px-4 py-2.5">
-                      <Badge color={statusColor[task.status]}>
-                        {statusLabel[task.status]}
-                      </Badge>
+                      <Badge color={statusColor[task.status]}>{statusLabel[task.status]}</Badge>
                     </td>
                   </tr>
                 ))}
@@ -321,18 +328,10 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
               Showing {offset + 1}&ndash;{offset + tasks.length}
             </span>
             <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                disabled={offset === 0}
-                onClick={handlePrev}
-              >
+              <Button variant="secondary" disabled={offset === 0} onClick={handlePrev}>
                 Previous
               </Button>
-              <Button
-                variant="secondary"
-                disabled={!hasMore}
-                onClick={handleNext}
-              >
+              <Button variant="secondary" disabled={!hasMore} onClick={handleNext}>
                 Next
               </Button>
             </div>
@@ -349,5 +348,5 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
         onSuccess={handleFormSuccess}
       />
     </div>
-  )
+  );
 }

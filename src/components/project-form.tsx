@@ -1,37 +1,37 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { toast } from 'sonner'
-import { createProjectAction } from '@/app/(dashboard)/actions/project-actions'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { createProjectAction } from '@/app/(dashboard)/actions/project-actions';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface ProjectFormProps {
-  onClose: () => void
-  onSuccess?: () => void
+  onClose: () => void;
+  onSuccess?: () => void;
 }
 
 export function ProjectForm({ onClose, onSuccess }: ProjectFormProps) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
 
-    const formData = new FormData(e.currentTarget)
-    const result = await createProjectAction(formData)
+    const formData = new FormData(e.currentTarget);
+    const result = await createProjectAction(formData);
 
     if (result.success) {
-      toast.success('Project created')
-      onSuccess?.()
-      onClose()
+      toast.success('Project created');
+      onSuccess?.();
+      onClose();
     } else {
-      toast.error(result.error ?? 'Failed to create project')
+      toast.error(result.error ?? 'Failed to create project');
     }
 
-    setLoading(false)
+    setLoading(false);
   }
 
   return (
@@ -54,5 +54,5 @@ export function ProjectForm({ onClose, onSuccess }: ProjectFormProps) {
         </Button>
       </div>
     </form>
-  )
+  );
 }

@@ -13,20 +13,13 @@ export async function listProjects(supabase: SupabaseClient): Promise<Project[]>
   return data ?? [];
 }
 
-async function generateUniqueSlug(
-  supabase: SupabaseClient,
-  name: string,
-): Promise<string> {
+async function generateUniqueSlug(supabase: SupabaseClient, name: string): Promise<string> {
   const baseSlug = generateSlug(name);
   let slug = baseSlug;
   let suffix = 1;
 
   while (true) {
-    const { data } = await supabase
-      .from('projects')
-      .select('id')
-      .eq('slug', slug)
-      .limit(1);
+    const { data } = await supabase.from('projects').select('id').eq('slug', slug).limit(1);
 
     if (!data || data.length === 0) return slug;
     suffix++;

@@ -10,7 +10,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:edge": "deno test supabase/functions/_shared/ --allow-env --allow-read --config supabase/functions/mcp-server/deno.json",
-    "gen:types": "supabase gen types typescript --local > src/lib/types/database.ts"
+    "format": "biome format --write src/",
+    "format:check": "biome ci src/",
+    "lint:deno": "deno lint supabase/functions/",
+    "gen:types": "supabase gen types typescript --local > src/lib/types/database.ts",
+    "prepare": "lefthook install"
   },
   "dependencies": {
     "@supabase/ssr": "^0.9.0",
@@ -22,15 +26,19 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.4.6",
     "@tailwindcss/postcss": "^4.2.1",
     "@types/node": "^25.4.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "eslint": "^9.39.4",
+    "eslint-config-biome": "^2.1.3",
     "eslint-config-next": "16.1.6",
+    "lefthook": "2.1.3",
     "supabase": "^2.78.1",
     "tailwindcss": "^4.2.1",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.57.0",
     "vitest": "^4.0.18"
   }
 }

@@ -1,20 +1,18 @@
-import { type ButtonHTMLAttributes, forwardRef } from 'react'
+import { type ButtonHTMLAttributes, forwardRef } from 'react';
 
 const variants = {
-  primary:
-    'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500',
+  primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500',
   secondary:
     'bg-slate-100 text-slate-900 hover:bg-slate-200 focus:ring-slate-400 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600',
-  danger:
-    'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
+  danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
   ghost:
     'bg-transparent text-slate-600 hover:bg-slate-100 focus:ring-slate-400 dark:text-slate-300 dark:hover:bg-slate-800',
-} as const
+} as const;
 
-type Variant = keyof typeof variants
+type Variant = keyof typeof variants;
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: Variant
+  variant?: Variant;
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -27,10 +25,10 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       >
         {children}
       </button>
-    )
+    );
   },
-)
+);
 
-Button.displayName = 'Button'
+Button.displayName = 'Button';
 
-export { Button, type ButtonProps }
+export { Button, type ButtonProps };

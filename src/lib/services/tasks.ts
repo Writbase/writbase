@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Task } from '@/lib/types/database';
-import type { Priority, Status, ActorType, Source } from '@/lib/types/enums';
+import type { ActorType, Priority, Source, Status } from '@/lib/types/enums';
 import { AppError } from '@/lib/utils/errors';
 import { logEvent } from './event-log';
 
@@ -22,9 +22,7 @@ export async function listTasks(
     offset?: number;
   } = {},
 ): Promise<TaskWithRelations[]> {
-  let query = supabase
-    .from('tasks')
-    .select('*, projects(name), departments(name)');
+  let query = supabase.from('tasks').select('*, projects(name), departments(name)');
 
   if (filters.projectId) query = query.eq('project_id', filters.projectId);
   if (filters.departmentId) query = query.eq('department_id', filters.departmentId);
@@ -224,10 +222,7 @@ export async function updateTask(
   return data;
 }
 
-export async function getTaskHistory(
-  supabase: SupabaseClient,
-  taskId: string,
-) {
+export async function getTaskHistory(supabase: SupabaseClient, taskId: string) {
   const { data, error } = await supabase
     .from('event_log')
     .select('*')

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { EventCategory, TargetType, ActorType, Source } from '@/lib/types/enums';
 import type { EventLog } from '@/lib/types/database';
+import type { ActorType, EventCategory, Source, TargetType } from '@/lib/types/enums';
 
 export async function logEvent(
   supabase: SupabaseClient,
@@ -36,7 +36,14 @@ export async function logEvent(
   });
 
   if (error) {
-    console.error('Failed to log event:', JSON.stringify({ event_type: params.eventType, target_id: params.targetId, error: error.message }));
+    console.error(
+      'Failed to log event:',
+      JSON.stringify({
+        event_type: params.eventType,
+        target_id: params.targetId,
+        error: error.message,
+      }),
+    );
     if (critical) {
       throw new Error(`Critical audit log failure: ${error.message}`);
     }
@@ -53,10 +60,7 @@ export async function listEvents(
     offset?: number;
   } = {},
 ): Promise<EventLog[]> {
-  let query = supabase
-    .from('event_log')
-    .select('*')
-    .order('created_at', { ascending: false });
+  let query = supabase.from('event_log').select('*').order('created_at', { ascending: false });
 
   if (filters.targetId) {
     query = query.eq('target_id', filters.targetId);

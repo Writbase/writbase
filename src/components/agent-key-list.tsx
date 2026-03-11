@@ -1,61 +1,59 @@
-'use client'
+'use client';
 
-import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Modal } from '@/components/ui/modal'
-import { AgentKeyForm } from '@/components/agent-key-form'
-import type { AgentKey } from '@/lib/types/database'
+import Link from 'next/link';
+import { useCallback, useEffect, useState } from 'react';
+import { AgentKeyForm } from '@/components/agent-key-form';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Modal } from '@/components/ui/modal';
+import type { AgentKey } from '@/lib/types/database';
 
-type KeyRow = Omit<AgentKey, 'key_hash'>
+type KeyRow = Omit<AgentKey, 'key_hash'>;
 
 function relativeTime(dateStr: string | null): string {
-  if (!dateStr) return 'Never'
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffSec = Math.floor(diffMs / 1000)
-  if (diffSec < 60) return 'Just now'
-  const diffMin = Math.floor(diffSec / 60)
-  if (diffMin < 60) return `${diffMin}m ago`
-  const diffHr = Math.floor(diffMin / 60)
-  if (diffHr < 24) return `${diffHr}h ago`
-  const diffDay = Math.floor(diffHr / 24)
-  if (diffDay < 30) return `${diffDay}d ago`
-  return date.toLocaleDateString()
+  if (!dateStr) return 'Never';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60) return 'Just now';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 30) return `${diffDay}d ago`;
+  return date.toLocaleDateString();
 }
 
 export function AgentKeyList() {
-  const [keys, setKeys] = useState<KeyRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [showCreate, setShowCreate] = useState(false)
+  const [keys, setKeys] = useState<KeyRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
 
   const fetchKeys = useCallback(async () => {
     try {
-      setLoading(true)
-      const res = await fetch('/api/agent-keys')
-      if (!res.ok) throw new Error('Failed to fetch keys')
-      const json = await res.json()
-      setKeys(json.data ?? [])
+      setLoading(true);
+      const res = await fetch('/api/agent-keys');
+      if (!res.ok) throw new Error('Failed to fetch keys');
+      const json = await res.json();
+      setKeys(json.data ?? []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
+      setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    fetchKeys()
-  }, [fetchKeys])
+    fetchKeys();
+  }, [fetchKeys]);
 
   return (
     <>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-          Agent Keys
-        </h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Agent Keys</h1>
         <Button onClick={() => setShowCreate(true)}>Create Key</Button>
       </div>
 
@@ -88,7 +86,13 @@ export function AgentKeyList() {
         {error && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center dark:border-red-800 dark:bg-red-900/20">
             <p className="mb-3 text-sm text-red-700 dark:text-red-400">{error}</p>
-            <Button variant="secondary" onClick={() => { setError(null); fetchKeys() }}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setError(null);
+                fetchKeys();
+              }}
+            >
               Retry
             </Button>
           </div>
@@ -115,10 +119,7 @@ export function AgentKeyList() {
               </thead>
               <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-700 dark:bg-slate-900">
                 {keys.map((k) => (
-                  <tr
-                    key={k.id}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                  >
+                  <tr key={k.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                     <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
                       {k.name}
                     </td>
@@ -128,9 +129,7 @@ export function AgentKeyList() {
                       </code>
                     </td>
                     <td className="px-4 py-3">
-                      <Badge color={k.role === 'manager' ? 'purple' : 'blue'}>
-                        {k.role}
-                      </Badge>
+                      <Badge color={k.role === 'manager' ? 'purple' : 'blue'}>{k.role}</Badge>
                     </td>
                     <td className="px-4 py-3">
                       <Badge color={k.is_active ? 'green' : 'red'}>
@@ -156,18 +155,14 @@ export function AgentKeyList() {
         )}
       </div>
 
-      <Modal
-        open={showCreate}
-        onClose={() => setShowCreate(false)}
-        title="Create Agent Key"
-      >
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Create Agent Key">
         <AgentKeyForm
           onClose={() => setShowCreate(false)}
           onSuccess={() => {
-            fetchKeys()
+            fetchKeys();
           }}
         />
       </Modal>
     </>
-  )
+  );
 }

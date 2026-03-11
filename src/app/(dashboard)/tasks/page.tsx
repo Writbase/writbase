@@ -1,13 +1,18 @@
-import { TaskTable } from '@/components/task-table'
+import { TaskTable } from '@/components/task-table';
 
 interface TasksPageProps {
-  searchParams: Promise<{ project?: string; department?: string; sortBy?: string; sortOrder?: string }>
+  searchParams: Promise<{
+    project?: string;
+    department?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  }>;
 }
 
 export default async function TasksPage({ searchParams }: TasksPageProps) {
-  const params = await searchParams
-  const projectId = params.project
-  const departmentId = params.department
+  const params = await searchParams;
+  const projectId = params.project;
+  const departmentId = params.department;
 
   if (!projectId) {
     return (
@@ -17,8 +22,8 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
           Select a project to view tasks
         </div>
       </div>
-    )
+    );
   }
 
-  return <TaskTable projectId={projectId} departmentId={departmentId} />
+  return <TaskTable projectId={projectId} departmentId={departmentId} />;
 }

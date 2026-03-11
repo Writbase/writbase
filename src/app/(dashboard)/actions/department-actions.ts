@@ -1,14 +1,17 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { departmentSchema, departmentUpdateSchema } from '@/lib/utils/validation';
 import { createDepartment, updateDepartment } from '@/lib/services/departments';
+import { createClient } from '@/lib/supabase/server';
+import { departmentSchema, departmentUpdateSchema } from '@/lib/utils/validation';
 
 export async function createDepartmentAction(formData: FormData) {
   try {
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
       return { success: false, error: 'Unauthorized' };
     }
@@ -36,7 +39,10 @@ export async function createDepartmentAction(formData: FormData) {
 export async function updateDepartmentAction(formData: FormData) {
   try {
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
       return { success: false, error: 'Unauthorized' };
     }

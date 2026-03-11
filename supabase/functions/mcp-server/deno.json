@@ -7,5 +7,10 @@
     "@std/crypto/timing-safe-equal": "jsr:@std/crypto@1/timing-safe-equal",
     "zod": "npm:zod@^4.3",
     "@std/assert": "jsr:@std/assert@1"
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
   }
 }

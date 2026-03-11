@@ -1,84 +1,91 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { createTaskAction, updateTaskAction } from '@/app/(dashboard)/actions/task-actions'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
-import { Modal } from '@/components/ui/modal'
-import { TaskHistoryPanel } from '@/components/task-history-panel'
-import type { Task } from '@/lib/types/database'
+import { useState } from 'react';
+import { createTaskAction, updateTaskAction } from '@/app/(dashboard)/actions/task-actions';
+import { TaskHistoryPanel } from '@/components/task-history-panel';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Modal } from '@/components/ui/modal';
+import { Select } from '@/components/ui/select';
+import type { Task } from '@/lib/types/database';
 
 interface Department {
-  id: string
-  name: string
-  is_archived?: boolean
+  id: string;
+  name: string;
+  is_archived?: boolean;
 }
 
 interface TaskFormProps {
-  task?: Task | null
-  projectId: string
-  departments: Department[]
-  open: boolean
-  onClose: () => void
-  onSuccess: () => void
+  task?: Task | null;
+  projectId: string;
+  departments: Department[];
+  open: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
 }
 
-export function TaskForm({ task, projectId, departments, open, onClose, onSuccess }: TaskFormProps) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [versionConflict, setVersionConflict] = useState(false)
-  const [showHistory, setShowHistory] = useState(false)
+export function TaskForm({
+  task,
+  projectId,
+  departments,
+  open,
+  onClose,
+  onSuccess,
+}: TaskFormProps) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [versionConflict, setVersionConflict] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
-  const isEdit = !!task
+  const isEdit = !!task;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
-    setVersionConflict(false)
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setVersionConflict(false);
 
-    const form = e.currentTarget
-    const formData = new FormData(form)
+    const form = e.currentTarget;
+    const formData = new FormData(form);
 
     if (isEdit && task) {
       const result = await updateTaskAction({
         id: task.id,
         version: task.version,
         projectId,
-        departmentId: formData.get('departmentId') as string || null,
+        departmentId: (formData.get('departmentId') as string) || null,
         priority: formData.get('priority') as string,
         description: formData.get('description') as string,
-        notes: formData.get('notes') as string || null,
-        dueDate: formData.get('dueDate') as string || null,
+        notes: (formData.get('notes') as string) || null,
+        dueDate: (formData.get('dueDate') as string) || null,
         status: formData.get('status') as string,
-      })
+      });
 
       if (result.success) {
-        onSuccess()
-        onClose()
+        onSuccess();
+        onClose();
       } else if (result.code === 'version_conflict') {
-        setVersionConflict(true)
+        setVersionConflict(true);
       } else {
-        setError(result.error ?? 'Failed to update task')
+        setError(result.error ?? 'Failed to update task');
       }
     } else {
-      formData.set('projectId', projectId)
-      const result = await createTaskAction(formData)
+      formData.set('projectId', projectId);
+      const result = await createTaskAction(formData);
 
       if (result.success) {
-        onSuccess()
-        onClose()
+        onSuccess();
+        onClose();
       } else {
-        setError(result.error ?? 'Failed to create task')
+        setError(result.error ?? 'Failed to create task');
       }
     }
 
-    setLoading(false)
+    setLoading(false);
   }
 
   function handleRefresh() {
-    window.location.reload()
+    window.location.reload();
   }
 
   return (
@@ -102,7 +109,10 @@ export function TaskForm({ task, projectId, departments, open, onClose, onSucces
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
-            <label htmlFor="task-description" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+            <label
+              htmlFor="task-description"
+              className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+            >
               Description <span className="text-red-500">*</span>
             </label>
             <textarea
@@ -118,7 +128,10 @@ export function TaskForm({ task, projectId, departments, open, onClose, onSucces
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="task-notes" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+            <label
+              htmlFor="task-notes"
+              className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+            >
               Notes
             </label>
             <textarea
@@ -165,20 +178,25 @@ export function TaskForm({ task, projectId, departments, open, onClose, onSucces
             defaultValue={task?.department_id ?? ''}
           >
             <option value="">None</option>
-            {departments.filter((d) => !d.is_archived).map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-            {/* Show archived department for existing task if it references one */}
-            {isEdit && task?.department_id && !departments.find((d) => d.id === task.department_id && !d.is_archived) && (() => {
-              const archived = departments.find((d) => d.id === task.department_id)
-              return archived ? (
-                <option key={archived.id} value={archived.id} disabled>
-                  {archived.name} (Archived)
+            {departments
+              .filter((d) => !d.is_archived)
+              .map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
                 </option>
-              ) : null
-            })()}
+              ))}
+            {/* Show archived department for existing task if it references one */}
+            {isEdit &&
+              task?.department_id &&
+              !departments.find((d) => d.id === task.department_id && !d.is_archived) &&
+              (() => {
+                const archived = departments.find((d) => d.id === task.department_id);
+                return archived ? (
+                  <option key={archived.id} value={archived.id} disabled>
+                    {archived.name} (Archived)
+                  </option>
+                ) : null;
+              })()}
           </Select>
 
           <Input
@@ -201,7 +219,13 @@ export function TaskForm({ task, projectId, departments, open, onClose, onSucces
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? (isEdit ? 'Saving...' : 'Creating...') : (isEdit ? 'Save Changes' : 'Create Task')}
+              {loading
+                ? isEdit
+                  ? 'Saving...'
+                  : 'Creating...'
+                : isEdit
+                  ? 'Save Changes'
+                  : 'Create Task'}
             </Button>
           </div>
         </form>
@@ -215,5 +239,5 @@ export function TaskForm({ task, projectId, departments, open, onClose, onSucces
         />
       )}
     </Modal>
-  )
+  );
 }
