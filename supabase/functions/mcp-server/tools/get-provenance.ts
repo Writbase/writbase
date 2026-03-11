@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AgentContext } from '../../_shared/types.ts'
-import { invalidProjectError, scopeNotAllowedError, validationError } from '../../_shared/errors.ts'
+import { mcpError, invalidProjectError, scopeNotAllowedError, validationError } from '../../_shared/errors.ts'
 import { encodeCursor, decodeCursor } from '../../_shared/pagination.ts'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -11,13 +11,6 @@ interface GetProvenanceParams {
   event_category?: string
   limit?: number
   cursor?: string
-}
-
-function mcpError(error: { code: string; message: string; recovery?: string; fields?: Record<string, string>; [k: string]: unknown }) {
-  return {
-    content: [{ type: 'text' as const, text: JSON.stringify(error) }],
-    isError: true,
-  }
 }
 
 export async function handleGetProvenance(

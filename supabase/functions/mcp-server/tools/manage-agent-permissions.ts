@@ -1,10 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AgentContext, AgentPermission } from '../../_shared/types.ts'
-import { selfModificationDeniedError, insufficientManagerScopeError, validationError } from '../../_shared/errors.ts'
+import { mcpError, selfModificationDeniedError, insufficientManagerScopeError, validationError } from '../../_shared/errors.ts'
 import { logEvent } from '../../_shared/event-log.ts'
 
 interface PermissionRow {
-  project_id: string
+  project_id?: string
   department_id?: string
   can_read?: boolean
   can_create?: boolean
@@ -15,13 +15,6 @@ interface ManageAgentPermissionsParams {
   action: string
   key_id: string
   permissions?: PermissionRow[]
-}
-
-function mcpError(error: { code: string; message: string; recovery?: string; fields?: Record<string, string>; [k: string]: unknown }) {
-  return {
-    content: [{ type: 'text' as const, text: JSON.stringify(error) }],
-    isError: true,
-  }
 }
 
 /**
@@ -124,10 +117,10 @@ async function grantPermissions(
     }
   }
 
-  // Upsert permission rows
+  // Upsert permission rows (project_id validated above)
   const upsertRows = params.permissions.map((row) => ({
     agent_key_id: params.key_id,
-    project_id: row.project_id,
+    project_id: row.project_id!,
     department_id: row.department_id ?? null,
     can_read: row.can_read ?? false,
     can_create: row.can_create ?? false,

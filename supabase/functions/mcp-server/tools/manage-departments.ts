@@ -1,55 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AgentContext } from '../../_shared/types.ts'
-import { validationError } from '../../_shared/errors.ts'
+import { mcpError, validationError } from '../../_shared/errors.ts'
 import { validateDepartmentInput } from '../../_shared/validation.ts'
 import { logEvent } from '../../_shared/event-log.ts'
+import { generateSlug, ensureUniqueSlug } from '../../_shared/slug.ts'
 
 interface ManageDepartmentsParams {
   action: string
   department_id?: string
   name?: string
-}
-
-function mcpError(error: { code: string; message: string; recovery?: string; fields?: Record<string, string>; [k: string]: unknown }) {
-  return {
-    content: [{ type: 'text' as const, text: JSON.stringify(error) }],
-    isError: true,
-  }
-}
-
-/**
- * Generate a URL-friendly slug from a name.
- */
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
-
-/**
- * Ensure slug uniqueness by appending -N suffix if needed.
- */
-async function ensureUniqueSlug(supabase: SupabaseClient, baseSlug: string, table: string, excludeId?: string): Promise<string> {
-  let slug = baseSlug
-  let suffix = 1
-
-  // deno-lint-ignore no-constant-condition
-  while (true) {
-    let query = supabase.from(table).select('id').eq('slug', slug)
-    if (excludeId) {
-      query = query.neq('id', excludeId)
-    }
-    const { data } = await query.limit(1)
-
-    if (!data || data.length === 0) {
-      return slug
-    }
-
-    suffix++
-    slug = `${baseSlug}-${suffix}`
-  }
 }
 
 export async function handleManageDepartments(

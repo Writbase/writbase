@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AgentContext } from '../../_shared/types.ts'
 import {
+  mcpError,
   invalidDepartmentError,
   scopeNotAllowedError,
   taskNotFoundError,
@@ -22,13 +23,6 @@ interface UpdateTaskParams {
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-function mcpError(error: { code: string; message: string; recovery?: string; fields?: Record<string, string>; current_version?: number; [k: string]: unknown }) {
-  return {
-    content: [{ type: 'text' as const, text: JSON.stringify(error) }],
-    isError: true,
-  }
-}
 
 const TRACKED_FIELDS = ['priority', 'description', 'notes', 'department_id', 'due_date', 'status']
 

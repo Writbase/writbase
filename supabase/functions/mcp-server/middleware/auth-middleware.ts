@@ -2,6 +2,14 @@ import type { Context, Next } from 'hono'
 import { parseAgentKey, authenticateAgent } from '../../_shared/auth.ts'
 import { createServiceClient } from '../../_shared/supabase-client.ts'
 import type { WritBaseError } from '../../_shared/errors.ts'
+import type { AgentContext } from '../../_shared/types.ts'
+
+type AppEnv = {
+  Variables: {
+    requestId: string
+    agentContext: AgentContext
+  }
+}
 
 /**
  * Hono middleware that authenticates every request using agent keys.
@@ -10,7 +18,7 @@ import type { WritBaseError } from '../../_shared/errors.ts'
  * via `parseAgentKey` + `authenticateAgent`, and attaches the resulting
  * `AgentContext` to the Hono context as `agentContext`.
  */
-export async function authMiddleware(c: Context, next: Next) {
+export async function authMiddleware(c: Context<AppEnv>, next: Next) {
   const authHeader = c.req.header('Authorization')
 
   if (!authHeader) {

@@ -3,6 +3,13 @@ import { checkRateLimit } from '../../_shared/rate-limit.ts'
 import { createServiceClient } from '../../_shared/supabase-client.ts'
 import type { AgentContext } from '../../_shared/types.ts'
 
+type AppEnv = {
+  Variables: {
+    requestId: string
+    agentContext: AgentContext
+  }
+}
+
 /**
  * Hono middleware that enforces per-agent rate limits.
  *
@@ -10,8 +17,8 @@ import type { AgentContext } from '../../_shared/types.ts'
  * Calls `checkRateLimit` and returns a 429 response with `retry_after`
  * if the limit is exceeded.
  */
-export async function rateLimitMiddleware(c: Context, next: Next) {
-  const agentContext = c.get('agentContext') as AgentContext
+export async function rateLimitMiddleware(c: Context<AppEnv>, next: Next) {
+  const agentContext = c.get('agentContext')
 
   if (!agentContext) {
     // Should never happen if auth middleware runs first

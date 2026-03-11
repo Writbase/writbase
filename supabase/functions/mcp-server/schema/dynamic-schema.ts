@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AgentContext } from '../../_shared/types.ts'
-import { z } from 'https://deno.land/x/zod@v3.23.8/mod.ts'
+import { z } from 'zod'
 import { handleInfo } from '../tools/info.ts'
 import { handleGetTasks } from '../tools/get-tasks.ts'
 import { handleAddTask } from '../tools/add-task.ts'

@@ -1,5 +1,5 @@
-import { timingSafeEqual } from 'https://deno.land/std/crypto/timing_safe_equal.ts'
-import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { timingSafeEqual } from '@std/crypto/timing-safe-equal'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AgentContext, AgentKeyRecord, AgentPermission } from './types.ts'
 import { unauthorizedError, inactiveKeyError } from './errors.ts'
 
@@ -99,7 +99,12 @@ export async function authenticateAgent(
     .from('agent_keys')
     .update({ last_used_at: new Date().toISOString() })
     .eq('id', keyId)
-    .then(() => {})
+    .then(
+      ({ error }) => {
+        if (error) console.error(`[auth] last_used_at update failed for key ${keyId}:`, error.message)
+      },
+      (e: unknown) => console.error(`[auth] last_used_at update rejected for key ${keyId}:`, e)
+    )
 
   return {
     keyId: keyRecord.id,

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AgentContext } from '../../_shared/types.ts'
 import {
+  mcpError,
   invalidProjectError,
   invalidDepartmentError,
   scopeNotAllowedError,
@@ -20,13 +21,6 @@ interface AddTaskParams {
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-function mcpError(error: { code: string; message: string; recovery?: string; fields?: Record<string, string>; [k: string]: unknown }) {
-  return {
-    content: [{ type: 'text' as const, text: JSON.stringify(error) }],
-    isError: true,
-  }
-}
 
 export async function handleAddTask(
   params: AddTaskParams,

@@ -1,4 +1,4 @@
-import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ActorType, EventCategory, Source, TargetType } from './types.ts'
 
 export interface LogEventParams {

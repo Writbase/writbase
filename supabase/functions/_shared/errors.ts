@@ -121,3 +121,13 @@ export function selfModificationDeniedError(): WritBaseError {
     recovery: 'Ask a different agent or a human admin to make this change.',
   }
 }
+
+/**
+ * Format a WritBaseError (or ad-hoc error object) as an MCP tool error response.
+ */
+export function mcpError(error: WritBaseError) {
+  return {
+    content: [{ type: 'text' as const, text: JSON.stringify(error) }],
+    isError: true,
+  }
+}

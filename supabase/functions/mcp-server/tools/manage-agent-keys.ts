@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AgentContext } from '../../_shared/types.ts'
 import { generateAgentKey } from '../../_shared/auth.ts'
-import { selfModificationDeniedError, validationError } from '../../_shared/errors.ts'
+import { mcpError, selfModificationDeniedError, validationError } from '../../_shared/errors.ts'
 import { logEvent } from '../../_shared/event-log.ts'
 
 interface ManageAgentKeysParams {
@@ -11,13 +11,6 @@ interface ManageAgentKeysParams {
   role?: string
   special_prompt?: string
   is_active?: boolean
-}
-
-function mcpError(error: { code: string; message: string; recovery?: string; fields?: Record<string, string>; [k: string]: unknown }) {
-  return {
-    content: [{ type: 'text' as const, text: JSON.stringify(error) }],
-    isError: true,
-  }
 }
 
 export async function handleManageAgentKeys(

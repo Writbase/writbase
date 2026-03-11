@@ -1,4 +1,4 @@
-import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 const DEFAULT_LIMIT = 60 // requests per minute
 

@@ -1,12 +1,19 @@
 import { Hono } from 'hono'
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
+import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import { authMiddleware } from './middleware/auth-middleware.ts'
 import { rateLimitMiddleware } from './middleware/rate-limit-middleware.ts'
 import { createMcpServerForAgent } from './schema/dynamic-schema.ts'
 import { createServiceClient } from '../_shared/supabase-client.ts'
 import type { AgentContext } from '../_shared/types.ts'
 
-const app = new Hono()
+type AppEnv = {
+  Variables: {
+    requestId: string
+    agentContext: AgentContext
+  }
+}
+
+const app = new Hono<AppEnv>()
 
 // ── Request ID middleware ─────────────────────────────────────────────
 app.use('*', async (c, next) => {
@@ -39,7 +46,7 @@ app.use('*', async (c, next) => {
 
 // ── Preflight ─────────────────────────────────────────────────────────
 app.options('*', (c) => {
-  return c.text('', 204)
+  return c.body(null, 204)
 })
 
 // ── Health check (no auth required) ───────────────────────────────────
@@ -55,17 +62,17 @@ app.use('/mcp/*', rateLimitMiddleware)
 
 // ── POST /mcp — main MCP request endpoint ─────────────────────────────
 app.post('/mcp', async (c) => {
-  const requestId = c.get('requestId') as string
-  const agentContext = c.get('agentContext') as AgentContext
+  const requestId = c.get('requestId')
+  const agentContext = c.get('agentContext')
   const supabase = createServiceClient()
 
-  console.log(`[${requestId}] POST /mcp agent=${agentContext.agentKeyId}`)
+  console.log(`[${requestId}] POST /mcp agent=${agentContext.keyId}`)
 
   // Create a per-request MCP server scoped to this agent
   const mcpServer = await createMcpServerForAgent(agentContext, supabase)
 
-  // Create a Streamable HTTP transport for this request
-  const transport = new StreamableHTTPServerTransport({
+  // Create a web-standard Streamable HTTP transport for this request
+  const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: () => crypto.randomUUID(),
   })
 
@@ -91,15 +98,15 @@ app.post('/mcp', async (c) => {
 
 // ── GET /mcp — SSE endpoint for server-to-client notifications ────────
 app.get('/mcp', async (c) => {
-  const requestId = c.get('requestId') as string
-  const agentContext = c.get('agentContext') as AgentContext
+  const requestId = c.get('requestId')
+  const agentContext = c.get('agentContext')
   const supabase = createServiceClient()
 
-  console.log(`[${requestId}] GET /mcp (SSE) agent=${agentContext.agentKeyId}`)
+  console.log(`[${requestId}] GET /mcp (SSE) agent=${agentContext.keyId}`)
 
   const mcpServer = await createMcpServerForAgent(agentContext, supabase)
 
-  const transport = new StreamableHTTPServerTransport({
+  const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: () => crypto.randomUUID(),
   })
 
@@ -116,8 +123,8 @@ app.get('/mcp', async (c) => {
 })
 
 // ── DELETE /mcp — session cleanup ─────────────────────────────────────
-app.delete('/mcp', async (c) => {
-  const requestId = c.get('requestId') as string
+app.delete('/mcp', (c) => {
+  const requestId = c.get('requestId')
   console.log(`[${requestId}] DELETE /mcp session cleanup`)
   // Session cleanup — the Streamable HTTP transport handles this
   return c.json({ status: 'session_closed', request_id: requestId })
