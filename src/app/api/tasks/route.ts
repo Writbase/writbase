@@ -22,12 +22,12 @@ export async function GET(request: NextRequest) {
     const { limit, offset } = parsePagination(searchParams);
 
     const tasks = await listTasks(supabase, {
-      projectId: searchParams.get('projectId') || undefined,
-      departmentId: searchParams.get('departmentId') || undefined,
-      status: (searchParams.get('status') as Status) || undefined,
-      priority: (searchParams.get('priority') as Priority) || undefined,
-      sortBy: searchParams.get('sortBy') || undefined,
-      sortOrder: (searchParams.get('sortOrder') as 'asc' | 'desc') || undefined,
+      projectId: searchParams.get('projectId') ?? undefined,
+      departmentId: searchParams.get('departmentId') ?? undefined,
+      status: (searchParams.get('status') as Status | null) ?? undefined,
+      priority: (searchParams.get('priority') as Priority | null) ?? undefined,
+      sortBy: searchParams.get('sortBy') ?? undefined,
+      sortOrder: (searchParams.get('sortOrder') as 'asc' | 'desc' | null) ?? undefined,
       limit,
       offset,
     });

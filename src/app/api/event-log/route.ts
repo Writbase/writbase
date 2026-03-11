@@ -22,9 +22,9 @@ export async function GET(request: NextRequest) {
     const { limit, offset } = parsePagination(searchParams);
 
     const events = await listEvents(supabase, {
-      targetId: searchParams.get('targetId') || undefined,
-      targetType: (searchParams.get('targetType') as TargetType) || undefined,
-      eventCategory: (searchParams.get('eventCategory') as EventCategory) || undefined,
+      targetId: searchParams.get('targetId') ?? undefined,
+      targetType: (searchParams.get('targetType') as TargetType | null) ?? undefined,
+      eventCategory: (searchParams.get('eventCategory') as EventCategory | null) ?? undefined,
       limit,
       offset,
     });

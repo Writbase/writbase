@@ -47,11 +47,11 @@ export function PermissionEditor({ keyId, initialPermissions }: PermissionEditor
         fetch('/api/departments'),
       ]);
       if (projRes.ok) {
-        const projJson = await projRes.json();
+        const projJson = (await projRes.json()) as { data?: ProjectOption[] };
         setProjects(projJson.data ?? []);
       }
       if (deptRes.ok) {
-        const deptJson = await deptRes.json();
+        const deptJson = (await deptRes.json()) as { data?: DepartmentOption[] };
         setDepartments(deptJson.data ?? []);
       }
     } catch {
@@ -62,7 +62,7 @@ export function PermissionEditor({ keyId, initialPermissions }: PermissionEditor
   }, []);
 
   useEffect(() => {
-    fetchOptions();
+    void fetchOptions();
   }, [fetchOptions]);
 
   function addRow() {
@@ -107,7 +107,9 @@ export function PermissionEditor({ keyId, initialPermissions }: PermissionEditor
 
     if (result.success) {
       setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      setTimeout(() => {
+        setSaved(false);
+      }, 2000);
     } else {
       setError(result.error ?? 'Failed to save permissions');
     }
@@ -181,7 +183,9 @@ export function PermissionEditor({ keyId, initialPermissions }: PermissionEditor
                     <input
                       type="checkbox"
                       checked={row.canRead}
-                      onChange={(e) => updateRow(i, { canRead: e.target.checked })}
+                      onChange={(e) => {
+                        updateRow(i, { canRead: e.target.checked });
+                      }}
                       className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                     />
                   </td>
@@ -189,7 +193,9 @@ export function PermissionEditor({ keyId, initialPermissions }: PermissionEditor
                     <input
                       type="checkbox"
                       checked={row.canCreate}
-                      onChange={(e) => updateRow(i, { canCreate: e.target.checked })}
+                      onChange={(e) => {
+                        updateRow(i, { canCreate: e.target.checked });
+                      }}
                       className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                     />
                   </td>
@@ -197,13 +203,17 @@ export function PermissionEditor({ keyId, initialPermissions }: PermissionEditor
                     <input
                       type="checkbox"
                       checked={row.canUpdate}
-                      onChange={(e) => updateRow(i, { canUpdate: e.target.checked })}
+                      onChange={(e) => {
+                        updateRow(i, { canUpdate: e.target.checked });
+                      }}
                       className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                     />
                   </td>
                   <td className="px-3 py-2">
                     <button
-                      onClick={() => removeRow(i)}
+                      onClick={() => {
+                        removeRow(i);
+                      }}
                       className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                       title="Remove"
                     >

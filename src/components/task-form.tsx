@@ -39,7 +39,7 @@ export function TaskForm({
 
   const isEdit = !!task;
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     setError(null);
@@ -48,16 +48,16 @@ export function TaskForm({
     const form = e.currentTarget;
     const formData = new FormData(form);
 
-    if (isEdit && task) {
+    if (task) {
       const result = await updateTaskAction({
         id: task.id,
         version: task.version,
         projectId,
-        departmentId: (formData.get('departmentId') as string) || null,
+        departmentId: (formData.get('departmentId') as string | null) ?? null,
         priority: formData.get('priority') as string,
         description: formData.get('description') as string,
-        notes: (formData.get('notes') as string) || null,
-        dueDate: (formData.get('dueDate') as string) || null,
+        notes: (formData.get('notes') as string | null) ?? null,
+        dueDate: (formData.get('dueDate') as string | null) ?? null,
         status: formData.get('status') as string,
       });
 
@@ -186,8 +186,7 @@ export function TaskForm({
                 </option>
               ))}
             {/* Show archived department for existing task if it references one */}
-            {isEdit &&
-              task?.department_id &&
+            {task?.department_id &&
               !departments.find((d) => d.id === task.department_id && !d.is_archived) &&
               (() => {
                 const archived = departments.find((d) => d.id === task.department_id);
@@ -210,8 +209,14 @@ export function TaskForm({
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <div className="flex justify-end gap-2">
-            {isEdit && task && (
-              <Button type="button" variant="secondary" onClick={() => setShowHistory(true)}>
+            {task && (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setShowHistory(true);
+                }}
+              >
                 History
               </Button>
             )}
@@ -231,11 +236,13 @@ export function TaskForm({
         </form>
       )}
 
-      {isEdit && task && (
+      {task && (
         <TaskHistoryPanel
           taskId={task.id}
           isOpen={showHistory}
-          onClose={() => setShowHistory(false)}
+          onClose={() => {
+            setShowHistory(false);
+          }}
         />
       )}
     </Modal>

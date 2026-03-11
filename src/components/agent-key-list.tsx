@@ -37,7 +37,7 @@ export function AgentKeyList() {
       setLoading(true);
       const res = await fetch('/api/agent-keys');
       if (!res.ok) throw new Error('Failed to fetch keys');
-      const json = await res.json();
+      const json = (await res.json()) as { data?: KeyRow[] };
       setKeys(json.data ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -47,14 +47,20 @@ export function AgentKeyList() {
   }, []);
 
   useEffect(() => {
-    fetchKeys();
+    void fetchKeys();
   }, [fetchKeys]);
 
   return (
     <>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Agent Keys</h1>
-        <Button onClick={() => setShowCreate(true)}>Create Key</Button>
+        <Button
+          onClick={() => {
+            setShowCreate(true);
+          }}
+        >
+          Create Key
+        </Button>
       </div>
 
       <div className="mt-6">
@@ -90,7 +96,7 @@ export function AgentKeyList() {
               variant="secondary"
               onClick={() => {
                 setError(null);
-                fetchKeys();
+                void fetchKeys();
               }}
             >
               Retry
@@ -155,11 +161,19 @@ export function AgentKeyList() {
         )}
       </div>
 
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Create Agent Key">
+      <Modal
+        open={showCreate}
+        onClose={() => {
+          setShowCreate(false);
+        }}
+        title="Create Agent Key"
+      >
         <AgentKeyForm
-          onClose={() => setShowCreate(false)}
+          onClose={() => {
+            setShowCreate(false);
+          }}
           onSuccess={() => {
-            fetchKeys();
+            void fetchKeys();
           }}
         />
       </Modal>

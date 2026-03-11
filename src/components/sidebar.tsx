@@ -58,7 +58,7 @@ export function Sidebar({ userEmail }: SidebarProps) {
     try {
       const res = await fetch('/api/projects');
       if (res.ok) {
-        const json = await res.json();
+        const json = (await res.json()) as { data?: Project[] };
         setProjects(json.data ?? []);
       }
     } catch {
@@ -70,7 +70,7 @@ export function Sidebar({ userEmail }: SidebarProps) {
     try {
       const res = await fetch('/api/departments');
       if (res.ok) {
-        const json = await res.json();
+        const json = (await res.json()) as { data?: Department[] };
         setDepartments(json.data ?? []);
       }
     } catch {
@@ -79,8 +79,9 @@ export function Sidebar({ userEmail }: SidebarProps) {
   }, []);
 
   useEffect(() => {
-    fetchProjects();
-    fetchDepartments();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- setState in async fetch callbacks is intentional
+    void fetchProjects();
+    void fetchDepartments();
   }, [fetchProjects, fetchDepartments]);
 
   function setSearchParam(key: string, value: string) {
@@ -170,7 +171,9 @@ export function Sidebar({ userEmail }: SidebarProps) {
         <span className="text-lg font-bold tracking-tight">WritBase</span>
         <button
           className="text-slate-400 hover:text-white md:hidden"
-          onClick={() => setMobileOpen(false)}
+          onClick={() => {
+            setMobileOpen(false);
+          }}
           aria-label="Close menu"
         >
           &times;
@@ -185,7 +188,9 @@ export function Sidebar({ userEmail }: SidebarProps) {
             <Link
               key={link.href}
               href={link.href}
-              onClick={() => setMobileOpen(false)}
+              onClick={() => {
+                setMobileOpen(false);
+              }}
               className={`block rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                 isActive
                   ? 'bg-slate-800 text-white'
@@ -207,7 +212,9 @@ export function Sidebar({ userEmail }: SidebarProps) {
               Project
             </label>
             <button
-              onClick={() => setShowProjectModal(true)}
+              onClick={() => {
+                setShowProjectModal(true);
+              }}
               className="text-xs text-blue-400 hover:text-blue-300"
             >
               + Add
@@ -220,7 +227,9 @@ export function Sidebar({ userEmail }: SidebarProps) {
           ) : (
             <select
               value={selectedProject}
-              onChange={(e) => setSearchParam('project', e.target.value)}
+              onChange={(e) => {
+                setSearchParam('project', e.target.value);
+              }}
               className="mt-1 block w-full rounded-md border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="">All projects</option>
@@ -244,7 +253,9 @@ export function Sidebar({ userEmail }: SidebarProps) {
                 <span className="truncate">{p.name}</span>
                 <span className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                   <button
-                    onClick={() => setEditingProject({ id: p.id, name: p.name })}
+                    onClick={() => {
+                      setEditingProject({ id: p.id, name: p.name });
+                    }}
                     className="text-slate-400 hover:text-blue-400"
                     aria-label={`Rename ${p.name}`}
                     title="Rename"
@@ -296,7 +307,9 @@ export function Sidebar({ userEmail }: SidebarProps) {
               Department
             </label>
             <button
-              onClick={() => setShowDepartmentModal(true)}
+              onClick={() => {
+                setShowDepartmentModal(true);
+              }}
               className="text-xs text-blue-400 hover:text-blue-300"
             >
               + Add
@@ -304,7 +317,9 @@ export function Sidebar({ userEmail }: SidebarProps) {
           </div>
           <select
             value={selectedDepartment}
-            onChange={(e) => setSearchParam('department', e.target.value)}
+            onChange={(e) => {
+              setSearchParam('department', e.target.value);
+            }}
             className="mt-1 block w-full rounded-md border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
             <option value="">All departments</option>
@@ -327,7 +342,9 @@ export function Sidebar({ userEmail }: SidebarProps) {
                 <span className="truncate">{d.name}</span>
                 <span className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                   <button
-                    onClick={() => setEditingDepartment({ id: d.id, name: d.name })}
+                    onClick={() => {
+                      setEditingDepartment({ id: d.id, name: d.name });
+                    }}
                     className="text-slate-400 hover:text-blue-400"
                     aria-label={`Rename ${d.name}`}
                     title="Rename"
@@ -389,25 +406,46 @@ export function Sidebar({ userEmail }: SidebarProps) {
       </div>
 
       {/* Modals */}
-      <Modal open={showProjectModal} onClose={() => setShowProjectModal(false)} title="New Project">
-        <ProjectForm onClose={() => setShowProjectModal(false)} onSuccess={() => fetchProjects()} />
+      <Modal
+        open={showProjectModal}
+        onClose={() => {
+          setShowProjectModal(false);
+        }}
+        title="New Project"
+      >
+        <ProjectForm
+          onClose={() => {
+            setShowProjectModal(false);
+          }}
+          onSuccess={() => {
+            void fetchProjects();
+          }}
+        />
       </Modal>
 
       <Modal
         open={showDepartmentModal}
-        onClose={() => setShowDepartmentModal(false)}
+        onClose={() => {
+          setShowDepartmentModal(false);
+        }}
         title="New Department"
       >
         <DepartmentForm
-          onClose={() => setShowDepartmentModal(false)}
-          onSuccess={() => fetchDepartments()}
+          onClose={() => {
+            setShowDepartmentModal(false);
+          }}
+          onSuccess={() => {
+            void fetchDepartments();
+          }}
         />
       </Modal>
 
       {/* Rename Project Modal */}
       <Modal
         open={editingProject !== null}
-        onClose={() => setEditingProject(null)}
+        onClose={() => {
+          setEditingProject(null);
+        }}
         title="Rename Project"
       >
         {editingProject && (
@@ -422,11 +460,19 @@ export function Sidebar({ userEmail }: SidebarProps) {
               id="rename-project"
               label="Project Name"
               value={editingProject.name}
-              onChange={(e) => setEditingProject({ ...editingProject, name: e.target.value })}
+              onChange={(e) => {
+                setEditingProject({ ...editingProject, name: e.target.value });
+              }}
               autoFocus
             />
             <div className="flex justify-end gap-2">
-              <Button variant="ghost" type="button" onClick={() => setEditingProject(null)}>
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={() => {
+                  setEditingProject(null);
+                }}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={!editingProject.name.trim()}>
@@ -440,7 +486,9 @@ export function Sidebar({ userEmail }: SidebarProps) {
       {/* Rename Department Modal */}
       <Modal
         open={editingDepartment !== null}
-        onClose={() => setEditingDepartment(null)}
+        onClose={() => {
+          setEditingDepartment(null);
+        }}
         title="Rename Department"
       >
         {editingDepartment && (
@@ -455,11 +503,19 @@ export function Sidebar({ userEmail }: SidebarProps) {
               id="rename-department"
               label="Department Name"
               value={editingDepartment.name}
-              onChange={(e) => setEditingDepartment({ ...editingDepartment, name: e.target.value })}
+              onChange={(e) => {
+                setEditingDepartment({ ...editingDepartment, name: e.target.value });
+              }}
               autoFocus
             />
             <div className="flex justify-end gap-2">
-              <Button variant="ghost" type="button" onClick={() => setEditingDepartment(null)}>
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={() => {
+                  setEditingDepartment(null);
+                }}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={!editingDepartment.name.trim()}>
@@ -476,7 +532,9 @@ export function Sidebar({ userEmail }: SidebarProps) {
     <>
       {/* Mobile hamburger */}
       <button
-        onClick={() => setMobileOpen(true)}
+        onClick={() => {
+          setMobileOpen(true);
+        }}
         className="fixed left-4 top-4 z-40 rounded-md bg-slate-900 p-2 text-white md:hidden"
         aria-label="Open menu"
       >
@@ -494,7 +552,9 @@ export function Sidebar({ userEmail }: SidebarProps) {
       {mobileOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 md:hidden"
-          onClick={() => setMobileOpen(false)}
+          onClick={() => {
+            setMobileOpen(false);
+          }}
         />
       )}
 

@@ -5,6 +5,7 @@ import { PermissionEditor } from '@/components/permission-editor';
 import { Badge } from '@/components/ui/badge';
 import { getAgentKeyPermissions } from '@/lib/services/agent-keys';
 import { createClient } from '@/lib/supabase/server';
+import type { AgentKey } from '@/lib/types/database';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -14,7 +15,7 @@ export default async function AgentKeyDetailPage({ params }: PageProps) {
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: key, error } = await supabase
+  const { data, error } = await supabase
     .from('agent_keys')
     .select(
       'id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by',
@@ -22,9 +23,22 @@ export default async function AgentKeyDetailPage({ params }: PageProps) {
     .eq('id', id)
     .single();
 
-  if (error || !key) {
+  if (!data) {
     notFound();
   }
+
+  const key = data as Pick<
+    AgentKey,
+    | 'id'
+    | 'name'
+    | 'role'
+    | 'key_prefix'
+    | 'is_active'
+    | 'special_prompt'
+    | 'created_at'
+    | 'last_used_at'
+    | 'created_by'
+  >;
 
   const permissions = await getAgentKeyPermissions(supabase, id);
 

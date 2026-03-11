@@ -52,8 +52,9 @@ function formatFieldName(field: string): string {
 
 function formatValue(value: unknown): string {
   if (value === null || value === undefined) return '(empty)';
-  if (typeof value === 'string' && value === '') return '(empty)';
-  return String(value);
+  if (typeof value === 'string') return value === '' ? '(empty)' : value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return JSON.stringify(value);
 }
 
 function SkeletonTimeline() {
@@ -85,28 +86,28 @@ export function TaskHistoryPanel({ taskId, isOpen, onClose }: TaskHistoryPanelPr
     if (!isOpen) return;
 
     let cancelled = false;
-    setLoading(true);
-    setError(null);
 
-    fetch(`/api/tasks/${taskId}/history`)
-      .then((res) => {
+    async function fetchHistory() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/tasks/${taskId}/history`);
         if (!res.ok) throw new Error('Failed to load history');
-        return res.json();
-      })
-      .then((json) => {
+        const json = (await res.json()) as { data?: EventLog[] };
         if (!cancelled) {
           const items: EventLog[] = json.data ?? [];
           // Most recent first
           items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
           setEvents(items);
         }
-      })
-      .catch((err) => {
+      } catch (err: unknown) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Unknown error');
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    }
+
+    void fetchHistory();
 
     return () => {
       cancelled = true;

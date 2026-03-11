@@ -50,7 +50,9 @@ export function AgentKeyDetailEditor({
     await navigator.clipboard.writeText(newKey);
     setCopied(true);
     toast.success('Key copied to clipboard');
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => {
+      setCopied(false);
+    }, 2000);
   }
 
   async function handleSave() {
@@ -75,7 +77,14 @@ export function AgentKeyDetailEditor({
 
   return (
     <div className="mt-4 space-y-4">
-      <Input id="key-name" label="Name" value={name} onChange={(e) => setName(e.target.value)} />
+      <Input
+        id="key-name"
+        label="Name"
+        value={name}
+        onChange={(e) => {
+          setName(e.target.value);
+        }}
+      />
       <div className="space-y-1">
         <label
           htmlFor="key-prompt"
@@ -87,7 +96,9 @@ export function AgentKeyDetailEditor({
           id="key-prompt"
           rows={4}
           value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
+          onChange={(e) => {
+            setPrompt(e.target.value);
+          }}
           className="block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
           placeholder="Extra instructions for this agent..."
         />
@@ -104,7 +115,9 @@ export function AgentKeyDetailEditor({
           type="button"
           role="switch"
           aria-checked={isActive}
-          onClick={() => setIsActive(!isActive)}
+          onClick={() => {
+            setIsActive(!isActive);
+          }}
           className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
             isActive ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'
           }`}
@@ -147,7 +160,13 @@ export function AgentKeyDetailEditor({
             </div>
           </div>
         ) : (
-          <Button variant="danger" className="mt-3" onClick={() => setShowRotateConfirm(true)}>
+          <Button
+            variant="danger"
+            className="mt-3"
+            onClick={() => {
+              setShowRotateConfirm(true);
+            }}
+          >
             Rotate Key
           </Button>
         )}
@@ -156,7 +175,9 @@ export function AgentKeyDetailEditor({
       {/* Rotate confirmation modal */}
       <Modal
         open={showRotateConfirm}
-        onClose={() => setShowRotateConfirm(false)}
+        onClose={() => {
+          setShowRotateConfirm(false);
+        }}
         title="Rotate Agent Key"
       >
         <div className="space-y-4">
@@ -165,7 +186,12 @@ export function AgentKeyDetailEditor({
             will need to be updated with the new secret.
           </p>
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setShowRotateConfirm(false)}>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowRotateConfirm(false);
+              }}
+            >
               Cancel
             </Button>
             <Button variant="danger" onClick={handleRotate} disabled={rotating}>

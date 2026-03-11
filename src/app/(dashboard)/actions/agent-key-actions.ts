@@ -27,8 +27,8 @@ export async function createAgentKeyAction(formData: FormData) {
 
     const parsed = agentKeySchema.safeParse({
       name: formData.get('name'),
-      role: formData.get('role') || undefined,
-      specialPrompt: formData.get('specialPrompt') || undefined,
+      role: formData.get('role') ?? undefined,
+      specialPrompt: formData.get('specialPrompt') ?? undefined,
     });
 
     if (!parsed.success) {

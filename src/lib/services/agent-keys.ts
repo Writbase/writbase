@@ -23,7 +23,7 @@ export async function listAgentKeys(
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return data ?? [];
+  return data as Omit<AgentKey, 'key_hash'>[];
 }
 
 export async function createAgentKey(
@@ -53,11 +53,12 @@ export async function createAgentKey(
     .single();
 
   if (error) throw error;
+  const key = data as Omit<AgentKey, 'key_hash'>;
 
   await logEvent(supabase, {
     eventCategory: 'admin',
     targetType: 'agent_key',
-    targetId: data.id,
+    targetId: key.id,
     eventType: 'agent_key.created',
     actorType: 'human',
     actorId: params.createdBy,
@@ -65,7 +66,7 @@ export async function createAgentKey(
     source: 'ui',
   });
 
-  return { key: data, fullKey };
+  return { key, fullKey };
 }
 
 export async function updateAgentKey(
@@ -93,6 +94,7 @@ export async function updateAgentKey(
     .single();
 
   if (error) throw error;
+  const updated = data as Omit<AgentKey, 'key_hash'>;
 
   await logEvent(supabase, {
     eventCategory: 'admin',
@@ -105,7 +107,7 @@ export async function updateAgentKey(
     source: 'ui',
   });
 
-  return data;
+  return updated;
 }
 
 export async function rotateAgentKey(
@@ -124,6 +126,7 @@ export async function rotateAgentKey(
     .single();
 
   if (error) throw error;
+  const key = data as Omit<AgentKey, 'key_hash'>;
 
   await logEvent(supabase, {
     eventCategory: 'admin',
@@ -136,7 +139,7 @@ export async function rotateAgentKey(
     source: 'ui',
   });
 
-  return { key: data, fullKey };
+  return { key, fullKey };
 }
 
 export async function getAgentKeyPermissions(
@@ -151,7 +154,11 @@ export async function getAgentKeyPermissions(
     .eq('agent_key_id', keyId);
 
   if (error) throw error;
-  return data ?? [];
+  type PermissionWithRelations = AgentPermission & {
+    projects?: { name: string };
+    departments?: { name: string } | null;
+  };
+  return data as PermissionWithRelations[];
 }
 
 export async function updateAgentKeyPermissions(

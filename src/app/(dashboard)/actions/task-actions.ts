@@ -19,12 +19,12 @@ export async function createTaskAction(formData: FormData) {
 
     const parsed = taskCreateSchema.safeParse({
       projectId: formData.get('projectId'),
-      departmentId: formData.get('departmentId') || undefined,
-      priority: formData.get('priority') || undefined,
+      departmentId: formData.get('departmentId') ?? undefined,
+      priority: formData.get('priority') ?? undefined,
       description: formData.get('description'),
-      notes: formData.get('notes') || undefined,
-      dueDate: formData.get('dueDate') || undefined,
-      status: formData.get('status') || undefined,
+      notes: formData.get('notes') ?? undefined,
+      dueDate: formData.get('dueDate') ?? undefined,
+      status: formData.get('status') ?? undefined,
     });
 
     if (!parsed.success) {

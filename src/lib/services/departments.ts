@@ -10,7 +10,7 @@ export async function listDepartments(supabase: SupabaseClient): Promise<Departm
     .order('name', { ascending: true });
 
   if (error) throw error;
-  return data ?? [];
+  return data as Department[];
 }
 
 async function generateUniqueSlug(supabase: SupabaseClient, name: string): Promise<string> {
@@ -18,10 +18,11 @@ async function generateUniqueSlug(supabase: SupabaseClient, name: string): Promi
   let slug = baseSlug;
   let suffix = 1;
 
-  while (true) {
+  for (;;) {
     const { data } = await supabase.from('departments').select('id').eq('slug', slug).limit(1);
+    const rows = data as { id: string }[] | null;
 
-    if (!data || data.length === 0) return slug;
+    if (!rows || rows.length === 0) return slug;
     suffix++;
     slug = `${baseSlug}-${suffix}`;
   }
@@ -33,7 +34,7 @@ export async function createDepartment(
 ): Promise<Department> {
   const slug = await generateUniqueSlug(supabase, params.name);
 
-  const { data, error } = await supabase
+  const result = await supabase
     .from('departments')
     .insert({
       name: params.name,
@@ -43,12 +44,13 @@ export async function createDepartment(
     .select()
     .single();
 
-  if (error) throw error;
+  if (result.error) throw result.error;
+  const department = result.data as Department;
 
   await logEvent(supabase, {
     eventCategory: 'admin',
     targetType: 'department',
-    targetId: data.id,
+    targetId: department.id,
     eventType: 'department.created',
     actorType: 'human',
     actorId: params.createdBy,
@@ -56,7 +58,7 @@ export async function createDepartment(
     source: 'ui',
   });
 
-  return data;
+  return department;
 }
 
 export async function updateDepartment(
@@ -67,22 +69,20 @@ export async function updateDepartment(
   if (params.name !== undefined) updates.name = params.name;
   if (params.isArchived !== undefined) updates.is_archived = params.isArchived;
 
-  const { data: existing, error: fetchError } = await supabase
-    .from('departments')
-    .select('*')
-    .eq('id', params.id)
-    .single();
+  const fetchResult = await supabase.from('departments').select('*').eq('id', params.id).single();
 
-  if (fetchError) throw fetchError;
+  if (fetchResult.error) throw fetchResult.error;
+  const existing = fetchResult.data as Department;
 
-  const { data, error } = await supabase
+  const updateResult = await supabase
     .from('departments')
     .update(updates)
     .eq('id', params.id)
     .select()
     .single();
 
-  if (error) throw error;
+  if (updateResult.error) throw updateResult.error;
+  const updated = updateResult.data as Department;
 
   if (params.name !== undefined && params.name !== existing.name) {
     await logEvent(supabase, {
@@ -116,5 +116,5 @@ export async function updateDepartment(
     });
   }
 
-  return data;
+  return updated;
 }

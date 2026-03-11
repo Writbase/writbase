@@ -93,8 +93,8 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
-  const sortBy = (searchParams.get('sortBy') as SortColumn) || 'created_at';
-  const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc';
+  const sortBy = (searchParams.get('sortBy') as SortColumn | null) ?? 'created_at';
+  const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc' | null) ?? 'desc';
 
   const fetchTasks = useCallback(
     async (currentOffset: number, signal?: AbortSignal) => {
@@ -111,7 +111,7 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
 
         const res = await fetch(`/api/tasks?${params.toString()}`, { signal });
         if (!res.ok) throw new Error('Failed to load tasks');
-        const json = await res.json();
+        const json = (await res.json()) as { data?: Task[] };
         const items: Task[] = json.data ?? [];
         if (items.length > PAGE_SIZE) {
           setHasMore(true);
@@ -133,10 +133,10 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
     try {
       const res = await fetch('/api/departments');
       if (res.ok) {
-        const json = await res.json();
+        const json = (await res.json()) as { data?: (Department & { is_archived?: boolean })[] };
         const all = json.data ?? [];
         setAllDepartments(all);
-        setDepartments(all.filter((d: Department & { is_archived?: boolean }) => !d.is_archived));
+        setDepartments(all.filter((d) => !d.is_archived));
       }
     } catch {
       // fail silently
@@ -146,12 +146,14 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
   useEffect(() => {
     setOffset(0);
     const controller = new AbortController();
-    fetchTasks(0, controller.signal);
-    return () => controller.abort();
+    void fetchTasks(0, controller.signal);
+    return () => {
+      controller.abort();
+    };
   }, [fetchTasks]);
 
   useEffect(() => {
-    fetchDepartments();
+    void fetchDepartments();
   }, [fetchDepartments]);
 
   function handleSort(column: SortColumn) {
@@ -168,13 +170,13 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
   function handlePrev() {
     const newOffset = Math.max(0, offset - PAGE_SIZE);
     setOffset(newOffset);
-    fetchTasks(newOffset);
+    void fetchTasks(newOffset);
   }
 
   function handleNext() {
     const newOffset = offset + PAGE_SIZE;
     setOffset(newOffset);
-    fetchTasks(newOffset);
+    void fetchTasks(newOffset);
   }
 
   function handleRowClick(task: Task) {
@@ -193,7 +195,7 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
   }
 
   function handleFormSuccess() {
-    fetchTasks(offset);
+    void fetchTasks(offset);
   }
 
   function getDepartmentInfo(depId: string | null): { name: string; isArchived: boolean } {
@@ -227,7 +229,12 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
       {fetchError ? (
         <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center dark:border-red-800 dark:bg-red-900/20">
           <p className="mb-3 text-sm text-red-700 dark:text-red-400">{fetchError}</p>
-          <Button variant="secondary" onClick={() => fetchTasks(offset)}>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              void fetchTasks(offset);
+            }}
+          >
             Retry
           </Button>
         </div>
@@ -265,7 +272,9 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
                   {columns.map((col) => (
                     <th
                       key={col.key}
-                      onClick={() => handleSort(col.key)}
+                      onClick={() => {
+                        handleSort(col.key);
+                      }}
                       className="cursor-pointer px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
                     >
                       {col.label}
@@ -278,7 +287,9 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
                 {tasks.map((task, idx) => (
                   <tr
                     key={task.id}
-                    onClick={() => handleRowClick(task)}
+                    onClick={() => {
+                      handleRowClick(task);
+                    }}
                     className={`cursor-pointer border-b border-slate-100 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800 ${
                       idx % 2 === 1 ? 'bg-slate-25 dark:bg-slate-900/50' : ''
                     }`}

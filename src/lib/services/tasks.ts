@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Task } from '@/lib/types/database';
+import type { EventLog, Task } from '@/lib/types/database';
 import type { ActorType, Priority, Source, Status } from '@/lib/types/enums';
 import { AppError } from '@/lib/utils/errors';
 import { logEvent } from './event-log';
@@ -41,7 +41,7 @@ export async function listTasks(
 
   const { data, error } = await query;
   if (error) throw error;
-  return (data as TaskWithRelations[]) ?? [];
+  return data as TaskWithRelations[];
 }
 
 export async function createTask(
@@ -60,36 +60,38 @@ export async function createTask(
   },
 ): Promise<Task> {
   // Validate project is not archived
-  const { data: project, error: projError } = await supabase
+  const projResult = await supabase
     .from('projects')
     .select('id, is_archived')
     .eq('id', params.projectId)
     .single();
 
-  if (projError || !project) {
+  const proj = projResult.data as { id: string; is_archived: boolean } | null;
+  if (projResult.error || !proj) {
     throw new AppError('project_not_found', 'Project not found', 404);
   }
-  if (project.is_archived) {
+  if (proj.is_archived) {
     throw new AppError('project_archived', 'Cannot create tasks in an archived project');
   }
 
   // Validate department if provided
   if (params.departmentId) {
-    const { data: dept, error: deptError } = await supabase
+    const deptResult = await supabase
       .from('departments')
       .select('id, is_archived')
       .eq('id', params.departmentId)
       .single();
 
-    if (deptError || !dept) {
+    const department = deptResult.data as { id: string; is_archived: boolean } | null;
+    if (deptResult.error || !department) {
       throw new AppError('department_not_found', 'Department not found', 404);
     }
-    if (dept.is_archived) {
+    if (department.is_archived) {
       throw new AppError('department_archived', 'Cannot create tasks in an archived department');
     }
   }
 
-  const { data, error } = await supabase
+  const insertResult = await supabase
     .from('tasks')
     .insert({
       project_id: params.projectId,
@@ -109,12 +111,13 @@ export async function createTask(
     .select()
     .single();
 
-  if (error) throw error;
+  if (insertResult.error) throw insertResult.error;
+  const task = insertResult.data as Task;
 
   await logEvent(supabase, {
     eventCategory: 'task',
     targetType: 'task',
-    targetId: data.id,
+    targetId: task.id,
     eventType: 'task.created',
     actorType: params.createdByType,
     actorId: params.createdById,
@@ -122,7 +125,7 @@ export async function createTask(
     source: params.source,
   });
 
-  return data;
+  return task;
 }
 
 export async function updateTask(
@@ -170,7 +173,7 @@ export async function updateTask(
   }
 
   // Optimistic concurrency: update only if version matches
-  const { data, error } = await supabase
+  const updateResult = await supabase
     .from('tasks')
     .update(updates)
     .eq('id', params.id)
@@ -178,27 +181,30 @@ export async function updateTask(
     .select()
     .single();
 
-  if (error) {
+  if (updateResult.error) {
     // If no rows matched, it's a version conflict
-    if (error.code === 'PGRST116') {
+    if (updateResult.error.code === 'PGRST116') {
       // Check if the task exists at all
-      const { data: existing } = await supabase
+      const existResult = await supabase
         .from('tasks')
         .select('version')
         .eq('id', params.id)
         .single();
+      const existing = existResult.data as { version: number } | null;
 
       if (existing) {
         throw new AppError(
           'version_conflict',
-          `Version conflict: expected ${params.version}, current is ${existing.version}`,
+          `Version conflict: expected ${params.version}, current is ${String(existing.version)}`,
           409,
         );
       }
       throw new AppError('task_not_found', 'Task not found', 404);
     }
-    throw error;
+    throw updateResult.error;
   }
+
+  const updatedTask = updateResult.data as Task;
 
   // Log field-level changes
   // Fetch the old values for logging
@@ -219,10 +225,13 @@ export async function updateTask(
     }
   }
 
-  return data;
+  return updatedTask;
 }
 
-export async function getTaskHistory(supabase: SupabaseClient, taskId: string) {
+export async function getTaskHistory(
+  supabase: SupabaseClient,
+  taskId: string,
+): Promise<EventLog[]> {
   const { data, error } = await supabase
     .from('event_log')
     .select('*')
@@ -230,5 +239,5 @@ export async function getTaskHistory(supabase: SupabaseClient, taskId: string) {
     .order('created_at', { ascending: true });
 
   if (error) throw error;
-  return data ?? [];
+  return data as EventLog[];
 }

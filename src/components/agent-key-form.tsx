@@ -18,7 +18,7 @@ export function AgentKeyForm({ onClose, onSuccess }: AgentKeyFormProps) {
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     setError(null);
@@ -42,7 +42,9 @@ export function AgentKeyForm({ onClose, onSuccess }: AgentKeyFormProps) {
     try {
       await navigator.clipboard.writeText(createdKey);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => {
+        setCopied(false);
+      }, 2000);
     } catch {
       // Fallback: use a temporary textarea for older browsers / non-HTTPS
       try {
@@ -52,10 +54,13 @@ export function AgentKeyForm({ onClose, onSuccess }: AgentKeyFormProps) {
         textarea.style.opacity = '0';
         document.body.appendChild(textarea);
         textarea.select();
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         document.execCommand('copy');
         document.body.removeChild(textarea);
         setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        setTimeout(() => {
+          setCopied(false);
+        }, 2000);
       } catch {
         // Last resort: prompt user to copy manually
         window.prompt('Copy this key:', createdKey);
