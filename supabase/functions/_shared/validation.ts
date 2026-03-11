@@ -3,6 +3,24 @@ import type { Priority, Status } from './types.ts'
 const VALID_PRIORITIES: Priority[] = ['low', 'medium', 'high', 'critical']
 const VALID_STATUSES: Status[] = ['todo', 'in_progress', 'blocked', 'done', 'cancelled']
 
+const ISO_DATE_RE =
+  /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])(?:T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d))?$/
+
+/**
+ * Validate an ISO 8601 date string. Two-step: regex format check then
+ * Date roundtrip to verify calendar correctness (catches Feb 30 etc.).
+ */
+export function isValidISODate(value: string): boolean {
+  if (!ISO_DATE_RE.test(value)) return false
+
+  // Extract year/month/day and verify via Date roundtrip
+  const year = Number(value.slice(0, 4))
+  const month = Number(value.slice(5, 7))
+  const day = Number(value.slice(8, 10))
+  const d = new Date(year, month - 1, day)
+  return d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day
+}
+
 /**
  * Validate task creation/update input. Returns a map of field -> error message
  * for any invalid fields, or null if everything is valid.
@@ -29,9 +47,8 @@ export function validateTaskInput(input: Record<string, unknown>): Record<string
   }
 
   if ('due_date' in input && input.due_date !== null) {
-    const parsed = Date.parse(input.due_date as string)
-    if (isNaN(parsed)) {
-      errors.due_date = 'due_date must be a valid ISO 8601 date string.'
+    if (typeof input.due_date !== 'string' || !isValidISODate(input.due_date)) {
+      errors.due_date = 'due_date must be a valid ISO 8601 date string (YYYY-MM-DD or YYYY-MM-DDThh:mm:ssZ).'
     }
   }
 

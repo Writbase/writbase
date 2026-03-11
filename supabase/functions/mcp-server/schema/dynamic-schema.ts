@@ -57,7 +57,8 @@ export async function createMcpServerForAgent(
   const defaultProject = projectSlugs.length === 1 ? projectSlugs[0] : undefined
 
   // ── Helper: build project param as a Zod enum ──────────────────────
-  const projectEnum = projectSlugs.length > 0
+  const hasProjects = projectSlugs.length > 0
+  const projectEnum = hasProjects
     ? z.enum(projectSlugs as [string, ...string[]])
     : z.never()
 
@@ -66,6 +67,10 @@ export async function createMcpServerForAgent(
   const deptEnum = allDepts.length > 0
     ? z.enum(allDepts as [string, ...string[]])
     : z.never()
+
+  const noProjectsNote = !hasProjects
+    ? ' NOTE: This agent has no permitted projects. Contact an admin to grant project access before using task tools.'
+    : ''
 
   // ── WORKER TOOLS (available to all roles) ──────────────────────────
 
@@ -81,7 +86,7 @@ export async function createMcpServerForAgent(
   // 2. get_tasks
   server.tool(
     'get_tasks',
-    `List tasks in a project. ${projectHint}. ${deptHint}`,
+    `List tasks in a project. ${projectHint}. ${deptHint}${noProjectsNote}`,
     {
       project: defaultProject
         ? projectEnum.default(defaultProject).describe('Project slug')
@@ -100,7 +105,7 @@ export async function createMcpServerForAgent(
   // 3. add_task
   server.tool(
     'add_task',
-    `Create a new task. ${projectHint}. ${deptHint}. ${departmentRequired ? 'Department is required.' : 'Department is optional.'}`,
+    `Create a new task. ${projectHint}. ${deptHint}. ${departmentRequired ? 'Department is required.' : 'Department is optional.'}${noProjectsNote}`,
     {
       project: defaultProject
         ? projectEnum.default(defaultProject).describe('Project slug')
@@ -121,7 +126,7 @@ export async function createMcpServerForAgent(
   // 4. update_task
   server.tool(
     'update_task',
-    `Update an existing task. Requires the current version for optimistic locking. ${projectHint}. ${deptHint}`,
+    `Update an existing task. Requires the current version for optimistic locking. ${projectHint}. ${deptHint}${noProjectsNote}`,
     {
       task_id: z.string().describe('Task UUID'),
       version: z.number().describe('Current version number for optimistic locking'),

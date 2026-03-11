@@ -8,7 +8,7 @@ import {
   validationError,
 } from '../../_shared/errors.ts'
 import { validateTaskInput } from '../../_shared/validation.ts'
-import { logEvent } from '../../_shared/event-log.ts'
+import { parseRpcErrorCode } from '../../_shared/rpc-errors.ts'
 
 interface AddTaskParams {
   project: string
@@ -129,48 +129,51 @@ export async function handleAddTask(
     return mcpError(validationError(fieldErrors))
   }
 
-  // 7. Insert task
-  const { data: task, error: insertError } = await supabase
-    .from('tasks')
-    .insert({
-      project_id: projectId,
-      department_id: departmentId,
-      priority: params.priority ?? 'medium',
-      description: params.description.trim(),
-      notes: params.notes ?? null,
-      due_date: params.due_date ?? null,
-      status: params.status ?? 'todo',
-      created_by_type: 'agent',
-      created_by_id: ctx.keyId,
-      updated_by_type: 'agent',
-      updated_by_id: ctx.keyId,
-      source: 'mcp',
+  // 7. Create task atomically via RPC (task + event_log in one transaction)
+  const { data: task, error: rpcError } = await supabase
+    .rpc('create_task_with_event', {
+      p_payload: {
+        project_id: projectId,
+        department_id: departmentId,
+        priority: params.priority ?? 'medium',
+        description: params.description.trim(),
+        notes: params.notes ?? null,
+        due_date: params.due_date ?? null,
+        status: params.status ?? 'todo',
+        created_by_type: 'agent',
+        created_by_id: ctx.keyId,
+        actor_type: 'agent',
+        actor_id: ctx.keyId,
+        actor_label: ctx.name,
+        source: 'mcp',
+      },
     })
-    .select()
-    .abortSignal(AbortSignal.timeout(10_000))
     .single()
 
-  if (insertError) {
-    return mcpError({
-      code: 'internal_error',
-      message: insertError.message,
-    })
+  if (rpcError) {
+    const code = parseRpcErrorCode(rpcError.message)
+    switch (code) {
+      case 'project_not_found':
+        return mcpError(invalidProjectError(params.project))
+      case 'project_archived':
+        return mcpError({
+          code: 'invalid_project',
+          message: `Project "${params.project}" is archived.`,
+          recovery: 'This project is archived. No new tasks can be created.',
+        })
+      case 'department_not_found':
+      case 'department_archived':
+        return mcpError(invalidDepartmentError(params.department ?? 'unknown'))
+      default:
+        return mcpError({
+          code: 'internal_error',
+          message: rpcError.message,
+        })
+    }
   }
 
-  // 8. Log event
-  await logEvent(supabase, {
-    eventCategory: 'task',
-    targetType: 'task',
-    targetId: task.id,
-    eventType: 'task_created',
-    actorType: 'agent',
-    actorId: ctx.keyId,
-    actorLabel: ctx.name,
-    source: 'mcp',
-  })
-
-  // 9. Return created task with version: 1
+  // 8. Return created task
   return {
-    content: [{ type: 'text' as const, text: JSON.stringify({ ...task, version: task.version ?? 1 }) }],
+    content: [{ type: 'text' as const, text: JSON.stringify(task) }],
   }
 }

@@ -9,7 +9,7 @@ import {
   versionConflictError,
 } from '../../_shared/errors.ts'
 import { validateTaskInput } from '../../_shared/validation.ts'
-import { logFieldChanges } from '../../_shared/event-log.ts'
+import { parseRpcErrorCode, parseVersionFromError } from '../../_shared/rpc-errors.ts'
 
 interface UpdateTaskParams {
   task_id: string
@@ -23,8 +23,6 @@ interface UpdateTaskParams {
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-const TRACKED_FIELDS = ['priority', 'description', 'notes', 'department_id', 'due_date', 'status']
 
 export async function handleUpdateTask(
   params: UpdateTaskParams,
@@ -146,72 +144,48 @@ export async function handleUpdateTask(
     return mcpError(validationError(fieldErrors))
   }
 
-  // 6. Build update payload with only provided fields
-  const updatePayload: Record<string, unknown> = {
-    updated_by_type: 'agent',
-    updated_by_id: ctx.keyId,
-    source: 'mcp',
-  }
+  // 6. Build fields payload for the RPC (only provided fields)
+  const fields: Record<string, unknown> = {}
+  if (params.priority !== undefined) fields.priority = params.priority
+  if (params.description !== undefined) fields.description = params.description.trim()
+  if (params.notes !== undefined) fields.notes = params.notes
+  if (params.due_date !== undefined) fields.due_date = params.due_date
+  if (params.status !== undefined) fields.status = params.status
+  if (newDepartmentId !== undefined) fields.department_id = newDepartmentId
 
-  if (params.priority !== undefined) updatePayload.priority = params.priority
-  if (params.description !== undefined) updatePayload.description = params.description.trim()
-  if (params.notes !== undefined) updatePayload.notes = params.notes
-  if (params.due_date !== undefined) updatePayload.due_date = params.due_date
-  if (params.status !== undefined) updatePayload.status = params.status
-  if (newDepartmentId !== undefined) updatePayload.department_id = newDepartmentId
-
-  // 7. Atomic optimistic concurrency update
-  // Use RPC or raw SQL for version increment. Since supabase-js doesn't support
-  // version = version + 1 natively, we use an RPC-like approach with .eq on version.
-  // We'll do the update with version filter and then check if rows were affected.
-  const { data: updated, error: updateError } = await supabase
-    .from('tasks')
-    .update({
-      ...updatePayload,
-      version: existingTask.version + 1,
+  // 7. Atomic update via RPC (task + field-level event_log in one transaction)
+  const { data: updated, error: rpcError } = await supabase
+    .rpc('update_task_with_events', {
+      p_payload: {
+        task_id: params.task_id,
+        version: params.version,
+        fields,
+        actor_type: 'agent',
+        actor_id: ctx.keyId,
+        actor_label: ctx.name,
+        source: 'mcp',
+      },
     })
-    .eq('id', params.task_id)
-    .eq('version', params.version)
-    .select()
-    .abortSignal(AbortSignal.timeout(10_000))
-    .maybeSingle()
+    .single()
 
-  if (updateError) {
-    return mcpError({
-      code: 'internal_error',
-      message: updateError.message,
-    })
+  if (rpcError) {
+    const code = parseRpcErrorCode(rpcError.message)
+    switch (code) {
+      case 'task_not_found':
+        return mcpError(taskNotFoundError(params.task_id))
+      case 'version_conflict': {
+        const currentVersion = parseVersionFromError(rpcError.message) ?? existingTask.version
+        return mcpError(versionConflictError(currentVersion))
+      }
+      default:
+        return mcpError({
+          code: 'internal_error',
+          message: rpcError.message,
+        })
+    }
   }
 
-  // 8. If no rows returned → version conflict
-  if (!updated) {
-    // Re-query to get current version
-    const { data: current } = await supabase
-      .from('tasks')
-      .select('version')
-      .eq('id', params.task_id)
-      .abortSignal(AbortSignal.timeout(10_000))
-      .single()
-
-    return mcpError(versionConflictError(current?.version ?? existingTask.version))
-  }
-
-  // 9. Field-level provenance: compare old task with new task
-  await logFieldChanges(supabase, {
-    eventCategory: 'task',
-    targetType: 'task',
-    targetId: params.task_id,
-    eventType: 'task_updated',
-    oldRecord: existingTask,
-    newRecord: updated,
-    trackedFields: TRACKED_FIELDS,
-    actorType: 'agent',
-    actorId: ctx.keyId,
-    actorLabel: ctx.name,
-    source: 'mcp',
-  })
-
-  // 10. Return updated task
+  // 8. Return updated task
   return {
     content: [{ type: 'text' as const, text: JSON.stringify(updated) }],
   }
