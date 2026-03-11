@@ -74,6 +74,7 @@ export async function createMcpServerForAgent(
     'info',
     `Returns agent identity, role, permissions, and system info. ${projectHint}. ${deptHint}`,
     {},
+    { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     async () => handleInfo(ctx, supabase)
   )
 
@@ -92,6 +93,7 @@ export async function createMcpServerForAgent(
       cursor: z.string().optional().describe('Pagination cursor from previous response'),
       updated_after: z.string().optional().describe('ISO 8601 timestamp to filter tasks updated after'),
     },
+    { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     async (params) => handleGetTasks(params, ctx, supabase)
   )
 
@@ -112,6 +114,7 @@ export async function createMcpServerForAgent(
       due_date: z.string().optional().describe('Due date as ISO 8601 string'),
       status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled']).optional().describe('Initial status'),
     },
+    { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     async (params) => handleAddTask(params, ctx, supabase)
   )
 
@@ -129,6 +132,7 @@ export async function createMcpServerForAgent(
       due_date: z.string().optional().describe('New due date as ISO 8601'),
       status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled']).optional().describe('New status'),
     },
+    { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     async (params) => handleUpdateTask(params, ctx, supabase)
   )
 
@@ -146,6 +150,7 @@ export async function createMcpServerForAgent(
         special_prompt: z.string().optional().describe('Special system prompt (for create/update)'),
         is_active: z.boolean().optional().describe('Active status (for update)'),
       },
+      { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
       async (params) => handleManageAgentKeys(params, ctx, supabase)
     )
 
@@ -164,6 +169,7 @@ export async function createMcpServerForAgent(
           can_update: z.boolean().optional(),
         })).optional().describe('Permissions to grant or revoke'),
       },
+      { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
       async (params) => handleManageAgentPermissions(params, ctx, supabase)
     )
 
@@ -178,6 +184,7 @@ export async function createMcpServerForAgent(
         limit: z.number().max(50).optional().describe('Max results (default 20, max 50)'),
         cursor: z.string().optional().describe('Pagination cursor'),
       },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async (params) => handleGetProvenance(params, ctx, supabase)
     )
 
@@ -190,6 +197,7 @@ export async function createMcpServerForAgent(
         project_id: z.string().optional().describe('Target project ID (for rename/archive)'),
         name: z.string().optional().describe('Project name (for create/rename)'),
       },
+      { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
       async (params) => handleManageProjects(params, ctx, supabase)
     )
 
@@ -202,6 +210,7 @@ export async function createMcpServerForAgent(
         department_id: z.string().optional().describe('Target department ID (for rename/archive)'),
         name: z.string().optional().describe('Department name (for create/rename)'),
       },
+      { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
       async (params) => handleManageDepartments(params, ctx, supabase)
     )
   }
