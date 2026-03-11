@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AgentContext } from '../../_shared/types.ts'
-import { mcpError, validationError } from '../../_shared/errors.ts'
+import { mcpError, insufficientManagerScopeError, validationError } from '../../_shared/errors.ts'
 import { validateProjectInput } from '../../_shared/validation.ts'
 import { logEvent } from '../../_shared/event-log.ts'
 import { generateSlug, ensureUniqueSlug } from '../../_shared/slug.ts'
@@ -16,6 +16,8 @@ export async function handleManageProjects(
   ctx: AgentContext,
   supabase: SupabaseClient
 ) {
+  if (ctx.role !== 'manager') return mcpError(insufficientManagerScopeError())
+
   switch (params.action) {
     case 'create':
       return await createProject(params, ctx, supabase)

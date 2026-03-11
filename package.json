@@ -6,26 +6,31 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:edge": "deno test supabase/functions/_shared/ --allow-env --allow-read --config supabase/functions/mcp-server/deno.json",
+    "gen:types": "supabase gen types typescript --local > src/lib/types/database.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.9.0",
-    "@supabase/supabase-js": "^2.99.0",
+    "@supabase/supabase-js": "^2.99.1",
     "next": "16.1.6",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "slugify": "^1.6.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "sonner": "^2.0.7",
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
+    "@tailwindcss/postcss": "^4.2.1",
+    "@types/node": "^25.4.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.4",
     "eslint-config-next": "16.1.6",
     "supabase": "^2.78.1",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "tailwindcss": "^4.2.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   }
 }

@@ -88,7 +88,7 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
   const sortBy = (searchParams.get('sortBy') as SortColumn) || 'created_at'
   const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc'
 
-  const fetchTasks = useCallback(async (currentOffset: number) => {
+  const fetchTasks = useCallback(async (currentOffset: number, signal?: AbortSignal) => {
     setLoading(true)
     setFetchError(null)
     try {
@@ -100,7 +100,7 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
       params.set('limit', String(PAGE_SIZE + 1))
       params.set('offset', String(currentOffset))
 
-      const res = await fetch(`/api/tasks?${params.toString()}`)
+      const res = await fetch(`/api/tasks?${params.toString()}`, { signal })
       if (!res.ok) throw new Error('Failed to load tasks')
       const json = await res.json()
       const items: Task[] = json.data ?? []
@@ -112,6 +112,7 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
         setTasks(items)
       }
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
       setFetchError(err instanceof Error ? err.message : 'Failed to load tasks')
     }
     setLoading(false)
@@ -133,7 +134,9 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
 
   useEffect(() => {
     setOffset(0)
-    fetchTasks(0)
+    const controller = new AbortController()
+    fetchTasks(0, controller.signal)
+    return () => controller.abort()
   }, [fetchTasks])
 
   useEffect(() => {

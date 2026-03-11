@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { createDepartmentAction } from '@/app/(dashboard)/actions/department-actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,10 +24,11 @@ export function DepartmentForm({ onClose, onSuccess }: DepartmentFormProps) {
     const result = await createDepartmentAction(formData)
 
     if (result.success) {
+      toast.success('Department created')
       onSuccess?.()
       onClose()
     } else {
-      setError(result.error ?? 'Failed to create department')
+      toast.error(result.error ?? 'Failed to create department')
     }
 
     setLoading(false)

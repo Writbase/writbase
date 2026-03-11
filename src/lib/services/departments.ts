@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import slugify from 'slugify';
 import type { Department } from '@/lib/types/database';
+import { generateSlug } from '@/lib/utils/slug';
 import { logEvent } from './event-log';
 
 export async function listDepartments(supabase: SupabaseClient): Promise<Department[]> {
@@ -17,7 +17,7 @@ async function generateUniqueSlug(
   supabase: SupabaseClient,
   name: string,
 ): Promise<string> {
-  const baseSlug = slugify(name, { lower: true, strict: true });
+  const baseSlug = generateSlug(name);
   let slug = baseSlug;
   let suffix = 1;
 

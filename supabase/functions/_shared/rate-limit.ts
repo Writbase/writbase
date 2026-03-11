@@ -22,9 +22,9 @@ export async function checkRateLimit(
   })
 
   if (error) {
-    // Fail open: allow the request but log the error
+    // Fail closed: deny the request when rate limiting is unavailable
     console.error('Rate limit check failed:', error.message)
-    return { allowed: true }
+    return { allowed: false, retryAfter: 5 }
   }
 
   const count = data as number

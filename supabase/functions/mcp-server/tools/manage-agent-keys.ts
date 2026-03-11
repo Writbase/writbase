@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AgentContext } from '../../_shared/types.ts'
 import { generateAgentKey } from '../../_shared/auth.ts'
-import { mcpError, selfModificationDeniedError, validationError } from '../../_shared/errors.ts'
+import { mcpError, insufficientManagerScopeError, selfModificationDeniedError, validationError } from '../../_shared/errors.ts'
 import { logEvent } from '../../_shared/event-log.ts'
 
 interface ManageAgentKeysParams {
@@ -18,6 +18,8 @@ export async function handleManageAgentKeys(
   ctx: AgentContext,
   supabase: SupabaseClient
 ) {
+  if (ctx.role !== 'manager') return mcpError(insufficientManagerScopeError())
+
   switch (params.action) {
     case 'list':
       return await listKeys(supabase)

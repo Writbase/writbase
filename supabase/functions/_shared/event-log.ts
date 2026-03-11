@@ -17,11 +17,18 @@ export interface LogEventParams {
 
 /**
  * Insert a single event_log row.
+ *
+ * When `critical` is true (default for admin events), a logging failure
+ * throws so the parent mutation is rolled back — preserving the provenance
+ * guarantee.  Non-critical failures are logged and swallowed.
  */
 export async function logEvent(
   supabase: SupabaseClient,
-  params: LogEventParams
+  params: LogEventParams,
+  opts?: { critical?: boolean }
 ): Promise<void> {
+  const critical = opts?.critical ?? params.eventCategory === 'admin'
+
   const { error } = await supabase.from('event_log').insert({
     event_category: params.eventCategory,
     target_type: params.targetType,
@@ -37,7 +44,10 @@ export async function logEvent(
   })
 
   if (error) {
-    console.error('Failed to log event:', error.message)
+    console.error('Failed to log event:', JSON.stringify({ event_type: params.eventType, target_id: params.targetId, error: error.message }))
+    if (critical) {
+      throw new Error(`Critical audit log failure: ${error.message}`)
+    }
   }
 }
 
@@ -61,8 +71,10 @@ export interface LogFieldChangesParams {
  */
 export async function logFieldChanges(
   supabase: SupabaseClient,
-  params: LogFieldChangesParams
+  params: LogFieldChangesParams,
+  opts?: { critical?: boolean }
 ): Promise<void> {
+  const critical = opts?.critical ?? params.eventCategory === 'admin'
   const rows = []
 
   for (const field of params.trackedFields) {
@@ -89,7 +101,10 @@ export async function logFieldChanges(
   if (rows.length > 0) {
     const { error } = await supabase.from('event_log').insert(rows)
     if (error) {
-      console.error('Failed to log field changes:', error.message)
+      console.error('Failed to log field changes:', JSON.stringify({ event_type: params.eventType, target_id: params.targetId, error: error.message }))
+      if (critical) {
+        throw new Error(`Critical audit log failure: ${error.message}`)
+      }
     }
   }
 }

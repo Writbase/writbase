@@ -40,6 +40,8 @@ export async function handleManageAgentPermissions(
   ctx: AgentContext,
   supabase: SupabaseClient
 ) {
+  if (ctx.role !== 'manager') return mcpError(insufficientManagerScopeError())
+
   switch (params.action) {
     case 'list':
       return await listPermissions(params, supabase)

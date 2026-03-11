@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AgentContext } from '../../_shared/types.ts'
-import { mcpError, invalidProjectError, scopeNotAllowedError, validationError } from '../../_shared/errors.ts'
+import { mcpError, insufficientManagerScopeError, invalidProjectError, scopeNotAllowedError, validationError } from '../../_shared/errors.ts'
 import { encodeCursor, decodeCursor } from '../../_shared/pagination.ts'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -18,6 +18,8 @@ export async function handleGetProvenance(
   ctx: AgentContext,
   supabase: SupabaseClient
 ) {
+  if (ctx.role !== 'manager') return mcpError(insufficientManagerScopeError())
+
   // 1. Resolve project
   const isUuid = UUID_RE.test(params.project)
   const projectPerms = ctx.permissions.filter((p) =>

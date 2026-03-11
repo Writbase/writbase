@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { createAgentKeyAction } from '@/app/(dashboard)/actions/agent-key-actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,9 +28,10 @@ export function AgentKeyForm({ onClose, onSuccess }: AgentKeyFormProps) {
 
     if (result.success && result.data) {
       setCreatedKey(result.data.fullKey)
+      toast.success('Agent key created')
       onSuccess?.()
     } else {
-      setError(result.error ?? 'Failed to create key')
+      toast.error(result.error ?? 'Failed to create key')
     }
 
     setLoading(false)

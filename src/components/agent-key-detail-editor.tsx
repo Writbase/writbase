@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { updateAgentKeyAction } from '@/app/(dashboard)/actions/agent-key-actions'
+import { toast } from 'sonner'
+import { updateAgentKeyAction, rotateAgentKeyAction } from '@/app/(dashboard)/actions/agent-key-actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Modal } from '@/components/ui/modal'
 
 interface AgentKeyDetailEditorProps {
   keyId: string
@@ -22,13 +24,34 @@ export function AgentKeyDetailEditor({
   const [prompt, setPrompt] = useState(initialPrompt)
   const [isActive, setIsActive] = useState(initialActive)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
+  const [showRotateConfirm, setShowRotateConfirm] = useState(false)
+  const [rotating, setRotating] = useState(false)
+  const [newKey, setNewKey] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  async function handleRotate() {
+    setRotating(true)
+    const result = await rotateAgentKeyAction(keyId)
+    if (result.success && result.data) {
+      setNewKey(result.data.fullKey)
+      setShowRotateConfirm(false)
+      toast.success('Key rotated successfully')
+    } else {
+      toast.error(result.error ?? 'Failed to rotate key')
+    }
+    setRotating(false)
+  }
+
+  async function handleCopyKey() {
+    if (!newKey) return
+    await navigator.clipboard.writeText(newKey)
+    setCopied(true)
+    toast.success('Key copied to clipboard')
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   async function handleSave() {
     setLoading(true)
-    setError(null)
-    setSaved(false)
 
     const formData = new FormData()
     formData.set('id', keyId)
@@ -39,10 +62,9 @@ export function AgentKeyDetailEditor({
     const result = await updateAgentKeyAction(formData)
 
     if (result.success) {
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+      toast.success('Changes saved')
     } else {
-      setError(result.error ?? 'Failed to update')
+      toast.error(result.error ?? 'Failed to update')
     }
 
     setLoading(false)
@@ -99,17 +121,67 @@ export function AgentKeyDetailEditor({
           {isActive ? 'Active' : 'Inactive'}
         </span>
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex items-center gap-3">
         <Button onClick={handleSave} disabled={loading}>
           {loading ? 'Saving...' : 'Save Changes'}
         </Button>
-        {saved && (
-          <span className="text-sm text-green-600 dark:text-green-400">
-            Saved!
-          </span>
+      </div>
+
+      {/* Key rotation */}
+      <div className="border-t border-slate-200 pt-4 dark:border-slate-700">
+        <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">
+          Key Rotation
+        </h3>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          Generate a new secret for this agent key. The current key will stop working immediately.
+        </p>
+
+        {newKey ? (
+          <div className="mt-3 space-y-2">
+            <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+              Store this key securely. It will not be shown again.
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="block flex-1 overflow-x-auto rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
+                {newKey}
+              </code>
+              <Button variant="secondary" onClick={handleCopyKey}>
+                {copied ? 'Copied' : 'Copy'}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            variant="danger"
+            className="mt-3"
+            onClick={() => setShowRotateConfirm(true)}
+          >
+            Rotate Key
+          </Button>
         )}
       </div>
+
+      {/* Rotate confirmation modal */}
+      <Modal
+        open={showRotateConfirm}
+        onClose={() => setShowRotateConfirm(false)}
+        title="Rotate Agent Key"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            Are you sure? The current key will stop working immediately. Any agents
+            using this key will need to be updated with the new secret.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setShowRotateConfirm(false)}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={handleRotate} disabled={rotating}>
+              {rotating ? 'Rotating...' : 'Rotate Key'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

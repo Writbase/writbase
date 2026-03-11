@@ -26,7 +26,7 @@ export async function createDepartmentAction(formData: FormData) {
       createdBy: user.id,
     });
 
-    revalidatePath('/departments');
+    revalidatePath('/', 'layout');
     return { success: true, data: department };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
@@ -61,7 +61,7 @@ export async function updateDepartmentAction(formData: FormData) {
       actorId: user.id,
     });
 
-    revalidatePath('/departments');
+    revalidatePath('/', 'layout');
     return { success: true, data: department };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };

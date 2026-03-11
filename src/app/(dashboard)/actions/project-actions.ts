@@ -26,7 +26,7 @@ export async function createProjectAction(formData: FormData) {
       createdBy: user.id,
     });
 
-    revalidatePath('/projects');
+    revalidatePath('/', 'layout');
     return { success: true, data: project };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
@@ -61,7 +61,7 @@ export async function updateProjectAction(formData: FormData) {
       actorId: user.id,
     });
 
-    revalidatePath('/projects');
+    revalidatePath('/', 'layout');
     return { success: true, data: project };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { createProjectAction } from '@/app/(dashboard)/actions/project-actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,10 +24,11 @@ export function ProjectForm({ onClose, onSuccess }: ProjectFormProps) {
     const result = await createProjectAction(formData)
 
     if (result.success) {
+      toast.success('Project created')
       onSuccess?.()
       onClose()
     } else {
-      setError(result.error ?? 'Failed to create project')
+      toast.error(result.error ?? 'Failed to create project')
     }
 
     setLoading(false)

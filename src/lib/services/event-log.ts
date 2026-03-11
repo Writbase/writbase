@@ -17,7 +17,10 @@ export async function logEvent(
     actorLabel: string;
     source: Source;
   },
+  opts?: { critical?: boolean },
 ) {
+  const critical = opts?.critical ?? params.eventCategory === 'admin';
+
   const { error } = await supabase.from('event_log').insert({
     event_category: params.eventCategory,
     target_type: params.targetType,
@@ -33,7 +36,10 @@ export async function logEvent(
   });
 
   if (error) {
-    console.error('Failed to log event:', error);
+    console.error('Failed to log event:', JSON.stringify({ event_type: params.eventType, target_id: params.targetId, error: error.message }));
+    if (critical) {
+      throw new Error(`Critical audit log failure: ${error.message}`);
+    }
   }
 }
 
