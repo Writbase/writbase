@@ -23,9 +23,10 @@ export async function checkRateLimit(
   })
 
   if (error) {
-    // Fail closed: deny the request when rate limiting is unavailable
-    logger.error('Rate limit check failed', { agent_key_id: keyId, error: error.message })
-    return { allowed: false, retryAfter: 5 }
+    // Fail open: allow the request when rate limiting is unavailable.
+    // Auth is enforced separately; rate limiting is protective, not a security gate.
+    logger.warn('Rate limit check failed, allowing request', { agent_key_id: keyId, error: error.message })
+    return { allowed: true }
   }
 
   const count = data as number

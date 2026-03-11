@@ -5,6 +5,8 @@ import { createMockSupabase } from './mock-supabase';
 describe('createTask', () => {
   it('calls create_task_with_event RPC with correct payload', async () => {
     const mock = createMockSupabase();
+    // app_settings query (department_required check)
+    mock.addResponse({ department_required: false });
     const fakeTask = {
       id: 'task-1',
       project_id: 'proj-1',
@@ -31,6 +33,7 @@ describe('createTask', () => {
 
   it('throws project_not_found for RPC error', async () => {
     const mock = createMockSupabase();
+    mock.addResponse({ department_required: false }); // app_settings
     mock.addResponse(null, { message: 'project_not_found:Project not found' });
 
     await expect(
@@ -44,8 +47,24 @@ describe('createTask', () => {
     ).rejects.toThrow('Project not found');
   });
 
+  it('rejects when department_required is true and no department provided', async () => {
+    const mock = createMockSupabase();
+    mock.addResponse({ department_required: true }); // app_settings
+
+    await expect(
+      createTask(mock, {
+        projectId: 'proj-1',
+        description: 'Test',
+        createdByType: 'human',
+        createdById: 'user-1',
+        source: 'ui',
+      }),
+    ).rejects.toThrow('Department is required');
+  });
+
   it('throws project_archived for archived project', async () => {
     const mock = createMockSupabase();
+    mock.addResponse({ department_required: false }); // app_settings
     mock.addResponse(null, {
       message: 'project_archived:Cannot create tasks in an archived project',
     });

@@ -68,6 +68,18 @@ export async function createTask(
     source: Source;
   },
 ): Promise<Task> {
+  // Enforce department_required setting
+  if (!params.departmentId) {
+    const { data: settings } = await supabase
+      .from('app_settings')
+      .select('department_required')
+      .single();
+
+    if (settings?.department_required) {
+      throw new AppError('department_required', 'Department is required by system settings');
+    }
+  }
+
   const payload = {
     project_id: params.projectId,
     department_id: params.departmentId ?? null,

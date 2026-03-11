@@ -85,6 +85,7 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
   const [allDepartments, setAllDepartments] = useState<(Department & { is_archived?: boolean })[]>(
     [],
   );
+  const [departmentRequired, setDepartmentRequired] = useState(false);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
@@ -97,6 +98,8 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
 
   const sortBy = (searchParams.get('sortBy') as SortColumn | null) ?? 'created_at';
   const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc' | null) ?? 'desc';
+  const filterStatus = (searchParams.get('status') as Status | null) ?? undefined;
+  const filterPriority = (searchParams.get('priority') as Priority | null) ?? undefined;
 
   const fetchTasks = useCallback(
     async (currentOffset: number, signal?: AbortSignal) => {
@@ -108,6 +111,8 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
         if (departmentId) params.set('departmentId', departmentId);
         params.set('sortBy', sortBy);
         params.set('sortOrder', sortOrder);
+        if (filterStatus) params.set('status', filterStatus);
+        if (filterPriority) params.set('priority', filterPriority);
         params.set('limit', String(PAGE_SIZE + 1));
         params.set('offset', String(currentOffset));
 
@@ -128,7 +133,7 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
       }
       setLoading(false);
     },
-    [projectId, departmentId, sortBy, sortOrder],
+    [projectId, departmentId, sortBy, sortOrder, filterStatus, filterPriority],
   );
 
   const fetchDepartments = useCallback(async () => {
@@ -145,6 +150,18 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
     }
   }, []);
 
+  const fetchSettings = useCallback(async () => {
+    try {
+      const res = await fetch('/api/settings');
+      if (res.ok) {
+        const json = (await res.json()) as { data?: { department_required?: boolean } };
+        setDepartmentRequired(json.data?.department_required ?? false);
+      }
+    } catch {
+      // fail silently — defaults to false
+    }
+  }, []);
+
   useEffect(() => {
     setOffset(0);
     const controller = new AbortController();
@@ -156,12 +173,23 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
 
   useEffect(() => {
     void fetchDepartments();
-  }, [fetchDepartments]);
+    void fetchSettings();
+  }, [fetchDepartments, fetchSettings]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset selection when task list changes
   useEffect(() => {
     setSelectedIndex(-1);
   }, [tasks]);
+
+  function handleFilterChange(key: 'status' | 'priority', value: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+    router.push(`?${params.toString()}`);
+  }
 
   function handleSort(column: SortColumn) {
     const params = new URLSearchParams(searchParams.toString());
@@ -259,7 +287,38 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
     <div>
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Tasks</h1>
-        <Button onClick={handleAddTask}>Add Task</Button>
+        <div className="flex items-center gap-3">
+          <select
+            value={filterStatus ?? ''}
+            onChange={(e) => {
+              handleFilterChange('status', e.target.value);
+            }}
+            className="rounded-md border border-slate-300 px-2 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            aria-label="Filter by status"
+          >
+            <option value="">All Statuses</option>
+            <option value="todo">To Do</option>
+            <option value="in_progress">In Progress</option>
+            <option value="blocked">Blocked</option>
+            <option value="done">Done</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <select
+            value={filterPriority ?? ''}
+            onChange={(e) => {
+              handleFilterChange('priority', e.target.value);
+            }}
+            className="rounded-md border border-slate-300 px-2 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            aria-label="Filter by priority"
+          >
+            <option value="">All Priorities</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+          <Button onClick={handleAddTask}>Add Task</Button>
+        </div>
       </div>
 
       {fetchError ? (
@@ -402,6 +461,7 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
         task={editingTask}
         projectId={projectId}
         departments={allDepartments}
+        departmentRequired={departmentRequired}
         open={showForm}
         onClose={handleFormClose}
         onSuccess={handleFormSuccess}

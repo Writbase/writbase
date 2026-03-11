@@ -19,6 +19,7 @@ interface TaskFormProps {
   task?: Task | null;
   projectId: string;
   departments: Department[];
+  departmentRequired?: boolean;
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
@@ -28,6 +29,7 @@ export function TaskForm({
   task,
   projectId,
   departments,
+  departmentRequired = false,
   open,
   onClose,
   onSuccess,
@@ -174,10 +176,11 @@ export function TaskForm({
           <Select
             id="task-department"
             name="departmentId"
-            label="Department"
+            label={departmentRequired ? 'Department *' : 'Department'}
+            required={departmentRequired}
             defaultValue={task?.department_id ?? ''}
           >
-            <option value="">None</option>
+            <option value="">{departmentRequired ? 'Select a department' : 'None'}</option>
             {departments
               .filter((d) => !d.is_archived)
               .map((d) => (

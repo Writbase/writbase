@@ -4,11 +4,11 @@ import type { AgentKey, AgentPermission } from '@/lib/types/database';
 import type { AgentRole } from '@/lib/types/enums';
 import { logEvent } from './event-log';
 
-function generateKey(): { fullKey: string; prefix: string; hash: string } {
-  const raw = crypto.randomBytes(32).toString('hex');
-  const fullKey = `wb_${raw}`;
-  const prefix = fullKey.slice(0, 12);
-  const hash = crypto.createHash('sha256').update(fullKey).digest('hex');
+function generateKey(keyId: string): { fullKey: string; prefix: string; hash: string } {
+  const secret = crypto.randomBytes(32).toString('hex'); // 64 hex chars
+  const hash = crypto.createHash('sha256').update(secret).digest('hex'); // hash SECRET only
+  const prefix = secret.slice(0, 8); // first 8 chars of secret
+  const fullKey = `wb_${keyId}_${secret}`;
   return { fullKey, prefix, hash };
 }
 
@@ -35,11 +35,13 @@ export async function createAgentKey(
     createdBy: string;
   },
 ): Promise<{ key: Omit<AgentKey, 'key_hash'>; fullKey: string }> {
-  const { fullKey, prefix, hash } = generateKey();
+  const keyId = crypto.randomUUID();
+  const { fullKey, prefix, hash } = generateKey(keyId);
 
   const { data, error } = await supabase
     .from('agent_keys')
     .insert({
+      id: keyId,
       name: params.name,
       role: params.role ?? 'worker',
       key_hash: hash,
@@ -114,7 +116,7 @@ export async function rotateAgentKey(
   supabase: SupabaseClient,
   params: { id: string; actorId: string },
 ): Promise<{ key: Omit<AgentKey, 'key_hash'>; fullKey: string }> {
-  const { fullKey, prefix, hash } = generateKey();
+  const { fullKey, prefix, hash } = generateKey(params.id);
 
   const { data, error } = await supabase
     .from('agent_keys')
@@ -175,29 +177,20 @@ export async function updateAgentKeyPermissions(
     actorId: string;
   },
 ): Promise<void> {
-  // Delete existing permissions
-  const { error: deleteError } = await supabase
-    .from('agent_permissions')
-    .delete()
-    .eq('agent_key_id', params.keyId);
+  const rows = params.permissions.map((p) => ({
+    project_id: p.projectId,
+    department_id: p.departmentId ?? null,
+    can_read: p.canRead,
+    can_create: p.canCreate,
+    can_update: p.canUpdate,
+  }));
 
-  if (deleteError) throw deleteError;
+  const { error: rpcError } = await supabase.rpc('update_agent_permissions', {
+    p_key_id: params.keyId,
+    p_rows: rows,
+  });
 
-  // Insert new permissions
-  if (params.permissions.length > 0) {
-    const rows = params.permissions.map((p) => ({
-      agent_key_id: params.keyId,
-      project_id: p.projectId,
-      department_id: p.departmentId ?? null,
-      can_read: p.canRead,
-      can_create: p.canCreate,
-      can_update: p.canUpdate,
-    }));
-
-    const { error: insertError } = await supabase.from('agent_permissions').insert(rows);
-
-    if (insertError) throw insertError;
-  }
+  if (rpcError) throw rpcError;
 
   await logEvent(supabase, {
     eventCategory: 'admin',
