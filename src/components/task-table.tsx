@@ -5,14 +5,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { TaskForm } from '@/components/task-form';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import type { Task } from '@/lib/types/database';
+import type { Department, Task } from '@/lib/types/database';
 import type { Priority, Status } from '@/lib/types/enums';
-
-interface Department {
-  id: string;
-  name: string;
-  is_archived?: boolean;
-}
+import { formatDate, formatRelativeDate } from '@/lib/utils/format';
 
 interface TaskTableProps {
   projectId: string;
@@ -44,25 +39,6 @@ const statusLabel: Record<Status, string> = {
 
 const PAGE_SIZE = 25;
 
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function formatRelativeDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = date.getTime() - now.getTime();
-  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Tomorrow';
-  if (diffDays === -1) return 'Yesterday';
-  if (diffDays > 0 && diffDays <= 7) return `In ${diffDays} days`;
-  if (diffDays < 0 && diffDays >= -7) return `${Math.abs(diffDays)} days ago`;
-  return formatDate(dateStr);
-}
-
 function truncate(text: string, maxLen: number): string {
   if (text.length <= maxLen) return text;
   return `${text.slice(0, maxLen)}...`;
@@ -81,10 +57,7 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
   const searchParams = useSearchParams();
 
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [_departments, setDepartments] = useState<Department[]>([]);
-  const [allDepartments, setAllDepartments] = useState<(Department & { is_archived?: boolean })[]>(
-    [],
-  );
+  const [allDepartments, setAllDepartments] = useState<Department[]>([]);
   const [departmentRequired, setDepartmentRequired] = useState(false);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -140,10 +113,9 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
     try {
       const res = await fetch('/api/departments');
       if (res.ok) {
-        const json = (await res.json()) as { data?: (Department & { is_archived?: boolean })[] };
+        const json = (await res.json()) as { data?: Department[] };
         const all = json.data ?? [];
         setAllDepartments(all);
-        setDepartments(all.filter((d) => !d.is_archived));
       }
     } catch {
       // fail silently
@@ -266,7 +238,7 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
     if (!depId) return { name: '-', isArchived: false };
     const dep = allDepartments.find((d) => d.id === depId);
     if (!dep) return { name: '-', isArchived: false };
-    return { name: dep.name, isArchived: !!dep.is_archived };
+    return { name: dep.name, isArchived: dep.is_archived };
   }
 
   function renderSortIcon(column: SortColumn) {

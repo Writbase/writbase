@@ -31,7 +31,7 @@ export async function checkRateLimit(
 
   const count = data as number
   if (count > limit) {
-    const retryAfter = 60 - (Math.floor(Date.now() / 1000) % 60)
+    const retryAfter = 60 - (Math.floor(Date.now() / 1000) % 60) + Math.floor(Math.random() * 5)
     return { allowed: false, retryAfter }
   }
 

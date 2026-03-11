@@ -12,6 +12,7 @@ export function encodeCursor(createdAt: string, id: string): string {
  */
 export function decodeCursor(cursor: string): { createdAt: string; id: string } | null {
   try {
+    if (cursor.length > 128) return null
     const json = atob(cursor)
     const parsed = JSON.parse(json)
     if (typeof parsed.c === 'string' && typeof parsed.i === 'string') {

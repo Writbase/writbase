@@ -3,10 +3,11 @@ import type { AgentContext } from '../../_shared/types.ts'
 import {
   mcpError,
   invalidProjectError,
-  invalidDepartmentError,
   scopeNotAllowedError,
+  internalError,
 } from '../../_shared/errors.ts'
 import { encodeCursor, decodeCursor } from '../../_shared/pagination.ts'
+import { resolveDepartment } from '../../_shared/department-resolver.ts'
 
 interface GetTasksParams {
   project: string
@@ -51,46 +52,11 @@ export async function handleGetTasks(
   // 3. Resolve department if provided
   let departmentId: string | null = null
   if (params.department) {
-    const isDeptUuid = UUID_RE.test(params.department)
-
-    // Check if agent has permission for this department
-    // Agent is allowed if they have a project-wide permission (departmentId IS NULL) or a matching department permission
-    const hasProjectWide = projectPerms.some((p) => p.departmentId === null && p.canRead)
-    const deptPerm = projectPerms.find((p) =>
-      isDeptUuid
-        ? p.departmentId === params.department
-        : p.departmentSlug === params.department
-    )
-
-    if (!hasProjectWide && !deptPerm) {
-      return mcpError(scopeNotAllowedError(params.project, 'read'))
+    const result = await resolveDepartment(params.department, projectPerms, supabase, 'read', params.project)
+    if ('error' in result) {
+      return mcpError(result.error)
     }
-
-    if (deptPerm) {
-      // Check if department is archived
-      if (deptPerm.isDepartmentArchived) {
-        return mcpError(invalidDepartmentError(params.department))
-      }
-      departmentId = deptPerm.departmentId
-    } else {
-      // Agent has project-wide access; resolve the department slug/UUID to an ID
-      if (isDeptUuid) {
-        departmentId = params.department
-      } else {
-        // Look up the department by slug
-        const { data: dept } = await supabase
-          .from('departments')
-          .select('id, is_archived')
-          .eq('slug', params.department)
-          .abortSignal(AbortSignal.timeout(10_000))
-          .single()
-
-        if (!dept || dept.is_archived) {
-          return mcpError(invalidDepartmentError(params.department))
-        }
-        departmentId = dept.id
-      }
-    }
+    departmentId = result.departmentId
   }
 
   // 4. Decode cursor if provided
@@ -119,10 +85,7 @@ export async function handleGetTasks(
   }).abortSignal(AbortSignal.timeout(10_000))
 
   if (error) {
-    return mcpError({
-      code: 'internal_error',
-      message: error.message,
-    })
+    return mcpError(internalError(error.message))
   }
 
   // 6. Build next_cursor if results.length == limit

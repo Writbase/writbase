@@ -2,14 +2,15 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AgentContext } from '../../_shared/types.ts'
 import {
   mcpError,
-  invalidDepartmentError,
   scopeNotAllowedError,
   taskNotFoundError,
   validationError,
   versionConflictError,
+  internalError,
 } from '../../_shared/errors.ts'
 import { validateTaskInput } from '../../_shared/validation.ts'
 import { parseRpcErrorCode, parseVersionFromError } from '../../_shared/rpc-errors.ts'
+import { resolveDepartment } from '../../_shared/department-resolver.ts'
 
 interface UpdateTaskParams {
   task_id: string
@@ -21,8 +22,6 @@ interface UpdateTaskParams {
   due_date?: string
   status?: string
 }
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export async function handleUpdateTask(
   params: UpdateTaskParams,
@@ -72,63 +71,21 @@ export async function handleUpdateTask(
   // 4. Cross-scope department move
   let newDepartmentId: string | null | undefined = undefined
   if (params.department !== undefined) {
-    const isDeptUuid = UUID_RE.test(params.department)
+    const projectSlug = projectPerms[0].projectSlug
+    const result = await resolveDepartment(params.department, projectPerms, supabase, 'update', projectSlug)
+    if ('error' in result) {
+      return mcpError(result.error)
+    }
 
-    // Resolve destination department
-    let destDeptId: string | null = null
-    const hasProjectWide = projectPerms.some((p) => p.departmentId === null && (p.canCreate || p.canUpdate))
-    const destDeptPerm = projectPerms.find((p) =>
-      isDeptUuid
-        ? p.departmentId === params.department
-        : p.departmentSlug === params.department
-    )
-
-    if (!hasProjectWide && !destDeptPerm) {
-      const projectSlug = projectPerms[0].projectSlug
+    // Extra check: if resolved via dept-specific perm, verify canCreate || canUpdate
+    const destDeptPerm = projectPerms.find((p) => p.departmentId === result.departmentId)
+    if (destDeptPerm && !(destDeptPerm.canCreate || destDeptPerm.canUpdate)) {
       return mcpError(scopeNotAllowedError(projectSlug, 'update'))
     }
 
-    if (destDeptPerm) {
-      if (destDeptPerm.isDepartmentArchived) {
-        return mcpError(invalidDepartmentError(params.department))
-      }
-      if (!(destDeptPerm.canCreate || destDeptPerm.canUpdate)) {
-        const projectSlug = projectPerms[0].projectSlug
-        return mcpError(scopeNotAllowedError(projectSlug, 'update'))
-      }
-      destDeptId = destDeptPerm.departmentId
-    } else {
-      // Agent has project-wide access; resolve the department
-      if (isDeptUuid) {
-        const { data: dept } = await supabase
-          .from('departments')
-          .select('id, is_archived')
-          .eq('id', params.department)
-          .abortSignal(AbortSignal.timeout(10_000))
-          .single()
-
-        if (!dept || dept.is_archived) {
-          return mcpError(invalidDepartmentError(params.department))
-        }
-        destDeptId = dept.id
-      } else {
-        const { data: dept } = await supabase
-          .from('departments')
-          .select('id, is_archived')
-          .eq('slug', params.department)
-          .abortSignal(AbortSignal.timeout(10_000))
-          .single()
-
-        if (!dept || dept.is_archived) {
-          return mcpError(invalidDepartmentError(params.department))
-        }
-        destDeptId = dept.id
-      }
-    }
-
     // Only set newDepartmentId if it's actually different
-    if (destDeptId !== existingTask.department_id) {
-      newDepartmentId = destDeptId
+    if (result.departmentId !== existingTask.department_id) {
+      newDepartmentId = result.departmentId
     }
   }
 
@@ -178,10 +135,7 @@ export async function handleUpdateTask(
         return mcpError(versionConflictError(currentVersion))
       }
       default:
-        return mcpError({
-          code: 'internal_error',
-          message: rpcError.message,
-        })
+        return mcpError(internalError(rpcError.message))
     }
   }
 

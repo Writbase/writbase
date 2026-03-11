@@ -6,9 +6,11 @@ import {
   invalidDepartmentError,
   scopeNotAllowedError,
   validationError,
+  internalError,
 } from '../../_shared/errors.ts'
 import { validateTaskInput } from '../../_shared/validation.ts'
 import { parseRpcErrorCode } from '../../_shared/rpc-errors.ts'
+import { resolveDepartment } from '../../_shared/department-resolver.ts'
 
 interface AddTaskParams {
   project: string
@@ -29,6 +31,7 @@ export async function handleAddTask(
 ) {
   // 1. Resolve project (slug or UUID) from ctx.permissions
   const isUuid = UUID_RE.test(params.project)
+
   const projectPerms = ctx.permissions.filter((p) =>
     isUuid ? p.projectId === params.project : p.projectSlug === params.project
   )
@@ -57,54 +60,11 @@ export async function handleAddTask(
   // 4. Resolve department if provided
   let departmentId: string | null = null
   if (params.department) {
-    const isDeptUuid = UUID_RE.test(params.department)
-
-    // Check if agent has project-wide permission (departmentId IS NULL)
-    const hasProjectWide = projectPerms.some((p) => p.departmentId === null && p.canCreate)
-    const deptPerm = projectPerms.find((p) =>
-      isDeptUuid
-        ? p.departmentId === params.department
-        : p.departmentSlug === params.department
-    )
-
-    if (!hasProjectWide && !deptPerm) {
-      return mcpError(scopeNotAllowedError(params.project, 'create'))
+    const result = await resolveDepartment(params.department, projectPerms, supabase, 'create', params.project)
+    if ('error' in result) {
+      return mcpError(result.error)
     }
-
-    if (deptPerm) {
-      if (deptPerm.isDepartmentArchived) {
-        return mcpError(invalidDepartmentError(params.department))
-      }
-      departmentId = deptPerm.departmentId
-    } else {
-      // Agent has project-wide access; resolve the department slug/UUID to an ID
-      if (isDeptUuid) {
-        // Verify the department exists and is not archived
-        const { data: dept } = await supabase
-          .from('departments')
-          .select('id, is_archived')
-          .eq('id', params.department)
-          .abortSignal(AbortSignal.timeout(10_000))
-          .single()
-
-        if (!dept || dept.is_archived) {
-          return mcpError(invalidDepartmentError(params.department))
-        }
-        departmentId = dept.id
-      } else {
-        const { data: dept } = await supabase
-          .from('departments')
-          .select('id, is_archived')
-          .eq('slug', params.department)
-          .abortSignal(AbortSignal.timeout(10_000))
-          .single()
-
-        if (!dept || dept.is_archived) {
-          return mcpError(invalidDepartmentError(params.department))
-        }
-        departmentId = dept.id
-      }
-    }
+    departmentId = result.departmentId
   } else {
     // 5. If department not provided, check if department_required
     const { data: settings } = await supabase
@@ -165,10 +125,7 @@ export async function handleAddTask(
       case 'department_archived':
         return mcpError(invalidDepartmentError(params.department ?? 'unknown'))
       default:
-        return mcpError({
-          code: 'internal_error',
-          message: rpcError.message,
-        })
+        return mcpError(internalError(rpcError.message))
     }
   }
 

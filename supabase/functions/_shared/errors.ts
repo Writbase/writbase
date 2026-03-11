@@ -21,6 +21,7 @@ export const ErrorCodes = {
   RATE_LIMITED: 'rate_limited',
   INSUFFICIENT_MANAGER_SCOPE: 'insufficient_manager_scope',
   SELF_MODIFICATION_DENIED: 'self_modification_denied',
+  INTERNAL_ERROR: 'internal_error',
 } as const
 
 export function unauthorizedError(): WritBaseError {
@@ -119,6 +120,13 @@ export function selfModificationDeniedError(): WritBaseError {
     code: ErrorCodes.SELF_MODIFICATION_DENIED,
     message: 'An agent cannot modify its own key.',
     recovery: 'Ask a different agent or a human admin to make this change.',
+  }
+}
+
+export function internalError(message: string): WritBaseError {
+  return {
+    code: ErrorCodes.INTERNAL_ERROR,
+    message,
   }
 }
 

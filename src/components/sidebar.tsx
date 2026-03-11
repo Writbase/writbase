@@ -11,18 +11,7 @@ import { SidebarModals } from '@/components/sidebar-modals';
 import { SidebarProjectSelector } from '@/components/sidebar-project-selector';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
-
-interface Project {
-  id: string;
-  name: string;
-  is_archived: boolean;
-}
-
-interface Department {
-  id: string;
-  name: string;
-  is_archived: boolean;
-}
+import type { Department, Project } from '@/lib/types/database';
 
 interface SidebarProps {
   userEmail?: string;
@@ -56,24 +45,28 @@ export function Sidebar({ userEmail }: SidebarProps) {
   const fetchProjects = useCallback(async () => {
     try {
       const res = await fetch('/api/projects');
-      if (res.ok) {
-        const json = (await res.json()) as { data?: Project[] };
-        setProjects(json.data ?? []);
+      if (!res.ok) {
+        toast.error('Failed to load projects');
+        return;
       }
+      const json = (await res.json()) as { data?: Project[] };
+      setProjects(json.data ?? []);
     } catch {
-      // API may not be ready yet — fail silently
+      toast.error('Failed to load projects');
     }
   }, []);
 
   const fetchDepartments = useCallback(async () => {
     try {
       const res = await fetch('/api/departments');
-      if (res.ok) {
-        const json = (await res.json()) as { data?: Department[] };
-        setDepartments(json.data ?? []);
+      if (!res.ok) {
+        toast.error('Failed to load departments');
+        return;
       }
+      const json = (await res.json()) as { data?: Department[] };
+      setDepartments(json.data ?? []);
     } catch {
-      // API may not be ready yet — fail silently
+      toast.error('Failed to load departments');
     }
   }, []);
 

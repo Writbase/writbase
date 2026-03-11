@@ -6,7 +6,8 @@
     "@supabase/supabase-js": "jsr:@supabase/supabase-js@2",
     "@std/crypto/timing-safe-equal": "jsr:@std/crypto@1/timing-safe-equal",
     "zod": "npm:zod@^4.3",
-    "@std/assert": "jsr:@std/assert@1"
+    "@std/assert": "jsr:@std/assert@1",
+    "@sentry/deno": "https://deno.land/x/sentry/index.mjs"
   },
   "lint": {
     "rules": {

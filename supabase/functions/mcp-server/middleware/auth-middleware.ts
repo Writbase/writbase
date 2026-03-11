@@ -41,6 +41,7 @@ export async function authMiddleware(c: Context<AppEnv>, next: Next) {
     const supabase = createServiceClient()
     const agentContext = await authenticateAgent(supabase, keyId, secret)
     c.set('agentContext', agentContext)
+    logger.info('Agent authenticated', { request_id: c.get('requestId'), agent_key_id: agentContext.keyId, role: agentContext.role })
     await next()
   } catch (err) {
     // WritBaseError instances have a `code` property

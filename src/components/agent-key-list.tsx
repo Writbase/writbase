@@ -7,24 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import type { AgentKey } from '@/lib/types/database';
+import { formatRelativeTime } from '@/lib/utils/format';
 
 type KeyRow = Omit<AgentKey, 'key_hash'>;
-
-function relativeTime(dateStr: string | null): string {
-  if (!dateStr) return 'Never';
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffSec = Math.floor(diffMs / 1000);
-  if (diffSec < 60) return 'Just now';
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-  const diffDay = Math.floor(diffHr / 24);
-  if (diffDay < 30) return `${diffDay}d ago`;
-  return date.toLocaleDateString();
-}
 
 export function AgentKeyList() {
   const [keys, setKeys] = useState<KeyRow[]>([]);
@@ -143,7 +128,7 @@ export function AgentKeyList() {
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                      {relativeTime(k.last_used_at)}
+                      {k.last_used_at ? formatRelativeTime(k.last_used_at) : 'Never'}
                     </td>
                     <td className="px-4 py-3">
                       <Link

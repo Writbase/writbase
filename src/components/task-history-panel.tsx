@@ -2,8 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import type { EventLog } from '@/lib/types/database';
 import type { ActorType, Source } from '@/lib/types/enums';
+import { formatRelativeTime } from '@/lib/utils/format';
+
+const HISTORY_PAGE_SIZE = 50;
 
 interface TaskHistoryPanelProps {
   taskId: string;
@@ -23,24 +27,6 @@ const sourceColor: Record<Source, 'blue' | 'purple' | 'gray' | 'green'> = {
   api: 'green',
   system: 'gray',
 };
-
-function formatRelativeTime(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffSeconds = Math.floor(diffMs / 1000);
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  const diffHours = Math.floor(diffMinutes / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffSeconds < 60) return 'Just now';
-  if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
-  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays} days ago`;
-
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
 
 function formatEventType(eventType: string): string {
   return eventType.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -80,7 +66,10 @@ function SkeletonTimeline() {
 export function TaskHistoryPanel({ taskId, isOpen, onClose }: TaskHistoryPanelProps) {
   const [events, setEvents] = useState<EventLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -90,15 +79,17 @@ export function TaskHistoryPanel({ taskId, isOpen, onClose }: TaskHistoryPanelPr
     async function fetchHistory() {
       setLoading(true);
       setError(null);
+      setOffset(0);
       try {
-        const res = await fetch(`/api/tasks/${taskId}/history`);
+        const res = await fetch(`/api/tasks/${taskId}/history?limit=${HISTORY_PAGE_SIZE}&offset=0`);
         if (!res.ok) throw new Error('Failed to load history');
         const json = (await res.json()) as { data?: EventLog[] };
         if (!cancelled) {
           const items: EventLog[] = json.data ?? [];
-          // Most recent first
           items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
           setEvents(items);
+          setHasMore(items.length === HISTORY_PAGE_SIZE);
+          setOffset(HISTORY_PAGE_SIZE);
         }
       } catch (err: unknown) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Unknown error');
@@ -113,6 +104,26 @@ export function TaskHistoryPanel({ taskId, isOpen, onClose }: TaskHistoryPanelPr
       cancelled = true;
     };
   }, [taskId, isOpen]);
+
+  async function loadMore() {
+    setLoadingMore(true);
+    try {
+      const res = await fetch(
+        `/api/tasks/${taskId}/history?limit=${HISTORY_PAGE_SIZE}&offset=${offset}`,
+      );
+      if (!res.ok) throw new Error('Failed to load history');
+      const json = (await res.json()) as { data?: EventLog[] };
+      const items: EventLog[] = json.data ?? [];
+      items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setEvents((prev) => [...prev, ...items]);
+      setHasMore(items.length === HISTORY_PAGE_SIZE);
+      setOffset((prev) => prev + HISTORY_PAGE_SIZE);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   if (!isOpen) return null;
 
@@ -199,6 +210,13 @@ export function TaskHistoryPanel({ taskId, isOpen, onClose }: TaskHistoryPanelPr
                   </div>
                 </div>
               ))}
+              {hasMore && (
+                <div className="pt-2 text-center">
+                  <Button variant="secondary" onClick={loadMore} disabled={loadingMore}>
+                    {loadingMore ? 'Loading...' : 'Load more'}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>

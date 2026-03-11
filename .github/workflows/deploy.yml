@@ -41,6 +41,18 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
+      - name: Smoke test Edge Function health endpoint
+        run: |
+          curl -sf --retry 3 --retry-delay 5 \
+            "https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co/functions/v1/mcp-server/health"
+
+      # To add Slack notifications, replace the step below with slackapi/slack-github-action
+      - name: Notify deploy failure
+        if: failure()
+        run: |
+          echo "::error::Supabase deployment failed — check the logs above."
+          exit 1
+
   # Next.js deployment to Vercel:
   # Use the Vercel GitHub integration (zero config) rather than a manual
   # workflow step. Connect the repo in the Vercel dashboard and it will

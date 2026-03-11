@@ -1,20 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AgentContext } from '../../_shared/types.ts'
-import { mcpError, selfModificationDeniedError, insufficientManagerScopeError, validationError } from '../../_shared/errors.ts'
+import { loadPermissions } from '../../_shared/auth.ts'
+import { mcpError, selfModificationDeniedError, insufficientManagerScopeError, validationError, internalError } from '../../_shared/errors.ts'
 import { logEvent } from '../../_shared/event-log.ts'
 import { checkDominance, type PermissionGrant } from '../../_shared/permissions.ts'
-
-/** Shape of a row returned by the permissions list query with joined projects/departments. */
-interface PermissionListRow {
-  id: string
-  project_id: string
-  department_id: string | null
-  can_read: boolean
-  can_create: boolean
-  can_update: boolean
-  projects: { slug: string; name: string } | null
-  departments: { slug: string; name: string } | null
-}
 
 interface ManageAgentPermissionsParams {
   action: string
@@ -45,40 +34,27 @@ async function listPermissions(
   params: ManageAgentPermissionsParams,
   supabase: SupabaseClient
 ) {
-  const { data, error } = await supabase
-    .from('agent_permissions')
-    .select(`
-      id,
-      project_id,
-      department_id,
-      can_read,
-      can_create,
-      can_update,
-      projects:project_id ( slug, name ),
-      departments:department_id ( slug, name )
-    `)
-    .eq('agent_key_id', params.key_id)
-    .abortSignal(AbortSignal.timeout(10_000))
+  try {
+    const loaded = await loadPermissions(supabase, params.key_id)
 
-  if (error) {
-    return mcpError({ code: 'internal_error', message: error.message })
-  }
+    const permissions = loaded.map((p) => ({
+      id: p.id,
+      project_id: p.projectId,
+      project_slug: p.projectSlug || null,
+      project_name: p.projectName || null,
+      department_id: p.departmentId,
+      department_slug: p.departmentSlug,
+      department_name: p.departmentName,
+      can_read: p.canRead,
+      can_create: p.canCreate,
+      can_update: p.canUpdate,
+    }))
 
-  const permissions = ((data ?? []) as unknown as PermissionListRow[]).map((row) => ({
-    id: row.id,
-    project_id: row.project_id,
-    project_slug: row.projects?.slug ?? null,
-    project_name: row.projects?.name ?? null,
-    department_id: row.department_id,
-    department_slug: row.departments?.slug ?? null,
-    department_name: row.departments?.name ?? null,
-    can_read: row.can_read,
-    can_create: row.can_create,
-    can_update: row.can_update,
-  }))
-
-  return {
-    content: [{ type: 'text' as const, text: JSON.stringify({ key_id: params.key_id, permissions }) }],
+    return {
+      content: [{ type: 'text' as const, text: JSON.stringify({ key_id: params.key_id, permissions }) }],
+    }
+  } catch (err) {
+    return mcpError(internalError(err instanceof Error ? err.message : String(err)))
   }
 }
 
@@ -159,7 +135,7 @@ async function grantPermissions(
     .abortSignal(AbortSignal.timeout(10_000))
 
   if (error) {
-    return mcpError({ code: 'internal_error', message: error.message })
+    return mcpError(internalError(error.message))
   }
 
   // Log events for each granted permission
@@ -222,7 +198,7 @@ async function revokePermissions(
     const { data, error } = await query.select().abortSignal(AbortSignal.timeout(10_000))
 
     if (error) {
-      return mcpError({ code: 'internal_error', message: error.message })
+      return mcpError(internalError(error.message))
     }
 
     for (const deleted of data ?? []) {

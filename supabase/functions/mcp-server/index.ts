@@ -5,7 +5,10 @@ import { rateLimitMiddleware } from './middleware/rate-limit-middleware.ts'
 import { createMcpServerForAgent } from './schema/dynamic-schema.ts'
 import { createServiceClient } from '../_shared/supabase-client.ts'
 import { logger } from '../_shared/logger.ts'
+import { initSentry, captureException } from '../_shared/sentry.ts'
 import type { AgentContext } from '../_shared/types.ts'
+
+initSentry()
 
 type AppEnv = {
   Variables: {
@@ -27,6 +30,9 @@ app.use('*', async (c, next) => {
 // ── Origin policy ─────────────────────────────────────────────────────
 // Allow missing Origin (CLI agents) but reject unauthorized browser Origins.
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean)
+if (ALLOWED_ORIGINS.length === 0) {
+  logger.warn('ALLOWED_ORIGINS is empty — all browser origins will be accepted')
+}
 
 app.use('*', async (c, next) => {
   const origin = c.req.header('Origin')
@@ -67,9 +73,14 @@ app.post('/mcp', async (c) => {
   const agentContext = c.get('agentContext')
   const supabase = createServiceClient()
 
-  // Parse body early so we can extract the tool name for logging
-  const body = await c.req.json()
-  const toolName = body.method === 'tools/call' ? body.params?.name ?? 'unknown' : body.method ?? 'unknown'
+  let toolName = 'unknown'
+  try {
+    const clone = c.req.raw.clone()
+    const body = await clone.json()
+    toolName = body.method === 'tools/call' ? body.params?.name ?? 'unknown' : body.method ?? 'unknown'
+  } catch {
+    // malformed JSON — let the SDK handle it
+  }
 
   logger.info('POST /mcp', { request_id: requestId, agent_key_id: agentContext.keyId, role: agentContext.role, tool: toolName })
 
@@ -84,15 +95,14 @@ app.post('/mcp', async (c) => {
   // Connect the server to the transport
   await mcpServer.connect(transport)
 
-  // Handle the incoming request through the transport
-  const req = new Request(c.req.url, {
-    method: 'POST',
-    headers: c.req.raw.headers,
-    body: JSON.stringify(body),
-  })
-
   const startMs = performance.now()
-  const response = await transport.handleRequest(req)
+  let response: Response
+  try {
+    response = await transport.handleRequest(c.req.raw)
+  } catch (err) {
+    captureException(err)
+    throw err
+  }
   const elapsedMs = Math.round(performance.now() - startMs)
 
   // Close the transport after handling
@@ -136,6 +146,16 @@ app.delete('/mcp', (c) => {
   logger.info('DELETE /mcp session cleanup', { request_id: requestId })
   // Session cleanup — the Streamable HTTP transport handles this
   return c.json({ status: 'session_closed', request_id: requestId })
+})
+
+// ── Global error handler ─────────────────────────────────────────────
+app.onError((err, c) => {
+  captureException(err)
+  logger.error('Unhandled error', { error: err.message, request_id: c.get('requestId') })
+  return c.json(
+    { error: { code: 'internal_error', message: 'Internal server error', request_id: c.get('requestId') } },
+    500
+  )
 })
 
 // ── Serve ─────────────────────────────────────────────────────────────
