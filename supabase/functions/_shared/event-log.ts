@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ActorType, EventCategory, Source, TargetType } from './types.ts'
+import { logger } from './logger.ts'
 
 export interface LogEventParams {
   eventCategory: EventCategory
@@ -44,7 +45,7 @@ export async function logEvent(
   })
 
   if (error) {
-    console.error('Failed to log event:', JSON.stringify({ event_type: params.eventType, target_id: params.targetId, error: error.message }))
+    logger.error('Failed to log event', { event_type: params.eventType, target_id: params.targetId, error: error.message })
     if (critical) {
       throw new Error(`Critical audit log failure: ${error.message}`)
     }
@@ -101,7 +102,7 @@ export async function logFieldChanges(
   if (rows.length > 0) {
     const { error } = await supabase.from('event_log').insert(rows)
     if (error) {
-      console.error('Failed to log field changes:', JSON.stringify({ event_type: params.eventType, target_id: params.targetId, error: error.message }))
+      logger.error('Failed to log field changes', { event_type: params.eventType, target_id: params.targetId, error: error.message })
       if (critical) {
         throw new Error(`Critical audit log failure: ${error.message}`)
       }

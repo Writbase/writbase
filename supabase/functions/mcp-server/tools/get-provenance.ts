@@ -69,6 +69,7 @@ export async function handleGetProvenance(
       .from('tasks')
       .select('id')
       .eq('project_id', projectId)
+      .abortSignal(AbortSignal.timeout(10_000))
 
     const taskIds = (projectTasks ?? []).map((t: { id: string }) => t.id)
 
@@ -89,9 +90,34 @@ export async function handleGetProvenance(
     }
   } else if (params.target_type === 'project') {
     query = query.eq('target_id', projectId)
+  } else if (params.target_type === 'department') {
+    // Scope department events to departments the manager has permissions for in this project
+    const deptIds = [...new Set(
+      ctx.permissions
+        .filter((p) => p.projectId === projectId && p.departmentId)
+        .map((p) => p.departmentId!)
+    )]
+    if (deptIds.length === 0) {
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify({ events: [], next_cursor: null }) }],
+      }
+    }
+    query = query.in('target_id', deptIds)
+  } else if (params.target_type === 'agent_key') {
+    // Scope agent_key events: only show keys that have at least one permission in this project
+    const { data: keyPerms } = await supabase
+      .from('agent_permissions')
+      .select('agent_key_id')
+      .eq('project_id', projectId)
+      .abortSignal(AbortSignal.timeout(10_000))
+    const keyIds = [...new Set((keyPerms ?? []).map((k: { agent_key_id: string }) => k.agent_key_id))]
+    if (keyIds.length === 0) {
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify({ events: [], next_cursor: null }) }],
+      }
+    }
+    query = query.in('target_id', keyIds)
   }
-  // For department and agent_key target types, we return all matching events
-  // (these are admin-scoped and the manager has access)
 
   // 5. Apply cursor
   if (params.cursor) {
@@ -103,7 +129,7 @@ export async function handleGetProvenance(
     query = query.or(`created_at.lt.${decoded.createdAt},and(created_at.eq.${decoded.createdAt},id.lt.${decoded.id})`)
   }
 
-  const { data, error } = await query
+  const { data, error } = await query.abortSignal(AbortSignal.timeout(10_000))
 
   if (error) {
     return mcpError({ code: 'internal_error', message: error.message })

@@ -45,7 +45,8 @@ export async function createAgentKeyAction(formData: FormData) {
     revalidatePath('/agent-keys');
     return { success: true, data: { key: result.key, fullKey: result.fullKey } };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    console.error('agent-key action error:', err);
+    return { success: false, error: 'An unexpected error occurred' };
   }
 }
 
@@ -86,7 +87,8 @@ export async function updateAgentKeyAction(formData: FormData) {
     revalidatePath('/agent-keys');
     return { success: true, data: key };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    console.error('agent-key action error:', err);
+    return { success: false, error: 'An unexpected error occurred' };
   }
 }
 
@@ -109,7 +111,8 @@ export async function rotateAgentKeyAction(keyId: string) {
     revalidatePath('/agent-keys');
     return { success: true, data: { key: result.key, fullKey: result.fullKey } };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    console.error('agent-key action error:', err);
+    return { success: false, error: 'An unexpected error occurred' };
   }
 }
 
@@ -147,6 +150,7 @@ export async function updateAgentKeyPermissionsAction(data: {
     revalidatePath('/agent-keys');
     return { success: true };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    console.error('agent-key action error:', err);
+    return { success: false, error: 'An unexpected error occurred' };
   }
 }

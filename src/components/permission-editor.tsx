@@ -186,6 +186,7 @@ export function PermissionEditor({ keyId, initialPermissions }: PermissionEditor
                       onChange={(e) => {
                         updateRow(i, { canRead: e.target.checked });
                       }}
+                      aria-label={`Read access for ${row.projectName}${row.departmentName ? ` / ${row.departmentName}` : ''}`}
                       className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                     />
                   </td>
@@ -196,6 +197,7 @@ export function PermissionEditor({ keyId, initialPermissions }: PermissionEditor
                       onChange={(e) => {
                         updateRow(i, { canCreate: e.target.checked });
                       }}
+                      aria-label={`Create access for ${row.projectName}${row.departmentName ? ` / ${row.departmentName}` : ''}`}
                       className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                     />
                   </td>
@@ -206,6 +208,7 @@ export function PermissionEditor({ keyId, initialPermissions }: PermissionEditor
                       onChange={(e) => {
                         updateRow(i, { canUpdate: e.target.checked });
                       }}
+                      aria-label={`Update access for ${row.projectName}${row.departmentName ? ` / ${row.departmentName}` : ''}`}
                       className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                     />
                   </td>
@@ -216,6 +219,7 @@ export function PermissionEditor({ keyId, initialPermissions }: PermissionEditor
                       }}
                       className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                       title="Remove"
+                      aria-label={`Remove permission for ${row.projectName}${row.departmentName ? ` / ${row.departmentName}` : ''}`}
                     >
                       &times;
                     </button>

@@ -1,38 +1,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { AgentContext, AgentPermission } from '../../_shared/types.ts'
+import type { AgentContext } from '../../_shared/types.ts'
 import { mcpError, selfModificationDeniedError, insufficientManagerScopeError, validationError } from '../../_shared/errors.ts'
 import { logEvent } from '../../_shared/event-log.ts'
-
-interface PermissionRow {
-  project_id?: string
-  department_id?: string
-  can_read?: boolean
-  can_create?: boolean
-  can_update?: boolean
-}
+import { checkDominance, type PermissionGrant } from '../../_shared/permissions.ts'
 
 interface ManageAgentPermissionsParams {
   action: string
   key_id: string
-  permissions?: PermissionRow[]
-}
-
-/**
- * Check if a single manager permission row dominates a granted row.
- * Combining across rows is NOT allowed — one row must fully cover the grant.
- */
-function checkDominance(managerPerms: AgentPermission[], grantedRow: PermissionRow): boolean {
-  return managerPerms.some((mp) => {
-    // Must be same project
-    if (mp.projectId !== grantedRow.project_id) return false
-    // Manager dept must be NULL (whole project) or same as granted dept
-    if (mp.departmentId !== null && mp.departmentId !== (grantedRow.department_id ?? null)) return false
-    // Manager actions must be superset
-    if (grantedRow.can_read && !mp.canRead) return false
-    if (grantedRow.can_create && !mp.canCreate) return false
-    if (grantedRow.can_update && !mp.canUpdate) return false
-    return true
-  })
+  permissions?: PermissionGrant[]
 }
 
 export async function handleManageAgentPermissions(
@@ -71,6 +46,7 @@ async function listPermissions(
       departments:department_id ( slug, name )
     `)
     .eq('agent_key_id', params.key_id)
+    .abortSignal(AbortSignal.timeout(10_000))
 
   if (error) {
     return mcpError({ code: 'internal_error', message: error.message })
@@ -135,6 +111,7 @@ async function grantPermissions(
       onConflict: 'agent_key_id,project_id,department_id',
     })
     .select()
+    .abortSignal(AbortSignal.timeout(10_000))
 
   if (error) {
     return mcpError({ code: 'internal_error', message: error.message })
@@ -192,7 +169,7 @@ async function revokePermissions(
       query = query.is('department_id', null)
     }
 
-    const { data, error } = await query.select()
+    const { data, error } = await query.select().abortSignal(AbortSignal.timeout(10_000))
 
     if (error) {
       return mcpError({ code: 'internal_error', message: error.message })

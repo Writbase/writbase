@@ -17,15 +17,16 @@ export async function GET() {
     }
 
     const keys = await listAgentKeys(supabase);
-    return NextResponse.json({ data: keys });
-  } catch (err) {
     return NextResponse.json(
+      { data: keys },
       {
-        error: {
-          code: 'internal_error',
-          message: err instanceof Error ? err.message : 'Unknown error',
-        },
+        headers: { 'Cache-Control': 'private, no-cache' },
       },
+    );
+  } catch (err) {
+    console.error('GET /api/agent-keys error:', err);
+    return NextResponse.json(
+      { error: { code: 'internal_error', message: 'Internal server error' } },
       { status: 500 },
     );
   }

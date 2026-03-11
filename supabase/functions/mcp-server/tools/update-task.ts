@@ -36,6 +36,7 @@ export async function handleUpdateTask(
     .from('tasks')
     .select('*')
     .eq('id', params.task_id)
+    .abortSignal(AbortSignal.timeout(10_000))
     .single()
 
   if (fetchError || !existingTask) {
@@ -105,6 +106,7 @@ export async function handleUpdateTask(
           .from('departments')
           .select('id, is_archived')
           .eq('id', params.department)
+          .abortSignal(AbortSignal.timeout(10_000))
           .single()
 
         if (!dept || dept.is_archived) {
@@ -116,6 +118,7 @@ export async function handleUpdateTask(
           .from('departments')
           .select('id, is_archived')
           .eq('slug', params.department)
+          .abortSignal(AbortSignal.timeout(10_000))
           .single()
 
         if (!dept || dept.is_archived) {
@@ -170,6 +173,7 @@ export async function handleUpdateTask(
     .eq('id', params.task_id)
     .eq('version', params.version)
     .select()
+    .abortSignal(AbortSignal.timeout(10_000))
     .maybeSingle()
 
   if (updateError) {
@@ -186,6 +190,7 @@ export async function handleUpdateTask(
       .from('tasks')
       .select('version')
       .eq('id', params.task_id)
+      .abortSignal(AbortSignal.timeout(10_000))
       .single()
 
     return mcpError(versionConflictError(current?.version ?? existingTask.version))

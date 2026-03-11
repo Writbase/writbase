@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { logger } from './logger.ts'
 
 const DEFAULT_LIMIT = 60 // requests per minute
 
@@ -23,7 +24,7 @@ export async function checkRateLimit(
 
   if (error) {
     // Fail closed: deny the request when rate limiting is unavailable
-    console.error('Rate limit check failed:', error.message)
+    logger.error('Rate limit check failed', { agent_key_id: keyId, error: error.message })
     return { allowed: false, retryAfter: 5 }
   }
 

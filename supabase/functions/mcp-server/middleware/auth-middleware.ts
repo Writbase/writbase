@@ -3,6 +3,7 @@ import { parseAgentKey, authenticateAgent } from '../../_shared/auth.ts'
 import { createServiceClient } from '../../_shared/supabase-client.ts'
 import type { WritBaseError } from '../../_shared/errors.ts'
 import type { AgentContext } from '../../_shared/types.ts'
+import { logger } from '../../_shared/logger.ts'
 
 type AppEnv = {
   Variables: {
@@ -49,7 +50,7 @@ export async function authMiddleware(c: Context<AppEnv>, next: Next) {
       return c.json({ error: wbErr }, status)
     }
     // Unexpected error
-    console.error('Auth middleware error:', err)
+    logger.error('Auth middleware error', { request_id: c.get('requestId'), error: String(err) })
     return c.json(
       {
         error: {

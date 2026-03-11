@@ -13,12 +13,14 @@ export async function listProjects(supabase: SupabaseClient): Promise<Project[]>
   return data as Project[];
 }
 
+const MAX_SLUG_ATTEMPTS = 100;
+
 async function generateUniqueSlug(supabase: SupabaseClient, name: string): Promise<string> {
   const baseSlug = generateSlug(name);
   let slug = baseSlug;
   let suffix = 1;
 
-  for (;;) {
+  for (let i = 0; i < MAX_SLUG_ATTEMPTS; i++) {
     const { data } = await supabase.from('projects').select('id').eq('slug', slug).limit(1);
     const rows = data as { id: string }[] | null;
 
@@ -26,6 +28,8 @@ async function generateUniqueSlug(supabase: SupabaseClient, name: string): Promi
     suffix++;
     slug = `${baseSlug}-${suffix}`;
   }
+
+  throw new Error(`Failed to generate unique slug after ${MAX_SLUG_ATTEMPTS} attempts`);
 }
 
 export async function createProject(

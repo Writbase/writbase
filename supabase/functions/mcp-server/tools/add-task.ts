@@ -84,6 +84,7 @@ export async function handleAddTask(
           .from('departments')
           .select('id, is_archived')
           .eq('id', params.department)
+          .abortSignal(AbortSignal.timeout(10_000))
           .single()
 
         if (!dept || dept.is_archived) {
@@ -95,6 +96,7 @@ export async function handleAddTask(
           .from('departments')
           .select('id, is_archived')
           .eq('slug', params.department)
+          .abortSignal(AbortSignal.timeout(10_000))
           .single()
 
         if (!dept || dept.is_archived) {
@@ -108,6 +110,7 @@ export async function handleAddTask(
     const { data: settings } = await supabase
       .from('app_settings')
       .select('department_required')
+      .abortSignal(AbortSignal.timeout(10_000))
       .single()
 
     if (settings?.department_required) {
@@ -144,6 +147,7 @@ export async function handleAddTask(
       source: 'mcp',
     })
     .select()
+    .abortSignal(AbortSignal.timeout(10_000))
     .single()
 
   if (insertError) {

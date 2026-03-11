@@ -82,6 +82,7 @@ export async function handleGetTasks(
           .from('departments')
           .select('id, is_archived')
           .eq('slug', params.department)
+          .abortSignal(AbortSignal.timeout(10_000))
           .single()
 
         if (!dept || dept.is_archived) {
@@ -115,7 +116,7 @@ export async function handleGetTasks(
     p_cursor_created_at: cursorCreatedAt,
     p_cursor_id: cursorId,
     p_limit: limit,
-  })
+  }).abortSignal(AbortSignal.timeout(10_000))
 
   if (error) {
     return mcpError({

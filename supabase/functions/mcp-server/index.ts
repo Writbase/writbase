@@ -4,6 +4,7 @@ import { authMiddleware } from './middleware/auth-middleware.ts'
 import { rateLimitMiddleware } from './middleware/rate-limit-middleware.ts'
 import { createMcpServerForAgent } from './schema/dynamic-schema.ts'
 import { createServiceClient } from '../_shared/supabase-client.ts'
+import { logger } from '../_shared/logger.ts'
 import type { AgentContext } from '../_shared/types.ts'
 
 type AppEnv = {
@@ -66,7 +67,7 @@ app.post('/mcp', async (c) => {
   const agentContext = c.get('agentContext')
   const supabase = createServiceClient()
 
-  console.log(`[${requestId}] POST /mcp agent=${agentContext.keyId}`)
+  logger.info('POST /mcp', { request_id: requestId, agent_key_id: agentContext.keyId, role: agentContext.role })
 
   // Create a per-request MCP server scoped to this agent
   const mcpServer = await createMcpServerForAgent(agentContext, supabase)
@@ -102,7 +103,7 @@ app.get('/mcp', async (c) => {
   const agentContext = c.get('agentContext')
   const supabase = createServiceClient()
 
-  console.log(`[${requestId}] GET /mcp (SSE) agent=${agentContext.keyId}`)
+  logger.info('GET /mcp (SSE)', { request_id: requestId, agent_key_id: agentContext.keyId, role: agentContext.role })
 
   const mcpServer = await createMcpServerForAgent(agentContext, supabase)
 
@@ -125,7 +126,7 @@ app.get('/mcp', async (c) => {
 // ── DELETE /mcp — session cleanup ─────────────────────────────────────
 app.delete('/mcp', (c) => {
   const requestId = c.get('requestId')
-  console.log(`[${requestId}] DELETE /mcp session cleanup`)
+  logger.info('DELETE /mcp session cleanup', { request_id: requestId })
   // Session cleanup — the Streamable HTTP transport handles this
   return c.json({ status: 'session_closed', request_id: requestId })
 })

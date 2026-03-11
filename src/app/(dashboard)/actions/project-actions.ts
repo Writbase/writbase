@@ -32,7 +32,8 @@ export async function createProjectAction(formData: FormData) {
     revalidatePath('/', 'layout');
     return { success: true, data: project };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    console.error('project action error:', err);
+    return { success: false, error: 'An unexpected error occurred' };
   }
 }
 
@@ -70,6 +71,7 @@ export async function updateProjectAction(formData: FormData) {
     revalidatePath('/', 'layout');
     return { success: true, data: project };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    console.error('project action error:', err);
+    return { success: false, error: 'An unexpected error occurred' };
   }
 }

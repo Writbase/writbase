@@ -6,11 +6,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { updateDepartmentAction } from '@/app/(dashboard)/actions/department-actions';
 import { updateProjectAction } from '@/app/(dashboard)/actions/project-actions';
-import { DepartmentForm } from '@/components/department-form';
-import { ProjectForm } from '@/components/project-form';
+import { SidebarDepartmentSelector } from '@/components/sidebar-department-selector';
+import { SidebarModals } from '@/components/sidebar-modals';
+import { SidebarProjectSelector } from '@/components/sidebar-project-selector';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Modal } from '@/components/ui/modal';
 import { createClient } from '@/lib/supabase/client';
 
 interface Project {
@@ -205,189 +204,31 @@ export function Sidebar({ userEmail }: SidebarProps) {
 
       {/* Selectors */}
       <div className="mt-6 space-y-4 px-3">
-        {/* Project selector */}
-        <div>
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Project
-            </label>
-            <button
-              onClick={() => {
-                setShowProjectModal(true);
-              }}
-              className="text-xs text-blue-400 hover:text-blue-300"
-            >
-              + Add
-            </button>
-          </div>
-          {activeProjects.length === 0 ? (
-            <p className="mt-1 text-xs text-slate-500">
-              No projects yet. Click &quot;+ Add&quot; to create your first project.
-            </p>
-          ) : (
-            <select
-              value={selectedProject}
-              onChange={(e) => {
-                setSearchParam('project', e.target.value);
-              }}
-              className="mt-1 block w-full rounded-md border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="">All projects</option>
-              {activeProjects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
+        <SidebarProjectSelector
+          activeProjects={activeProjects}
+          selectedProject={selectedProject}
+          onSelectProject={(id) => {
+            setSearchParam('project', id);
+          }}
+          onAddProject={() => {
+            setShowProjectModal(true);
+          }}
+          onEditProject={setEditingProject}
+          onArchiveProject={handleArchiveProject}
+        />
 
-        {/* Project management list */}
-        {activeProjects.length > 0 && (
-          <div className="mt-2 max-h-32 space-y-0.5 overflow-y-auto">
-            {activeProjects.map((p) => (
-              <div
-                key={p.id}
-                className="group flex items-center justify-between rounded px-2 py-1 text-xs text-slate-300 hover:bg-slate-800"
-              >
-                <span className="truncate">{p.name}</span>
-                <span className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                  <button
-                    onClick={() => {
-                      setEditingProject({ id: p.id, name: p.name });
-                    }}
-                    className="text-slate-400 hover:text-blue-400"
-                    aria-label={`Rename ${p.name}`}
-                    title="Rename"
-                  >
-                    <svg
-                      className="h-3.5 w-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => handleArchiveProject(p.id)}
-                    className="text-slate-400 hover:text-red-400"
-                    aria-label={`Archive ${p.name}`}
-                    title="Archive"
-                  >
-                    <svg
-                      className="h-3.5 w-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
-                      />
-                    </svg>
-                  </button>
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Department selector */}
-        <div>
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Department
-            </label>
-            <button
-              onClick={() => {
-                setShowDepartmentModal(true);
-              }}
-              className="text-xs text-blue-400 hover:text-blue-300"
-            >
-              + Add
-            </button>
-          </div>
-          <select
-            value={selectedDepartment}
-            onChange={(e) => {
-              setSearchParam('department', e.target.value);
-            }}
-            className="mt-1 block w-full rounded-md border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          >
-            <option value="">All departments</option>
-            {activeDepartments.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Department management list */}
-        {activeDepartments.length > 0 && (
-          <div className="mt-2 max-h-32 space-y-0.5 overflow-y-auto">
-            {activeDepartments.map((d) => (
-              <div
-                key={d.id}
-                className="group flex items-center justify-between rounded px-2 py-1 text-xs text-slate-300 hover:bg-slate-800"
-              >
-                <span className="truncate">{d.name}</span>
-                <span className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                  <button
-                    onClick={() => {
-                      setEditingDepartment({ id: d.id, name: d.name });
-                    }}
-                    className="text-slate-400 hover:text-blue-400"
-                    aria-label={`Rename ${d.name}`}
-                    title="Rename"
-                  >
-                    <svg
-                      className="h-3.5 w-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => handleArchiveDepartment(d.id)}
-                    className="text-slate-400 hover:text-red-400"
-                    aria-label={`Archive ${d.name}`}
-                    title="Archive"
-                  >
-                    <svg
-                      className="h-3.5 w-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
-                      />
-                    </svg>
-                  </button>
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+        <SidebarDepartmentSelector
+          activeDepartments={activeDepartments}
+          selectedDepartment={selectedDepartment}
+          onSelectDepartment={(id) => {
+            setSearchParam('department', id);
+          }}
+          onAddDepartment={() => {
+            setShowDepartmentModal(true);
+          }}
+          onEditDepartment={setEditingDepartment}
+          onArchiveDepartment={handleArchiveDepartment}
+        />
       </div>
 
       {/* Spacer */}
@@ -406,125 +247,32 @@ export function Sidebar({ userEmail }: SidebarProps) {
       </div>
 
       {/* Modals */}
-      <Modal
-        open={showProjectModal}
-        onClose={() => {
+      <SidebarModals
+        showProjectModal={showProjectModal}
+        onCloseProjectModal={() => {
           setShowProjectModal(false);
         }}
-        title="New Project"
-      >
-        <ProjectForm
-          onClose={() => {
-            setShowProjectModal(false);
-          }}
-          onSuccess={() => {
-            void fetchProjects();
-          }}
-        />
-      </Modal>
-
-      <Modal
-        open={showDepartmentModal}
-        onClose={() => {
+        onProjectCreated={() => {
+          void fetchProjects();
+        }}
+        showDepartmentModal={showDepartmentModal}
+        onCloseDepartmentModal={() => {
           setShowDepartmentModal(false);
         }}
-        title="New Department"
-      >
-        <DepartmentForm
-          onClose={() => {
-            setShowDepartmentModal(false);
-          }}
-          onSuccess={() => {
-            void fetchDepartments();
-          }}
-        />
-      </Modal>
-
-      {/* Rename Project Modal */}
-      <Modal
-        open={editingProject !== null}
-        onClose={() => {
+        onDepartmentCreated={() => {
+          void fetchDepartments();
+        }}
+        editingProject={editingProject}
+        onCloseEditProject={() => {
           setEditingProject(null);
         }}
-        title="Rename Project"
-      >
-        {editingProject && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleRenameProject(editingProject.id, editingProject.name);
-            }}
-            className="space-y-4"
-          >
-            <Input
-              id="rename-project"
-              label="Project Name"
-              value={editingProject.name}
-              onChange={(e) => {
-                setEditingProject({ ...editingProject, name: e.target.value });
-              }}
-              autoFocus
-            />
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="ghost"
-                type="button"
-                onClick={() => {
-                  setEditingProject(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={!editingProject.name.trim()}>
-                Save
-              </Button>
-            </div>
-          </form>
-        )}
-      </Modal>
-
-      {/* Rename Department Modal */}
-      <Modal
-        open={editingDepartment !== null}
-        onClose={() => {
+        onRenameProject={handleRenameProject}
+        editingDepartment={editingDepartment}
+        onCloseEditDepartment={() => {
           setEditingDepartment(null);
         }}
-        title="Rename Department"
-      >
-        {editingDepartment && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleRenameDepartment(editingDepartment.id, editingDepartment.name);
-            }}
-            className="space-y-4"
-          >
-            <Input
-              id="rename-department"
-              label="Department Name"
-              value={editingDepartment.name}
-              onChange={(e) => {
-                setEditingDepartment({ ...editingDepartment, name: e.target.value });
-              }}
-              autoFocus
-            />
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="ghost"
-                type="button"
-                onClick={() => {
-                  setEditingDepartment(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={!editingDepartment.name.trim()}>
-                Save
-              </Button>
-            </div>
-          </form>
-        )}
-      </Modal>
+        onRenameDepartment={handleRenameDepartment}
+      />
     </div>
   );
 

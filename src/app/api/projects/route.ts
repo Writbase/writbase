@@ -17,15 +17,16 @@ export async function GET() {
     }
 
     const projects = await listProjects(supabase);
-    return NextResponse.json({ data: projects });
-  } catch (err) {
     return NextResponse.json(
+      { data: projects },
       {
-        error: {
-          code: 'internal_error',
-          message: err instanceof Error ? err.message : 'Unknown error',
-        },
+        headers: { 'Cache-Control': 'private, max-age=30' },
       },
+    );
+  } catch (err) {
+    console.error('GET /api/projects error:', err);
+    return NextResponse.json(
+      { error: { code: 'internal_error', message: 'Internal server error' } },
       { status: 500 },
     );
   }

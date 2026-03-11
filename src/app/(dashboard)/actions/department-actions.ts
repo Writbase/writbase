@@ -32,7 +32,8 @@ export async function createDepartmentAction(formData: FormData) {
     revalidatePath('/', 'layout');
     return { success: true, data: department };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    console.error('department action error:', err);
+    return { success: false, error: 'An unexpected error occurred' };
   }
 }
 
@@ -70,6 +71,7 @@ export async function updateDepartmentAction(formData: FormData) {
     revalidatePath('/', 'layout');
     return { success: true, data: department };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    console.error('department action error:', err);
+    return { success: false, error: 'An unexpected error occurred' };
   }
 }

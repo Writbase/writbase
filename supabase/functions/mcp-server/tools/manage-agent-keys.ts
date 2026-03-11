@@ -41,6 +41,7 @@ async function listKeys(supabase: SupabaseClient) {
     .from('agent_keys')
     .select('id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by')
     .order('created_at', { ascending: false })
+    .abortSignal(AbortSignal.timeout(10_000))
 
   if (error) {
     return mcpError({ code: 'internal_error', message: error.message })
@@ -76,6 +77,7 @@ async function createKey(
   const { data: settings } = await supabase
     .from('app_settings')
     .select('require_human_approval_for_agent_keys')
+    .abortSignal(AbortSignal.timeout(10_000))
     .single()
   const requireApproval: boolean = settings?.require_human_approval_for_agent_keys ?? false
 
@@ -93,6 +95,7 @@ async function createKey(
       special_prompt: params.special_prompt ?? null,
       created_by: ctx.keyId,
     })
+    .abortSignal(AbortSignal.timeout(10_000))
 
   if (insertError) {
     return mcpError({ code: 'internal_error', message: insertError.message })
@@ -152,6 +155,7 @@ async function updateKey(
     .update(updates)
     .eq('id', params.key_id)
     .select('id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at')
+    .abortSignal(AbortSignal.timeout(10_000))
     .single()
 
   if (error) {
@@ -193,6 +197,7 @@ async function deactivateKey(
     .update({ is_active: false })
     .eq('id', params.key_id)
     .select('id, name, role, is_active')
+    .abortSignal(AbortSignal.timeout(10_000))
     .single()
 
   if (error) {
@@ -238,6 +243,7 @@ async function rotateKey(
       key_prefix: keyData.keyPrefix,
     })
     .eq('id', params.key_id)
+    .abortSignal(AbortSignal.timeout(10_000))
 
   if (error) {
     return mcpError({ code: 'internal_error', message: error.message })

@@ -1,8 +1,17 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { listTasks } from '@/lib/services/tasks';
 import { createClient } from '@/lib/supabase/server';
-import type { Priority, Status } from '@/lib/types/enums';
 import { parsePagination } from '@/lib/utils/pagination';
+
+const taskQuerySchema = z.object({
+  projectId: z.uuid().optional(),
+  departmentId: z.uuid().optional(),
+  status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled']).optional(),
+  priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+  sortBy: z.enum(['created_at', 'updated_at', 'due_date', 'priority', 'status']).optional(),
+  sortOrder: z.enum(['asc', 'desc']).optional(),
+});
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,26 +30,44 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const { limit, offset } = parsePagination(searchParams);
 
-    const tasks = await listTasks(supabase, {
+    const parsed = taskQuerySchema.safeParse({
       projectId: searchParams.get('projectId') ?? undefined,
       departmentId: searchParams.get('departmentId') ?? undefined,
-      status: (searchParams.get('status') as Status | null) ?? undefined,
-      priority: (searchParams.get('priority') as Priority | null) ?? undefined,
+      status: searchParams.get('status') ?? undefined,
+      priority: searchParams.get('priority') ?? undefined,
       sortBy: searchParams.get('sortBy') ?? undefined,
-      sortOrder: (searchParams.get('sortOrder') as 'asc' | 'desc' | null) ?? undefined,
+      sortOrder: searchParams.get('sortOrder') ?? undefined,
+    });
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'validation_error',
+            message: 'Invalid query parameters',
+            details: parsed.error.issues,
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    const tasks = await listTasks(supabase, {
+      ...parsed.data,
       limit,
       offset,
     });
 
-    return NextResponse.json({ data: tasks });
-  } catch (err) {
     return NextResponse.json(
+      { data: tasks },
       {
-        error: {
-          code: 'internal_error',
-          message: err instanceof Error ? err.message : 'Unknown error',
-        },
+        headers: { 'Cache-Control': 'private, no-cache' },
       },
+    );
+  } catch (err) {
+    console.error('GET /api/tasks error:', err);
+    return NextResponse.json(
+      { error: { code: 'internal_error', message: 'Internal server error' } },
       { status: 500 },
     );
   }

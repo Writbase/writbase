@@ -55,6 +55,7 @@ async function createDepartment(
       is_archived: false,
     })
     .select()
+    .abortSignal(AbortSignal.timeout(10_000))
     .single()
 
   if (error) {
@@ -100,6 +101,7 @@ async function renameDepartment(
     .from('departments')
     .select('*')
     .eq('id', params.department_id)
+    .abortSignal(AbortSignal.timeout(10_000))
     .single()
 
   if (fetchError || !oldRecord) {
@@ -114,6 +116,7 @@ async function renameDepartment(
     .update({ name: params.name.trim(), slug })
     .eq('id', params.department_id)
     .select()
+    .abortSignal(AbortSignal.timeout(10_000))
     .single()
 
   if (error) {
@@ -152,6 +155,7 @@ async function archiveDepartment(
     .update({ is_archived: true })
     .eq('id', params.department_id)
     .select()
+    .abortSignal(AbortSignal.timeout(10_000))
     .single()
 
   if (error) {

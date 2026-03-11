@@ -2,7 +2,16 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { EventLog, Task } from '@/lib/types/database';
 import type { ActorType, Priority, Source, Status } from '@/lib/types/enums';
 import { AppError } from '@/lib/utils/errors';
-import { logEvent } from './event-log';
+
+/**
+ * Parse the error code prefix from a Postgres RAISE EXCEPTION message.
+ * Expected format: 'error_code:human-readable message'
+ */
+function parseRpcErrorCode(message: string): string | null {
+  const colonIndex = message.indexOf(':');
+  if (colonIndex === -1) return null;
+  return message.slice(0, colonIndex);
+}
 
 export interface TaskWithRelations extends Task {
   projects?: { name: string } | null;
@@ -59,73 +68,42 @@ export async function createTask(
     source: Source;
   },
 ): Promise<Task> {
-  // Validate project is not archived
-  const projResult = await supabase
-    .from('projects')
-    .select('id, is_archived')
-    .eq('id', params.projectId)
-    .single();
-
-  const proj = projResult.data as { id: string; is_archived: boolean } | null;
-  if (projResult.error || !proj) {
-    throw new AppError('project_not_found', 'Project not found', 404);
-  }
-  if (proj.is_archived) {
-    throw new AppError('project_archived', 'Cannot create tasks in an archived project');
-  }
-
-  // Validate department if provided
-  if (params.departmentId) {
-    const deptResult = await supabase
-      .from('departments')
-      .select('id, is_archived')
-      .eq('id', params.departmentId)
-      .single();
-
-    const department = deptResult.data as { id: string; is_archived: boolean } | null;
-    if (deptResult.error || !department) {
-      throw new AppError('department_not_found', 'Department not found', 404);
-    }
-    if (department.is_archived) {
-      throw new AppError('department_archived', 'Cannot create tasks in an archived department');
-    }
-  }
-
-  const insertResult = await supabase
-    .from('tasks')
-    .insert({
-      project_id: params.projectId,
-      department_id: params.departmentId ?? null,
-      priority: params.priority ?? 'medium',
-      description: params.description,
-      notes: params.notes ?? null,
-      due_date: params.dueDate ?? null,
-      status: params.status ?? 'todo',
-      version: 1,
-      created_by_type: params.createdByType,
-      created_by_id: params.createdById,
-      updated_by_type: params.createdByType,
-      updated_by_id: params.createdById,
-      source: params.source,
-    })
-    .select()
-    .single();
-
-  if (insertResult.error) throw insertResult.error;
-  const task = insertResult.data as Task;
-
-  await logEvent(supabase, {
-    eventCategory: 'task',
-    targetType: 'task',
-    targetId: task.id,
-    eventType: 'task.created',
-    actorType: params.createdByType,
-    actorId: params.createdById,
-    actorLabel: params.createdByType === 'human' ? 'admin' : params.createdById,
+  const payload = {
+    project_id: params.projectId,
+    department_id: params.departmentId ?? null,
+    priority: params.priority ?? 'medium',
+    description: params.description,
+    notes: params.notes ?? null,
+    due_date: params.dueDate ?? null,
+    status: params.status ?? 'todo',
+    created_by_type: params.createdByType,
+    created_by_id: params.createdById,
+    actor_type: params.createdByType,
+    actor_id: params.createdById,
+    actor_label: params.createdByType === 'human' ? 'admin' : params.createdById,
     source: params.source,
-  });
+  };
 
-  return task;
+  const { data, error } = await supabase
+    .rpc('create_task_with_event', {
+      p_payload: payload,
+    })
+    .single();
+
+  if (error) {
+    const code = parseRpcErrorCode(error.message);
+    if (code === 'project_not_found')
+      throw new AppError('project_not_found', 'Project not found', 404);
+    if (code === 'project_archived')
+      throw new AppError('project_archived', 'Cannot create tasks in an archived project');
+    if (code === 'department_not_found')
+      throw new AppError('department_not_found', 'Department not found', 404);
+    if (code === 'department_archived')
+      throw new AppError('department_archived', 'Cannot create tasks in an archived department');
+    throw error;
+  }
+
+  return data as Task;
 }
 
 export async function updateTask(
@@ -147,15 +125,6 @@ export async function updateTask(
     source: Source;
   },
 ): Promise<Task> {
-  // Build the update object
-  const updates: Record<string, unknown> = {
-    version: params.version + 1,
-    updated_by_type: params.updatedByType,
-    updated_by_id: params.updatedById,
-    source: params.source,
-    updated_at: new Date().toISOString(),
-  };
-
   const fieldMap: Record<string, string> = {
     projectId: 'project_id',
     departmentId: 'department_id',
@@ -166,66 +135,38 @@ export async function updateTask(
     status: 'status',
   };
 
+  // Build the fields object with DB column names
+  const fields: Record<string, unknown> = {};
   for (const [key, dbCol] of Object.entries(fieldMap)) {
     if (key in params.fields) {
-      updates[dbCol] = (params.fields as Record<string, unknown>)[key] ?? null;
+      fields[dbCol] = (params.fields as Record<string, unknown>)[key] ?? null;
     }
   }
 
-  // Optimistic concurrency: update only if version matches
-  const updateResult = await supabase
-    .from('tasks')
-    .update(updates)
-    .eq('id', params.id)
-    .eq('version', params.version)
-    .select()
+  const payload = {
+    task_id: params.id,
+    version: params.version,
+    fields,
+    actor_type: params.updatedByType,
+    actor_id: params.updatedById,
+    actor_label: params.updatedByType === 'human' ? 'admin' : params.updatedById,
+    source: params.source,
+  };
+
+  const { data, error } = await supabase
+    .rpc('update_task_with_events', {
+      p_payload: payload,
+    })
     .single();
 
-  if (updateResult.error) {
-    // If no rows matched, it's a version conflict
-    if (updateResult.error.code === 'PGRST116') {
-      // Check if the task exists at all
-      const existResult = await supabase
-        .from('tasks')
-        .select('version')
-        .eq('id', params.id)
-        .single();
-      const existing = existResult.data as { version: number } | null;
-
-      if (existing) {
-        throw new AppError(
-          'version_conflict',
-          `Version conflict: expected ${params.version}, current is ${String(existing.version)}`,
-          409,
-        );
-      }
-      throw new AppError('task_not_found', 'Task not found', 404);
-    }
-    throw updateResult.error;
+  if (error) {
+    const code = parseRpcErrorCode(error.message);
+    if (code === 'task_not_found') throw new AppError('task_not_found', 'Task not found', 404);
+    if (code === 'version_conflict') throw new AppError('version_conflict', error.message, 409);
+    throw error;
   }
 
-  const updatedTask = updateResult.data as Task;
-
-  // Log field-level changes
-  // Fetch the old values for logging
-  for (const [key, dbCol] of Object.entries(fieldMap)) {
-    if (key in params.fields) {
-      await logEvent(supabase, {
-        eventCategory: 'task',
-        targetType: 'task',
-        targetId: params.id,
-        eventType: 'task.updated',
-        fieldName: dbCol,
-        newValue: (params.fields as Record<string, unknown>)[key] ?? null,
-        actorType: params.updatedByType,
-        actorId: params.updatedById,
-        actorLabel: params.updatedByType === 'human' ? 'admin' : params.updatedById,
-        source: params.source,
-      });
-    }
-  }
-
-  return updatedTask;
+  return data as Task;
 }
 
 export async function getTaskHistory(

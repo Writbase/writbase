@@ -13,12 +13,14 @@ export async function listDepartments(supabase: SupabaseClient): Promise<Departm
   return data as Department[];
 }
 
+const MAX_SLUG_ATTEMPTS = 100;
+
 async function generateUniqueSlug(supabase: SupabaseClient, name: string): Promise<string> {
   const baseSlug = generateSlug(name);
   let slug = baseSlug;
   let suffix = 1;
 
-  for (;;) {
+  for (let i = 0; i < MAX_SLUG_ATTEMPTS; i++) {
     const { data } = await supabase.from('departments').select('id').eq('slug', slug).limit(1);
     const rows = data as { id: string }[] | null;
 
@@ -26,6 +28,8 @@ async function generateUniqueSlug(supabase: SupabaseClient, name: string): Promi
     suffix++;
     slug = `${baseSlug}-${suffix}`;
   }
+
+  throw new Error(`Failed to generate unique slug after ${MAX_SLUG_ATTEMPTS} attempts`);
 }
 
 export async function createDepartment(

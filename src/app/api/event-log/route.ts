@@ -1,8 +1,14 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { listEvents } from '@/lib/services/event-log';
 import { createClient } from '@/lib/supabase/server';
-import type { EventCategory, TargetType } from '@/lib/types/enums';
 import { parsePagination } from '@/lib/utils/pagination';
+
+const eventLogQuerySchema = z.object({
+  targetId: z.uuid().optional(),
+  targetType: z.enum(['task', 'agent_key', 'project', 'department']).optional(),
+  eventCategory: z.enum(['task', 'admin', 'system']).optional(),
+});
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,23 +27,41 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const { limit, offset } = parsePagination(searchParams);
 
-    const events = await listEvents(supabase, {
+    const parsed = eventLogQuerySchema.safeParse({
       targetId: searchParams.get('targetId') ?? undefined,
-      targetType: (searchParams.get('targetType') as TargetType | null) ?? undefined,
-      eventCategory: (searchParams.get('eventCategory') as EventCategory | null) ?? undefined,
+      targetType: searchParams.get('targetType') ?? undefined,
+      eventCategory: searchParams.get('eventCategory') ?? undefined,
+    });
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'validation_error',
+            message: 'Invalid query parameters',
+            details: parsed.error.issues,
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    const events = await listEvents(supabase, {
+      ...parsed.data,
       limit,
       offset,
     });
 
-    return NextResponse.json({ data: events });
-  } catch (err) {
     return NextResponse.json(
+      { data: events },
       {
-        error: {
-          code: 'internal_error',
-          message: err instanceof Error ? err.message : 'Unknown error',
-        },
+        headers: { 'Cache-Control': 'private, no-cache' },
       },
+    );
+  } catch (err) {
+    console.error('GET /api/event-log error:', err);
+    return NextResponse.json(
+      { error: { code: 'internal_error', message: 'Internal server error' } },
       { status: 500 },
     );
   }

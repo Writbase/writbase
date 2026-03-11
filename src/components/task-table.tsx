@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { TaskForm } from '@/components/task-form';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -92,6 +92,8 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
 
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number>(-1);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const sortBy = (searchParams.get('sortBy') as SortColumn | null) ?? 'created_at';
   const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc' | null) ?? 'desc';
@@ -156,6 +158,11 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
     void fetchDepartments();
   }, [fetchDepartments]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset selection when task list changes
+  useEffect(() => {
+    setSelectedIndex(-1);
+  }, [tasks]);
+
   function handleSort(column: SortColumn) {
     const params = new URLSearchParams(searchParams.toString());
     if (sortBy === column) {
@@ -196,6 +203,35 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
 
   function handleFormSuccess() {
     void fetchTasks(offset);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (tasks.length === 0) return;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setSelectedIndex((prev) => Math.min(prev + 1, tasks.length - 1));
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedIndex((prev) => Math.max(prev - 1, 0));
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (selectedIndex >= 0 && selectedIndex < tasks.length) {
+          handleRowClick(tasks[selectedIndex]);
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        if (showForm) {
+          handleFormClose();
+        } else {
+          setSelectedIndex(-1);
+        }
+        break;
+    }
   }
 
   function getDepartmentInfo(depId: string | null): { name: string; isArchived: boolean } {
@@ -265,7 +301,18 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+          {/* biome-ignore lint/a11y/useSemanticElements: div with role="grid" provides keyboard navigation for task list */}
+          <div
+            ref={containerRef}
+            tabIndex={0}
+            role="grid"
+            aria-label="Task list"
+            aria-activedescendant={
+              selectedIndex >= 0 ? `task-row-${tasks[selectedIndex]?.id}` : undefined
+            }
+            onKeyDown={handleKeyDown}
+            className="overflow-x-auto rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 dark:border-slate-700"
+          >
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
@@ -287,12 +334,13 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
                 {tasks.map((task, idx) => (
                   <tr
                     key={task.id}
+                    id={`task-row-${task.id}`}
                     onClick={() => {
                       handleRowClick(task);
                     }}
                     className={`cursor-pointer border-b border-slate-100 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800 ${
                       idx % 2 === 1 ? 'bg-slate-25 dark:bg-slate-900/50' : ''
-                    }`}
+                    } ${selectedIndex === idx ? 'ring-2 ring-inset ring-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''}`}
                   >
                     <td className="whitespace-nowrap px-4 py-2.5">
                       <Badge color={priorityColor[task.priority]}>{task.priority}</Badge>

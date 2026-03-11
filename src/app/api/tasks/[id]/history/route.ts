@@ -18,15 +18,16 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
     const { id } = await params;
     const history = await getTaskHistory(supabase, id);
-    return NextResponse.json({ data: history });
-  } catch (err) {
     return NextResponse.json(
+      { data: history },
       {
-        error: {
-          code: 'internal_error',
-          message: err instanceof Error ? err.message : 'Unknown error',
-        },
+        headers: { 'Cache-Control': 'private, no-cache' },
       },
+    );
+  } catch (err) {
+    console.error('GET /api/tasks/[id]/history error:', err);
+    return NextResponse.json(
+      { error: { code: 'internal_error', message: 'Internal server error' } },
       { status: 500 },
     );
   }

@@ -6,6 +6,7 @@ export async function handleInfo(ctx: AgentContext, supabase: SupabaseClient) {
   const { data: settings } = await supabase
     .from('app_settings')
     .select('department_required')
+    .abortSignal(AbortSignal.timeout(10_000))
     .single()
   const departmentRequired: boolean = settings?.department_required ?? false
 

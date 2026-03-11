@@ -2,6 +2,7 @@ import { timingSafeEqual } from '@std/crypto/timing-safe-equal'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AgentContext, AgentKeyRecord, AgentPermission } from './types.ts'
 import { unauthorizedError, inactiveKeyError } from './errors.ts'
+import { logger } from './logger.ts'
 
 const KEY_PREFIX_RE = /^Bearer wb_([0-9a-f-]{36})_([0-9a-f]{64})$/
 
@@ -72,6 +73,7 @@ export async function authenticateAgent(
     .from('agent_keys')
     .select('*')
     .eq('id', keyId)
+    .abortSignal(AbortSignal.timeout(10_000))
     .single<AgentKeyRecord>()
 
   if (error || !keyRecord) {
@@ -101,9 +103,9 @@ export async function authenticateAgent(
     .eq('id', keyId)
     .then(
       ({ error }) => {
-        if (error) console.error(`[auth] last_used_at update failed for key ${keyId}:`, error.message)
+        if (error) logger.error('last_used_at update failed', { agent_key_id: keyId, error: error.message })
       },
-      (e: unknown) => console.error(`[auth] last_used_at update rejected for key ${keyId}:`, e)
+      (e: unknown) => logger.error('last_used_at update rejected', { agent_key_id: keyId, error: String(e) })
     )
 
   return {
@@ -136,6 +138,7 @@ export async function loadPermissions(
       departments:department_id ( slug, name, is_archived )
     `)
     .eq('agent_key_id', keyId)
+    .abortSignal(AbortSignal.timeout(10_000))
 
   if (error) {
     throw new Error(`Failed to load permissions: ${error.message}`)

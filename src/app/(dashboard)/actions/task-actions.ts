@@ -28,7 +28,13 @@ export async function createTaskAction(formData: FormData) {
     });
 
     if (!parsed.success) {
-      return { success: false, error: parsed.error.issues[0].message };
+      return {
+        success: false,
+        error: parsed.error.issues.map((i) => i.message).join('; '),
+        fieldErrors: Object.fromEntries(
+          parsed.error.issues.map((i) => [i.path.join('.'), i.message]),
+        ),
+      };
     }
 
     const task = await createTask(supabase, {
@@ -50,7 +56,8 @@ export async function createTaskAction(formData: FormData) {
     if (err instanceof AppError) {
       return { success: false, error: err.message, code: err.code };
     }
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    console.error('createTaskAction error:', err);
+    return { success: false, error: 'An unexpected error occurred' };
   }
 }
 
@@ -77,7 +84,13 @@ export async function updateTaskAction(data: {
 
     const parsed = taskUpdateSchema.safeParse(data);
     if (!parsed.success) {
-      return { success: false, error: parsed.error.issues[0].message };
+      return {
+        success: false,
+        error: parsed.error.issues.map((i) => i.message).join('; '),
+        fieldErrors: Object.fromEntries(
+          parsed.error.issues.map((i) => [i.path.join('.'), i.message]),
+        ),
+      };
     }
 
     const { id, version, ...fields } = parsed.data;
@@ -99,6 +112,7 @@ export async function updateTaskAction(data: {
     if (err instanceof AppError) {
       return { success: false, error: err.message, code: err.code };
     }
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    console.error('updateTaskAction error:', err);
+    return { success: false, error: 'An unexpected error occurred' };
   }
 }

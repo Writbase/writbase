@@ -59,13 +59,13 @@ export async function createMcpServerForAgent(
   // ── Helper: build project param as a Zod enum ──────────────────────
   const projectEnum = projectSlugs.length > 0
     ? z.enum(projectSlugs as [string, ...string[]])
-    : z.string()
+    : z.never()
 
   // ── Helper: build optional department enum ─────────────────────────
   const allDepts = [...new Set(Object.values(deptsByProject).flat())]
   const deptEnum = allDepts.length > 0
     ? z.enum(allDepts as [string, ...string[]])
-    : z.string()
+    : z.never()
 
   // ── WORKER TOOLS (available to all roles) ──────────────────────────
 

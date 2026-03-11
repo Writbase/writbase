@@ -40,5 +40,33 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Per-user rate limiting (120 requests/minute)
+  if (user) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- supabase.rpc returns untyped data
+    const { data: rateLimitCount } = await supabase.rpc('increment_user_rate_limit', {
+      p_user_id: user.id,
+    });
+    const count = rateLimitCount as number | null;
+    if (typeof count === 'number' && count > 120) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
+  }
+
+  // Generate CSP nonce and set header for layout to read
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+  supabaseResponse.headers.set('x-nonce', nonce);
+
+  // Set nonce-based CSP (script-src uses nonce, style-src keeps unsafe-inline for Sonner)
+  const csp = [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "font-src 'self'",
+    "connect-src 'self' https://*.supabase.co",
+  ].join('; ');
+
+  supabaseResponse.headers.set('Content-Security-Policy', csp);
+
   return supabaseResponse;
 }
