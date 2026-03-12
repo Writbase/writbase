@@ -46,6 +46,7 @@ export async function createAgentKey(
     role?: AgentRole;
     specialPrompt?: string | null;
     createdBy: string;
+    workspaceId: string;
   },
 ): Promise<{ key: Omit<AgentKey, 'key_hash'>; fullKey: string }> {
   const keyId = crypto.randomUUID();
@@ -61,6 +62,7 @@ export async function createAgentKey(
       key_prefix: prefix,
       special_prompt: params.specialPrompt ?? null,
       created_by: params.createdBy,
+      workspace_id: params.workspaceId,
     })
     .select(
       'id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by',
@@ -79,6 +81,7 @@ export async function createAgentKey(
     actorId: params.createdBy,
     actorLabel: 'admin',
     source: 'ui',
+    workspaceId: params.workspaceId,
   });
 
   return { key, fullKey };
@@ -92,6 +95,7 @@ export async function updateAgentKey(
     specialPrompt?: string | null;
     isActive?: boolean;
     actorId: string;
+    workspaceId: string;
   },
 ): Promise<Omit<AgentKey, 'key_hash'>> {
   const updates: Record<string, unknown> = {};
@@ -120,6 +124,7 @@ export async function updateAgentKey(
     actorId: params.actorId,
     actorLabel: 'admin',
     source: 'ui',
+    workspaceId: params.workspaceId,
   });
 
   return updated;
@@ -127,7 +132,7 @@ export async function updateAgentKey(
 
 export async function rotateAgentKey(
   supabase: SupabaseClient,
-  params: { id: string; actorId: string },
+  params: { id: string; actorId: string; workspaceId: string },
 ): Promise<{ key: Omit<AgentKey, 'key_hash'>; fullKey: string }> {
   const { fullKey, prefix, hash } = await generateKey(params.id);
 
@@ -152,6 +157,7 @@ export async function rotateAgentKey(
     actorId: params.actorId,
     actorLabel: 'admin',
     source: 'ui',
+    workspaceId: params.workspaceId,
   });
 
   return { key, fullKey };
@@ -189,6 +195,7 @@ export async function updateAgentKeyPermissions(
       canAssign: boolean;
     }>;
     actorId: string;
+    workspaceId: string;
   },
 ): Promise<void> {
   // Block permission grants on inactive keys (pending approval or deactivated)
@@ -228,5 +235,6 @@ export async function updateAgentKeyPermissions(
     actorId: params.actorId,
     actorLabel: 'admin',
     source: 'ui',
+    workspaceId: params.workspaceId,
   });
 }

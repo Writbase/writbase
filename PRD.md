@@ -8,11 +8,13 @@ This product is **not** a general-purpose team task manager. It is a control pla
 
 ### Core idea
 
+* Each user owns a **workspace** — an isolated tenant that contains all their projects, tasks, agents, and settings.
 * Tasks live outside repositories.
-* Every task belongs to a **project** and optionally to a **department**.
+* Every task belongs to a **project** and optionally to a **department**, all scoped to a workspace.
 * Agents access tasks through scoped API keys with explicit read/write permissions.
 * MCP exposes a small set of tools and returns agent-specific metadata, including permissions and a special instruction prompt.
 * All changes are recorded with provenance/history.
+* Signup automatically provisions a workspace — no manual bootstrap required.
 
 ### 1.5 Problem Statement
 
@@ -57,7 +59,8 @@ Current pain points this product addresses:
 
 **Owner / operator**
 
-* Manages multiple projects.
+* Signs up to create a workspace (auto-provisioned).
+* Manages multiple projects within their workspace.
 * Creates projects, departments, and agent keys.
 * Reviews tasks and history.
 * Uses UI occasionally, uses agents heavily.
@@ -1048,7 +1051,7 @@ Minimum logging:
 
 4. Should read permission imply visibility in `info` even if create/update are not allowed? Recommended: yes.
 5. Should `get_tasks` require explicit project param always? Recommended: yes for clarity, even if single project allowed.
-6. Should owners support multiple human users in MVP? Recommended: keep MVP effectively single-admin, expand later.
+6. Should owners support multiple human users in MVP? Resolved: MVP is single-owner per workspace. The `workspace_members` table supports multi-member expansion later.
 7. Should agent keys created by managers require human approval before activation? Recommended: yes, configurable via `app_settings`.
 8. Should managers be able to rotate other agents' keys? Recommended: yes, with provenance.
 9. Max agent keys per manager? Recommended: configurable, default 20.

@@ -29,6 +29,7 @@ export interface AgentContext {
   isActive: boolean
   specialPrompt: string | null
   permissions: AgentPermission[]
+  workspaceId: string
 }
 
 export interface AgentKeyRecord {
@@ -42,4 +43,5 @@ export interface AgentKeyRecord {
   created_at: string
   last_used_at: string | null
   created_by: string
+  workspace_id: string
 }

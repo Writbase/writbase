@@ -40,6 +40,7 @@ export async function handleUpdateTask(
     .from('tasks')
     .select('*')
     .eq('id', params.task_id)
+    .eq('workspace_id', ctx.workspaceId)
     .abortSignal(AbortSignal.timeout(10_000))
     .single()
 
@@ -79,7 +80,7 @@ export async function handleUpdateTask(
   let newDepartmentId: string | null | undefined = undefined
   if (params.department !== undefined) {
     const projectSlug = projectPerms[0].projectSlug
-    const result = await resolveDepartment(params.department, projectPerms, supabase, 'update', projectSlug)
+    const result = await resolveDepartment(params.department, projectPerms, supabase, 'update', projectSlug, ctx.workspaceId)
     if ('error' in result) {
       return mcpError(result.error)
     }
@@ -126,6 +127,7 @@ export async function handleUpdateTask(
         .from('agent_keys')
         .select('id, is_active')
         .eq(isAssigneeUuid ? 'id' : 'name', params.assign_to)
+        .eq('workspace_id', ctx.workspaceId)
         .abortSignal(AbortSignal.timeout(10_000))
         .maybeSingle()
 
@@ -139,6 +141,7 @@ export async function handleUpdateTask(
         .select('id', { count: 'exact', head: true })
         .eq('agent_key_id', assignee.id)
         .eq('project_id', existingTask.project_id)
+        .eq('workspace_id', ctx.workspaceId)
         .abortSignal(AbortSignal.timeout(10_000))
 
       if (!count || count === 0) {

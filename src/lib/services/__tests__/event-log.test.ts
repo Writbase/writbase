@@ -16,6 +16,7 @@ describe('logEvent', () => {
       actorId: 'user-1',
       actorLabel: 'admin',
       source: 'ui',
+      workspaceId: 'ws-test-1',
     });
 
     expect(mock.calls.some((c) => c.method === 'from' && c.args[0] === 'event_log')).toBe(true);
@@ -48,6 +49,7 @@ describe('logEvent', () => {
       actorId: 'user-1',
       actorLabel: 'admin',
       source: 'ui',
+      workspaceId: 'ws-test-1',
     });
 
     expect(consoleSpy).toHaveBeenCalled();
@@ -69,6 +71,7 @@ describe('logEvent', () => {
         actorId: 'user-1',
         actorLabel: 'admin',
         source: 'ui',
+        workspaceId: 'ws-test-1',
       }),
     ).rejects.toThrow('Critical audit log failure');
 
@@ -92,6 +95,7 @@ describe('logEvent', () => {
           actorId: 'user-1',
           actorLabel: 'admin',
           source: 'ui',
+          workspaceId: 'ws-test-1',
         },
         { critical: true },
       ),

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createProject, updateProject } from '@/lib/services/projects';
+import { getWorkspaceForUser } from '@/lib/services/workspace';
 import { createClient } from '@/lib/supabase/server';
 import { projectSchema, projectUpdateSchema } from '@/lib/utils/validation';
 
@@ -24,9 +25,11 @@ export async function createProjectAction(formData: FormData) {
       return { success: false, error: parsed.error.issues[0].message };
     }
 
+    const workspace = await getWorkspaceForUser(supabase);
     const project = await createProject(supabase, {
       name: parsed.data.name,
       createdBy: user.id,
+      workspaceId: workspace.id,
     });
 
     revalidatePath('/', 'layout');
@@ -61,11 +64,13 @@ export async function updateProjectAction(formData: FormData) {
       return { success: false, error: parsed.error.issues[0].message };
     }
 
+    const workspace = await getWorkspaceForUser(supabase);
     const project = await updateProject(supabase, {
       id: parsed.data.id,
       name: parsed.data.name,
       isArchived: parsed.data.isArchived,
       actorId: user.id,
+      workspaceId: workspace.id,
     });
 
     revalidatePath('/', 'layout');

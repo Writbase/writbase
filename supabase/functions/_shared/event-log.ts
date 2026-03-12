@@ -14,6 +14,7 @@ export interface LogEventParams {
   actorId: string
   actorLabel: string
   source: Source
+  workspaceId: string
 }
 
 /**
@@ -42,6 +43,7 @@ export async function logEvent(
     actor_id: params.actorId,
     actor_label: params.actorLabel,
     source: params.source,
+    workspace_id: params.workspaceId,
   })
 
   if (error) {
@@ -64,6 +66,7 @@ export interface LogFieldChangesParams {
   actorId: string
   actorLabel: string
   source: Source
+  workspaceId: string
 }
 
 /**
@@ -95,6 +98,7 @@ export async function logFieldChanges(
         actor_id: params.actorId,
         actor_label: params.actorLabel,
         source: params.source,
+        workspace_id: params.workspaceId,
       })
     }
   }

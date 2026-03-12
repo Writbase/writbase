@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { rotateAgentKey } from '@/lib/services/agent-keys';
+import { getWorkspaceForUser } from '@/lib/services/workspace';
 import { createClient } from '@/lib/supabase/server';
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -17,7 +18,12 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     }
 
     const { id } = await params;
-    const { key, fullKey } = await rotateAgentKey(supabase, { id, actorId: user.id });
+    const workspace = await getWorkspaceForUser(supabase);
+    const { key, fullKey } = await rotateAgentKey(supabase, {
+      id,
+      actorId: user.id,
+      workspaceId: workspace.id,
+    });
 
     return NextResponse.json({ data: { key, fullKey } });
   } catch (err) {

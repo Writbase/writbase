@@ -16,6 +16,7 @@ import { apiGet } from '@/lib/utils/api-client';
 
 interface SidebarProps {
   userEmail?: string;
+  workspaceName?: string;
 }
 
 const navLinks = [
@@ -23,7 +24,7 @@ const navLinks = [
   { href: '/agent-keys', label: 'Agent Keys' },
 ];
 
-export function Sidebar({ userEmail }: SidebarProps) {
+export function Sidebar({ userEmail, workspaceName }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -151,7 +152,10 @@ export function Sidebar({ userEmail }: SidebarProps) {
     <div className="flex h-full flex-col bg-slate-900 text-slate-100">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-700 px-4 py-4">
-        <span className="text-lg font-bold tracking-tight">WritBase</span>
+        <div className="min-w-0">
+          <span className="text-lg font-bold tracking-tight">WritBase</span>
+          {workspaceName && <p className="truncate text-xs text-slate-400">{workspaceName}</p>}
+        </div>
         <button
           className="text-slate-400 hover:text-white md:hidden"
           onClick={() => {

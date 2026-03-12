@@ -79,6 +79,7 @@ export async function createTask(
     createdByType: ActorType;
     createdById: string;
     source: Source;
+    workspaceId: string;
   },
 ): Promise<Task> {
   // Enforce department_required setting
@@ -86,6 +87,7 @@ export async function createTask(
     const { data: settings } = await supabase
       .from('app_settings')
       .select('department_required')
+      .eq('workspace_id', params.workspaceId)
       .single();
 
     if (settings?.department_required) {
@@ -107,6 +109,7 @@ export async function createTask(
     actor_id: params.createdById,
     actor_label: params.createdByType === 'human' ? 'admin' : params.createdById,
     source: params.source,
+    workspace_id: params.workspaceId,
   };
 
   const { data, error } = await supabase

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createTask, updateTask } from '@/lib/services/tasks';
+import { getWorkspaceForUser } from '@/lib/services/workspace';
 import { createClient } from '@/lib/supabase/server';
 import { AppError } from '@/lib/utils/errors';
 import { taskCreateSchema, taskUpdateSchema } from '@/lib/utils/validation';
@@ -37,6 +38,7 @@ export async function createTaskAction(formData: FormData) {
       };
     }
 
+    const workspace = await getWorkspaceForUser(supabase);
     const task = await createTask(supabase, {
       projectId: parsed.data.projectId,
       departmentId: parsed.data.departmentId,
@@ -48,6 +50,7 @@ export async function createTaskAction(formData: FormData) {
       createdByType: 'human',
       createdById: user.id,
       source: 'ui',
+      workspaceId: workspace.id,
     });
 
     revalidatePath('/tasks');

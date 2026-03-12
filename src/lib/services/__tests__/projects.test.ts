@@ -34,7 +34,11 @@ describe('createProject', () => {
     // Second call: logEvent
     mock.addResponse(null);
 
-    const result = await createProject(mock, { name: 'My Project', createdBy: 'user-1' });
+    const result = await createProject(mock, {
+      name: 'My Project',
+      createdBy: 'user-1',
+      workspaceId: 'ws-test-1',
+    });
 
     expect(result.name).toBe('My Project');
     expect(mock.calls.some((c) => c.method === 'insert')).toBe(true);
@@ -55,6 +59,7 @@ describe('updateProject', () => {
       id: 'p1',
       name: 'New Name',
       actorId: 'user-1',
+      workspaceId: 'ws-test-1',
     });
 
     expect(result.name).toBe('New Name');

@@ -122,6 +122,7 @@ app.post('/mcp', async (c) => {
           latency_ms: elapsedMs,
           status,
           error_code: errorCode ?? null,
+          workspace_id: agentContext.workspaceId,
         })
       } catch (err) {
         logger.error('Background request log write failed', { error: err instanceof Error ? err.message : String(err) })

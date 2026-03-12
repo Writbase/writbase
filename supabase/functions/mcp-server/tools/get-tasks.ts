@@ -55,7 +55,7 @@ export async function handleGetTasks(
   // 3. Resolve department if provided
   let departmentId: string | null = null
   if (params.department) {
-    const result = await resolveDepartment(params.department, projectPerms, supabase, 'read', params.project)
+    const result = await resolveDepartment(params.department, projectPerms, supabase, 'read', params.project, ctx.workspaceId)
     if ('error' in result) {
       return mcpError(result.error)
     }
@@ -77,6 +77,7 @@ export async function handleGetTasks(
   const limit = Math.min(params.limit || 20, 50)
 
   const { data: tasks, error } = await supabase.rpc('get_tasks_page', {
+    p_workspace_id: ctx.workspaceId,
     p_project_id: projectId,
     p_department_id: departmentId,
     p_status: params.status || null,

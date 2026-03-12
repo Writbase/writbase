@@ -33,7 +33,11 @@ describe('createDepartment', () => {
     // Second call: logEvent
     mock.addResponse(null);
 
-    const result = await createDepartment(mock, { name: 'Engineering', createdBy: 'user-1' });
+    const result = await createDepartment(mock, {
+      name: 'Engineering',
+      createdBy: 'user-1',
+      workspaceId: 'ws-test-1',
+    });
 
     expect(result.name).toBe('Engineering');
     expect(mock.calls.some((c) => c.method === 'insert')).toBe(true);
@@ -54,6 +58,7 @@ describe('updateDepartment', () => {
       id: 'd1',
       name: 'New Dept',
       actorId: 'user-1',
+      workspaceId: 'ws-test-1',
     });
 
     expect(result.name).toBe('New Dept');
@@ -72,6 +77,7 @@ describe('updateDepartment', () => {
       id: 'd1',
       isArchived: true,
       actorId: 'user-1',
+      workspaceId: 'ws-test-1',
     });
 
     expect(result.is_archived).toBe(true);

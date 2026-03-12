@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { listAgentKeys, updateAgentKey } from '@/lib/services/agent-keys';
+import { getWorkspaceForUser } from '@/lib/services/workspace';
 import { createClient } from '@/lib/supabase/server';
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -58,12 +59,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       isActive?: boolean;
     };
 
+    const workspace = await getWorkspaceForUser(supabase);
     const updated = await updateAgentKey(supabase, {
       id,
       name: body.name,
       specialPrompt: body.specialPrompt,
       isActive: body.isActive,
       actorId: user.id,
+      workspaceId: workspace.id,
     });
 
     return NextResponse.json({ data: updated });

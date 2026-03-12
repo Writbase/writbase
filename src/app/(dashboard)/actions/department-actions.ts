@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createDepartment, updateDepartment } from '@/lib/services/departments';
+import { getWorkspaceForUser } from '@/lib/services/workspace';
 import { createClient } from '@/lib/supabase/server';
 import { departmentSchema, departmentUpdateSchema } from '@/lib/utils/validation';
 
@@ -24,9 +25,11 @@ export async function createDepartmentAction(formData: FormData) {
       return { success: false, error: parsed.error.issues[0].message };
     }
 
+    const workspace = await getWorkspaceForUser(supabase);
     const department = await createDepartment(supabase, {
       name: parsed.data.name,
       createdBy: user.id,
+      workspaceId: workspace.id,
     });
 
     revalidatePath('/', 'layout');
@@ -61,11 +64,13 @@ export async function updateDepartmentAction(formData: FormData) {
       return { success: false, error: parsed.error.issues[0].message };
     }
 
+    const workspace = await getWorkspaceForUser(supabase);
     const department = await updateDepartment(supabase, {
       id: parsed.data.id,
       name: parsed.data.name,
       isArchived: parsed.data.isArchived,
       actorId: user.id,
+      workspaceId: workspace.id,
     });
 
     revalidatePath('/', 'layout');

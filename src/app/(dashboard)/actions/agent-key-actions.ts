@@ -7,6 +7,7 @@ import {
   updateAgentKey,
   updateAgentKeyPermissions,
 } from '@/lib/services/agent-keys';
+import { getWorkspaceForUser } from '@/lib/services/workspace';
 import { createClient } from '@/lib/supabase/server';
 import {
   agentKeySchema,
@@ -35,11 +36,13 @@ export async function createAgentKeyAction(formData: FormData) {
       return { success: false, error: parsed.error.issues[0].message };
     }
 
+    const workspace = await getWorkspaceForUser(supabase);
     const result = await createAgentKey(supabase, {
       name: parsed.data.name,
       role: parsed.data.role,
       specialPrompt: parsed.data.specialPrompt,
       createdBy: user.id,
+      workspaceId: workspace.id,
     });
 
     revalidatePath('/agent-keys');
@@ -76,12 +79,14 @@ export async function updateAgentKeyAction(formData: FormData) {
       return { success: false, error: parsed.error.issues[0].message };
     }
 
+    const workspace = await getWorkspaceForUser(supabase);
     const key = await updateAgentKey(supabase, {
       id: parsed.data.id,
       name: parsed.data.name,
       specialPrompt: parsed.data.specialPrompt,
       isActive: parsed.data.isActive,
       actorId: user.id,
+      workspaceId: workspace.id,
     });
 
     revalidatePath('/agent-keys');
@@ -103,9 +108,11 @@ export async function rotateAgentKeyAction(keyId: string) {
       return { success: false, error: 'Unauthorized' };
     }
 
+    const workspace = await getWorkspaceForUser(supabase);
     const result = await rotateAgentKey(supabase, {
       id: keyId,
       actorId: user.id,
+      workspaceId: workspace.id,
     });
 
     revalidatePath('/agent-keys');
@@ -142,10 +149,12 @@ export async function updateAgentKeyPermissionsAction(data: {
       return { success: false, error: parsed.error.issues[0].message };
     }
 
+    const workspace = await getWorkspaceForUser(supabase);
     await updateAgentKeyPermissions(supabase, {
       keyId: parsed.data.keyId,
       permissions: parsed.data.permissions,
       actorId: user.id,
+      workspaceId: workspace.id,
     });
 
     revalidatePath('/agent-keys');

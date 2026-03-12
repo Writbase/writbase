@@ -45,6 +45,7 @@ export async function handleGetProvenance(
   let query = supabase
     .from('event_log')
     .select('*')
+    .eq('workspace_id', ctx.workspaceId)
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
     .limit(limit + 1) // fetch one extra for next_cursor
@@ -69,6 +70,7 @@ export async function handleGetProvenance(
       .from('tasks')
       .select('id')
       .eq('project_id', projectId)
+      .eq('workspace_id', ctx.workspaceId)
       .abortSignal(AbortSignal.timeout(10_000))
 
     const taskIds = (projectTasks ?? []).map((t: { id: string }) => t.id)
@@ -109,6 +111,7 @@ export async function handleGetProvenance(
       .from('agent_permissions')
       .select('agent_key_id')
       .eq('project_id', projectId)
+      .eq('workspace_id', ctx.workspaceId)
       .abortSignal(AbortSignal.timeout(10_000))
     const keyIds = [...new Set((keyPerms ?? []).map((k: { agent_key_id: string }) => k.agent_key_id))]
     if (keyIds.length === 0) {

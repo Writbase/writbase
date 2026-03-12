@@ -1,58 +1,27 @@
-# Admin Bootstrap
+# Workspace Provisioning
 
-WritBase uses an `admin_users` table to gate all dashboard access. Every RLS policy checks `auth.uid() IN (SELECT user_id FROM admin_users)`, which means **no user can access any data until at least one admin row exists**.
+WritBase automatically creates a workspace when a new user signs up. No manual setup is required.
 
-## The Bootstrap Problem
+## How It Works
 
-The `admin_insert_admin_users` RLS policy requires the inserting user to already be in `admin_users`. This is a deliberate chicken-and-egg constraint — it prevents any authenticated user from self-promoting to admin.
+1. User signs up via the login page (email + password)
+2. A Postgres trigger (`handle_new_user`) fires on `auth.users` INSERT
+3. The trigger creates:
+   - A `workspaces` row (name: "My Workspace", slug derived from user ID)
+   - A `workspace_members` row (role: `owner`)
+   - An `app_settings` row (default settings for the workspace)
+4. User is redirected to the dashboard, which loads their workspace automatically
 
-The first admin must be inserted using the **service role** (bypasses RLS).
+## Fallback: `ensure_user_workspace()` RPC
 
-## Steps
+If the trigger fails (logged as a WARNING, does not block signup), the dashboard layout calls the `ensure_user_workspace()` SECURITY DEFINER RPC on first visit. This idempotently provisions the workspace, handling concurrent calls via `ON CONFLICT`.
 
-### 1. Create a Supabase Auth user
+## Data Isolation
 
-Sign up via the login page, or create a user in the Supabase Dashboard under **Authentication > Users**.
+All data tables include a `workspace_id` column with NOT NULL constraint. RLS policies use `get_user_workspace_ids()` to scope all queries to the user's workspaces. MCP (Edge Functions) uses `service_role` which bypasses RLS, so every query explicitly filters by `ctx.workspaceId` from the authenticated agent key.
 
-Note the user's UUID (visible in the dashboard user list).
+Cross-workspace data corruption is prevented at the database level by `check_workspace_consistency()` triggers on `agent_permissions`, `tasks`, and `webhook_subscriptions`.
 
-### 2. Insert the first admin row
+## Previous Bootstrap Problem (Eliminated)
 
-Open the Supabase Dashboard **SQL Editor** and run:
-
-```sql
--- Replace with the actual user UUID from step 1
-INSERT INTO admin_users (user_id)
-VALUES ('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx');
-```
-
-The SQL Editor runs as the `postgres` role (service role), which bypasses RLS.
-
-Alternatively, use the Supabase CLI:
-
-```bash
-supabase db execute --sql \
-  "INSERT INTO admin_users (user_id) VALUES ('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx');"
-```
-
-### 3. Verify
-
-Log in with that user. You should now see the dashboard with projects, tasks, and agent keys.
-
-## Adding More Admins
-
-Once the first admin exists, they can add others through the SQL Editor or by building an admin management UI. The RLS policy allows any existing admin to insert new rows:
-
-```sql
--- Run as the first admin user (or via SQL Editor)
-INSERT INTO admin_users (user_id)
-VALUES ('yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy');
-```
-
-## Troubleshooting
-
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| Redirected to `/login` after signing in | User exists in `auth.users` but not in `admin_users` | Insert the admin row (step 2) |
-| "permission denied" errors on all tables | RLS policies can't find user in `admin_users` | Same as above |
-| Can't insert into `admin_users` from the app | RLS blocks self-promotion by design | Use SQL Editor or CLI (service role) |
+Before the workspace migration (00019), WritBase used an `admin_users` table as a global gate. The first admin had to be manually INSERT-ed via SQL. This is no longer necessary — signup handles everything automatically.

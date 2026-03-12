@@ -15,7 +15,7 @@ export async function listProjects(supabase: SupabaseClient): Promise<Project[]>
 
 export async function createProject(
   supabase: SupabaseClient,
-  params: { name: string; createdBy: string },
+  params: { name: string; createdBy: string; workspaceId: string },
 ): Promise<Project> {
   const baseSlug = generateSlug(params.name);
 
@@ -25,6 +25,7 @@ export async function createProject(
     {
       name: params.name,
       created_by: params.createdBy,
+      workspace_id: params.workspaceId,
     },
     baseSlug,
   )) as unknown as Project;
@@ -38,6 +39,7 @@ export async function createProject(
     actorId: params.createdBy,
     actorLabel: 'admin',
     source: 'ui',
+    workspaceId: params.workspaceId,
   });
 
   return project;
@@ -45,7 +47,7 @@ export async function createProject(
 
 export async function updateProject(
   supabase: SupabaseClient,
-  params: { id: string; name?: string; isArchived?: boolean; actorId: string },
+  params: { id: string; name?: string; isArchived?: boolean; actorId: string; workspaceId: string },
 ): Promise<Project> {
   const updates: Record<string, unknown> = {};
   if (params.name !== undefined) updates.name = params.name;
@@ -79,6 +81,7 @@ export async function updateProject(
       actorId: params.actorId,
       actorLabel: 'admin',
       source: 'ui',
+      workspaceId: params.workspaceId,
     });
   }
 
@@ -95,6 +98,7 @@ export async function updateProject(
       actorId: params.actorId,
       actorLabel: 'admin',
       source: 'ui',
+      workspaceId: params.workspaceId,
     });
   }
 

@@ -51,6 +51,7 @@ async function createDepartment(
     data = await insertWithUniqueSlug(supabase, 'departments', {
       name: params.name.trim(),
       is_archived: false,
+      workspace_id: ctx.workspaceId,
     }, baseSlug)
   } catch (err) {
     return mcpError({ code: 'internal_error', message: (err as Error).message })
@@ -66,6 +67,7 @@ async function createDepartment(
     actorId: ctx.keyId,
     actorLabel: ctx.name,
     source: 'mcp',
+    workspaceId: ctx.workspaceId,
   })
 
   return {
@@ -95,6 +97,7 @@ async function renameDepartment(
     .from('departments')
     .select('*')
     .eq('id', params.department_id)
+    .eq('workspace_id', ctx.workspaceId)
     .abortSignal(AbortSignal.timeout(10_000))
     .single()
 
@@ -124,6 +127,7 @@ async function renameDepartment(
     actorId: ctx.keyId,
     actorLabel: ctx.name,
     source: 'mcp',
+    workspaceId: ctx.workspaceId,
   })
 
   return {
@@ -144,6 +148,7 @@ async function archiveDepartment(
     .from('departments')
     .update({ is_archived: true })
     .eq('id', params.department_id)
+    .eq('workspace_id', ctx.workspaceId)
     .select()
     .abortSignal(AbortSignal.timeout(10_000))
     .single()
@@ -161,6 +166,7 @@ async function archiveDepartment(
     actorId: ctx.keyId,
     actorLabel: ctx.name,
     source: 'mcp',
+    workspaceId: ctx.workspaceId,
   })
 
   return {

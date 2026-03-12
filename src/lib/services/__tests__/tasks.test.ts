@@ -23,6 +23,7 @@ describe('createTask', () => {
       createdByType: 'human',
       createdById: 'user-1',
       source: 'ui',
+      workspaceId: 'ws-test-1',
     });
 
     expect(result).toEqual(fakeTask);
@@ -43,6 +44,7 @@ describe('createTask', () => {
         createdByType: 'human',
         createdById: 'user-1',
         source: 'ui',
+        workspaceId: 'ws-test-1',
       }),
     ).rejects.toThrow('Project not found');
   });
@@ -58,6 +60,7 @@ describe('createTask', () => {
         createdByType: 'human',
         createdById: 'user-1',
         source: 'ui',
+        workspaceId: 'ws-test-1',
       }),
     ).rejects.toThrow('Department is required');
   });
@@ -76,6 +79,7 @@ describe('createTask', () => {
         createdByType: 'human',
         createdById: 'user-1',
         source: 'ui',
+        workspaceId: 'ws-test-1',
       }),
     ).rejects.toThrow('archived');
   });

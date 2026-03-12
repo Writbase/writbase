@@ -15,7 +15,7 @@ export async function listDepartments(supabase: SupabaseClient): Promise<Departm
 
 export async function createDepartment(
   supabase: SupabaseClient,
-  params: { name: string; createdBy: string },
+  params: { name: string; createdBy: string; workspaceId: string },
 ): Promise<Department> {
   const baseSlug = generateSlug(params.name);
 
@@ -25,6 +25,7 @@ export async function createDepartment(
     {
       name: params.name,
       created_by: params.createdBy,
+      workspace_id: params.workspaceId,
     },
     baseSlug,
   )) as unknown as Department;
@@ -38,6 +39,7 @@ export async function createDepartment(
     actorId: params.createdBy,
     actorLabel: 'admin',
     source: 'ui',
+    workspaceId: params.workspaceId,
   });
 
   return department;
@@ -45,7 +47,7 @@ export async function createDepartment(
 
 export async function updateDepartment(
   supabase: SupabaseClient,
-  params: { id: string; name?: string; isArchived?: boolean; actorId: string },
+  params: { id: string; name?: string; isArchived?: boolean; actorId: string; workspaceId: string },
 ): Promise<Department> {
   const updates: Record<string, unknown> = {};
   if (params.name !== undefined) updates.name = params.name;
@@ -79,6 +81,7 @@ export async function updateDepartment(
       actorId: params.actorId,
       actorLabel: 'admin',
       source: 'ui',
+      workspaceId: params.workspaceId,
     });
   }
 
@@ -95,6 +98,7 @@ export async function updateDepartment(
       actorId: params.actorId,
       actorLabel: 'admin',
       source: 'ui',
+      workspaceId: params.workspaceId,
     });
   }
 

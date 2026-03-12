@@ -106,8 +106,8 @@ export async function authenticateAgent(
     throw unauthorizedError()
   }
 
-  // Load permissions
-  const permissions = await loadPermissions(supabase, keyId)
+  // Load permissions (workspace-scoped for defense-in-depth)
+  const permissions = await loadPermissions(supabase, keyId, keyRecord.workspace_id)
 
   // Fire-and-forget: update last_used_at
   supabase
@@ -128,6 +128,7 @@ export async function authenticateAgent(
     isActive: keyRecord.is_active,
     specialPrompt: keyRecord.special_prompt,
     permissions,
+    workspaceId: keyRecord.workspace_id,
   }
 }
 
@@ -136,9 +137,10 @@ export async function authenticateAgent(
  */
 export async function loadPermissions(
   supabase: SupabaseClient,
-  keyId: string
+  keyId: string,
+  workspaceId: string
 ): Promise<AgentPermission[]> {
-  const { data, error } = await supabase
+  const query = supabase
     .from('agent_permissions')
     .select(`
       id,
@@ -152,7 +154,8 @@ export async function loadPermissions(
       departments:department_id ( slug, name, is_archived )
     `)
     .eq('agent_key_id', keyId)
-    .abortSignal(AbortSignal.timeout(10_000))
+    .eq('workspace_id', workspaceId)
+  const { data, error } = await query.abortSignal(AbortSignal.timeout(10_000))
 
   if (error) {
     throw new Error(`Failed to load permissions: ${error.message}`)

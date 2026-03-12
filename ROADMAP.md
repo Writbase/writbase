@@ -29,16 +29,16 @@ cross-domain dependencies noted at the bottom.
 - [x] GRANT INSERT ON event_log to service_role only (no update/delete in app code)
 
 ### M3: RLS policies
-- [x] projects, departments, tasks, app_settings: RLS for authenticated admin (human UI path)
-- [x] agent_keys, agent_permissions: RLS for authenticated admin
-- [x] event_log: RLS read-only for authenticated admin, INSERT via service_role only
+- [x] ~~projects, departments, tasks, app_settings: RLS for authenticated admin (human UI path)~~ Replaced by workspace-scoped RLS (M23)
+- [x] ~~agent_keys, agent_permissions: RLS for authenticated admin~~ Replaced by workspace-scoped RLS (M23)
+- [x] event_log: RLS read-only for authenticated users, INSERT via service_role only
 - [x] No RLS on agent path — Edge Functions use service_role and handle auth in code
 
 ## Auth
 
 ### M4: Human auth
 - [x] Supabase project setup and Auth configuration
-- [x] Admin user registration/login flow
+- [x] Signup with auto-provisioned workspace (Postgres trigger on auth.users INSERT)
 - [x] Session management with Supabase client SDK
 
 ### M5: Agent key system
@@ -196,6 +196,31 @@ cross-domain dependencies noted at the bottom.
 - [ ] Serve Agent Cards at well-known endpoint (`.well-known/agent.json`)
 - Note: internal vocabulary already aligned; WritBase's MCP-native approach provides interop. A2A endpoints needed for cross-org agent communication.
 
+## Workspace Architecture
+
+### M23: Multi-tenant workspace model
+- [x] `workspaces` + `workspace_members` tables with `workspace_role` enum
+- [x] `workspace_id` NOT NULL on all data tables (projects, departments, tasks, event_log, agent_keys, agent_permissions, app_settings, webhook_subscriptions, agent_capabilities, request_log)
+- [x] `get_user_workspace_ids()` SECURITY DEFINER RLS helper (initPlan-cacheable)
+- [x] Replace all `admin_users`-based RLS policies with workspace-scoped policies
+- [x] `handle_new_user()` trigger for auto-provisioning on signup
+- [x] `ensure_user_workspace()` idempotent fallback RPC
+- [x] Workspace-scoped unique constraints (projects, departments, app_settings)
+- [x] `prevent_workspace_reassignment()` immutability trigger
+- [x] `check_workspace_consistency()` cross-workspace integrity triggers
+- [x] Drop `admin_users` table
+- [x] Signup flow on login page (sign in / sign up toggle)
+- [x] WorkspaceProvider React context
+- [x] All service functions accept `workspaceId` for creates
+- [x] All MCP tools filter by `ctx.workspaceId` (defense-in-depth for service_role path)
+- [x] Updated RPCs: `create_task_with_event`, `update_task_with_events`, `get_tasks_page`, `update_agent_permissions`
+
+### M24: Multi-member workspaces (future)
+- [ ] Invite flow: owner invites users by email
+- [ ] Role-based permissions within workspace (owner, admin, member)
+- [ ] UI for workspace member management
+- [ ] Remove UNIQUE(owner_id) constraint on workspaces
+
 ## Cross-domain dependencies
 
 ```
@@ -210,4 +235,6 @@ M11 can start after M5 (needs auth, parallels M7-M10)
 M14 can start after M4 (needs human auth)
 M15-M17 after M11 (needs API endpoints)
 M18 after M15-M17 (hardening last)
+M23 after M18 (workspace migration replaces admin_users RLS with workspace-scoped RLS)
+M24 after M23 (multi-member extends workspace model)
 ```

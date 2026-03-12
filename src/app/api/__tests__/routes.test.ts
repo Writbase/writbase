@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // Shared mock Supabase client
 // ---------------------------------------------------------------------------
 const mockSingle = vi.fn();
-const mockLimit = vi.fn(() => ({ single: mockSingle }));
+const mockLimit = vi.fn();
 const mockSelect = vi.fn(() => ({ limit: mockLimit, single: mockSingle }));
 const mockFrom = vi.fn(() => ({ select: mockSelect }));
 
@@ -78,7 +78,7 @@ describe('GET /api/health', () => {
   });
 
   it('returns { status: "ok", db: true } when DB is reachable', async () => {
-    mockSingle.mockResolvedValue({ data: { id: 1 }, error: null });
+    mockLimit.mockResolvedValue({ data: [{ id: 1 }], error: null });
 
     const { GET } = await import('../health/route');
     const response = await GET();
@@ -90,7 +90,7 @@ describe('GET /api/health', () => {
   });
 
   it('returns 503 with { status: "degraded", db: false } when DB query fails', async () => {
-    mockSingle.mockResolvedValue({ data: null, error: { message: 'db down' } });
+    mockLimit.mockResolvedValue({ data: null, error: { message: 'db down' } });
 
     const { GET } = await import('../health/route');
     const response = await GET();

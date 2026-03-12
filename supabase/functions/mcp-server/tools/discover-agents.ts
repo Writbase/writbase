@@ -38,6 +38,7 @@ export async function handleDiscoverAgents(
     .from('agent_permissions')
     .select('agent_key_id')
     .eq('project_id', projectPerm.projectId)
+    .eq('workspace_id', ctx.workspaceId)
     .abortSignal(AbortSignal.timeout(10_000))
 
   if (permError) {
@@ -57,6 +58,7 @@ export async function handleDiscoverAgents(
     .select('id, name, role, is_active, last_used_at')
     .in('id', agentKeyIds)
     .eq('is_active', true)
+    .eq('workspace_id', ctx.workspaceId)
     .abortSignal(AbortSignal.timeout(10_000))
 
   if (agentsError) {
@@ -68,6 +70,7 @@ export async function handleDiscoverAgents(
     .from('agent_capabilities')
     .select('agent_key_id, skills, description, accepts_tasks')
     .in('agent_key_id', agentKeyIds)
+    .eq('workspace_id', ctx.workspaceId)
     .abortSignal(AbortSignal.timeout(10_000))
 
   const capMap = new Map(

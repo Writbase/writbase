@@ -38,6 +38,17 @@ vi.mock('@/lib/services/agent-keys', () => ({
   updateAgentKeyPermissions: vi.fn(),
 }));
 
+const FAKE_WORKSPACE = {
+  id: 'ws-test-1',
+  name: 'Test Workspace',
+  slug: 'ws-test',
+  owner_id: '00000000-0000-4000-a000-000000000001',
+};
+
+vi.mock('@/lib/services/workspace', () => ({
+  getWorkspaceForUser: vi.fn(async () => FAKE_WORKSPACE),
+}));
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -127,6 +138,7 @@ describe('Task Actions', () => {
           createdByType: 'human',
           createdById: FAKE_USER_ID,
           source: 'ui',
+          workspaceId: 'ws-test-1',
         }),
       );
 
@@ -302,6 +314,7 @@ describe('Project Actions', () => {
       expect(createProject).toHaveBeenCalledWith(expect.anything(), {
         name: 'My Project',
         createdBy: FAKE_USER_ID,
+        workspaceId: 'ws-test-1',
       });
 
       const { revalidatePath } = await import('next/cache');
@@ -351,6 +364,7 @@ describe('Project Actions', () => {
           id: FAKE_PROJECT_ID,
           name: 'Renamed',
           actorId: FAKE_USER_ID,
+          workspaceId: 'ws-test-1',
         }),
       );
     });
@@ -373,6 +387,7 @@ describe('Project Actions', () => {
           id: FAKE_PROJECT_ID,
           isArchived: true,
           actorId: FAKE_USER_ID,
+          workspaceId: 'ws-test-1',
         }),
       );
     });
@@ -417,6 +432,7 @@ describe('Department Actions', () => {
       expect(createDepartment).toHaveBeenCalledWith(expect.anything(), {
         name: 'Engineering',
         createdBy: FAKE_USER_ID,
+        workspaceId: 'ws-test-1',
       });
 
       const { revalidatePath } = await import('next/cache');
@@ -466,6 +482,7 @@ describe('Department Actions', () => {
           id: FAKE_DEPARTMENT_ID,
           name: 'Renamed',
           actorId: FAKE_USER_ID,
+          workspaceId: 'ws-test-1',
         }),
       );
     });
@@ -488,6 +505,7 @@ describe('Department Actions', () => {
           id: FAKE_DEPARTMENT_ID,
           isArchived: true,
           actorId: FAKE_USER_ID,
+          workspaceId: 'ws-test-1',
         }),
       );
     });
@@ -540,6 +558,7 @@ describe('Agent Key Actions', () => {
         expect.objectContaining({
           name: 'My Agent',
           createdBy: FAKE_USER_ID,
+          workspaceId: 'ws-test-1',
         }),
       );
 
@@ -590,6 +609,7 @@ describe('Agent Key Actions', () => {
           id: FAKE_KEY_ID,
           name: 'Renamed',
           actorId: FAKE_USER_ID,
+          workspaceId: 'ws-test-1',
         }),
       );
     });
@@ -617,6 +637,7 @@ describe('Agent Key Actions', () => {
           specialPrompt: 'Be helpful',
           isActive: false,
           actorId: FAKE_USER_ID,
+          workspaceId: 'ws-test-1',
         }),
       );
     });
@@ -649,6 +670,7 @@ describe('Agent Key Actions', () => {
       expect(rotateAgentKey).toHaveBeenCalledWith(expect.anything(), {
         id: FAKE_KEY_ID,
         actorId: FAKE_USER_ID,
+        workspaceId: 'ws-test-1',
       });
 
       const { revalidatePath } = await import('next/cache');
@@ -719,6 +741,7 @@ describe('Agent Key Actions', () => {
         keyId: FAKE_KEY_ID,
         permissions: validPermissions,
         actorId: FAKE_USER_ID,
+        workspaceId: 'ws-test-1',
       });
 
       const { revalidatePath } = await import('next/cache');

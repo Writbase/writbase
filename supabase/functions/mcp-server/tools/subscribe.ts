@@ -103,6 +103,7 @@ async function handleCreate(
       url: params.url,
       secret,
       is_active: true,
+      workspace_id: ctx.workspaceId,
     })
     .select('id, project_id, event_types, url, is_active, created_at')
     .single()
@@ -128,6 +129,7 @@ async function handleList(ctx: AgentContext, supabase: SupabaseClient) {
     .from('webhook_subscriptions')
     .select('id, project_id, event_types, url, is_active, created_at, updated_at')
     .eq('agent_key_id', ctx.keyId)
+    .eq('workspace_id', ctx.workspaceId)
     .order('created_at', { ascending: false })
     .abortSignal(AbortSignal.timeout(10_000))
 
@@ -154,6 +156,7 @@ async function handleDelete(
     .delete()
     .eq('id', params.subscription_id)
     .eq('agent_key_id', ctx.keyId)
+    .eq('workspace_id', ctx.workspaceId)
 
   if (error) {
     return mcpError(internalError(error.message))

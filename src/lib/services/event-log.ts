@@ -16,6 +16,7 @@ export async function logEvent(
     actorId: string;
     actorLabel: string;
     source: Source;
+    workspaceId: string;
   },
   opts?: { critical?: boolean },
 ) {
@@ -33,6 +34,7 @@ export async function logEvent(
     actor_id: params.actorId,
     actor_label: params.actorLabel,
     source: params.source,
+    workspace_id: params.workspaceId,
   });
 
   if (error) {

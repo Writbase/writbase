@@ -21,6 +21,7 @@ export async function resolveDepartment(
   supabase: SupabaseClient,
   requiredAction: RequiredAction,
   projectLabel: string,
+  workspaceId?: string,
 ): Promise<{ departmentId: string } | { error: WritBaseError }> {
   const isDeptUuid = UUID_RE.test(departmentInput)
 
@@ -57,10 +58,14 @@ export async function resolveDepartment(
   }
 
   const column = isDeptUuid ? 'id' : 'slug'
-  const { data: dept } = await supabase
+  let deptQuery = supabase
     .from('departments')
     .select('id, is_archived')
     .eq(column, departmentInput)
+  if (workspaceId) {
+    deptQuery = deptQuery.eq('workspace_id', workspaceId)
+  }
+  const { data: dept } = await deptQuery
     .abortSignal(AbortSignal.timeout(10_000))
     .single()
 

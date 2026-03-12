@@ -73,6 +73,7 @@ describe('createAgentKey', () => {
     const result = await createAgentKey(mock, {
       name: 'Test Key',
       createdBy: 'user-1',
+      workspaceId: 'ws-test-1',
     });
 
     expect(result.key).toEqual(fakeKey);
@@ -94,6 +95,7 @@ describe('createAgentKey', () => {
       createAgentKey(mock, {
         name: 'Test Key',
         createdBy: 'user-1',
+        workspaceId: 'ws-test-1',
       }),
     ).rejects.toThrow();
   });
@@ -120,6 +122,7 @@ describe('updateAgentKey', () => {
       id: 'k1',
       name: 'Updated',
       actorId: 'user-1',
+      workspaceId: 'ws-test-1',
     });
 
     expect(result).toEqual(updated);
@@ -139,6 +142,7 @@ describe('updateAgentKey', () => {
         id: 'k1',
         name: 'Updated',
         actorId: 'user-1',
+        workspaceId: 'ws-test-1',
       }),
     ).rejects.toThrow();
   });
@@ -161,7 +165,11 @@ describe('rotateAgentKey', () => {
     mock.addResponse(rotated);
     mock.addResponse(null);
 
-    const result = await rotateAgentKey(mock, { id: 'k1', actorId: 'user-1' });
+    const result = await rotateAgentKey(mock, {
+      id: 'k1',
+      actorId: 'user-1',
+      workspaceId: 'ws-test-1',
+    });
 
     expect(result.key).toEqual(rotated);
     expect(result.fullKey).toMatch(/^wb_k1_/);
@@ -175,7 +183,9 @@ describe('rotateAgentKey', () => {
     const mock = createMockSupabase();
     mock.addResponse(null, { message: 'not found' });
 
-    await expect(rotateAgentKey(mock, { id: 'k1', actorId: 'user-1' })).rejects.toThrow();
+    await expect(
+      rotateAgentKey(mock, { id: 'k1', actorId: 'user-1', workspaceId: 'ws-test-1' }),
+    ).rejects.toThrow();
   });
 });
 
@@ -236,6 +246,7 @@ describe('updateAgentKeyPermissions', () => {
         { projectId: 'p1', canRead: true, canCreate: false, canUpdate: false, canAssign: false },
       ],
       actorId: 'user-1',
+      workspaceId: 'ws-test-1',
     });
 
     expect(
@@ -258,6 +269,7 @@ describe('updateAgentKeyPermissions', () => {
           { projectId: 'p1', canRead: true, canCreate: false, canUpdate: false, canAssign: false },
         ],
         actorId: 'user-1',
+        workspaceId: 'ws-test-1',
       }),
     ).rejects.toThrow();
   });
@@ -273,6 +285,7 @@ describe('updateAgentKeyPermissions', () => {
           { projectId: 'p1', canRead: true, canCreate: false, canUpdate: false, canAssign: false },
         ],
         actorId: 'user-1',
+        workspaceId: 'ws-test-1',
       }),
     ).rejects.toThrow('Cannot update permissions on an inactive key');
   });

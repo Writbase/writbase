@@ -77,6 +77,7 @@ async function grantPermissions(
     .from('agent_keys')
     .select('is_active')
     .eq('id', params.key_id)
+    .eq('workspace_id', ctx.workspaceId)
     .abortSignal(AbortSignal.timeout(10_000))
     .single()
 
@@ -109,6 +110,7 @@ async function grantPermissions(
     .from('projects')
     .select('id, name, is_archived')
     .in('id', projectIds)
+    .eq('workspace_id', ctx.workspaceId)
     .abortSignal(AbortSignal.timeout(10_000))
 
   const archivedWarnings: string[] = []
@@ -128,6 +130,7 @@ async function grantPermissions(
       .from('departments')
       .select('id, name, is_archived')
       .in('id', [...new Set(deptIds)])
+      .eq('workspace_id', ctx.workspaceId)
       .abortSignal(AbortSignal.timeout(10_000))
 
     for (const dept of depts ?? []) {
@@ -146,6 +149,7 @@ async function grantPermissions(
     can_create: row.can_create ?? false,
     can_update: row.can_update ?? false,
     can_assign: row.can_assign ?? false,
+    workspace_id: ctx.workspaceId,
   }))
 
   const { data, error } = await supabase
@@ -172,6 +176,7 @@ async function grantPermissions(
       actorId: ctx.keyId,
       actorLabel: ctx.name,
       source: 'mcp',
+      workspaceId: ctx.workspaceId,
     })
   }
 
@@ -210,6 +215,7 @@ async function revokePermissions(
     .from('agent_permissions')
     .select('id, project_id, department_id, can_read, can_create, can_update, can_assign')
     .eq('agent_key_id', params.key_id)
+    .eq('workspace_id', ctx.workspaceId)
     .abortSignal(AbortSignal.timeout(10_000))
 
   if (fetchError) {
@@ -254,6 +260,7 @@ async function revokePermissions(
       actorId: ctx.keyId,
       actorLabel: ctx.name,
       source: 'mcp',
+      workspaceId: ctx.workspaceId,
     })
   }
 

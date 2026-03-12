@@ -22,7 +22,7 @@ export async function handleManageAgentKeys(
 
   switch (params.action) {
     case 'list':
-      return await listKeys(supabase)
+      return await listKeys(ctx, supabase)
     case 'create':
       return await createKey(params, ctx, supabase)
     case 'update':
@@ -36,10 +36,11 @@ export async function handleManageAgentKeys(
   }
 }
 
-async function listKeys(supabase: SupabaseClient) {
+async function listKeys(ctx: AgentContext, supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from('agent_keys')
     .select('id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by')
+    .eq('workspace_id', ctx.workspaceId)
     .order('created_at', { ascending: false })
     .abortSignal(AbortSignal.timeout(10_000))
 
@@ -75,6 +76,7 @@ async function createKey(
   const { data: settings } = await supabase
     .from('app_settings')
     .select('require_human_approval_for_agent_keys, max_agent_keys_per_manager')
+    .eq('workspace_id', ctx.workspaceId)
     .abortSignal(AbortSignal.timeout(10_000))
     .single()
   const requireApproval: boolean = settings?.require_human_approval_for_agent_keys ?? false
@@ -86,6 +88,7 @@ async function createKey(
       .from('agent_keys')
       .select('id', { count: 'exact', head: true })
       .eq('created_by', ctx.keyId)
+      .eq('workspace_id', ctx.workspaceId)
       .abortSignal(AbortSignal.timeout(10_000))
 
     if (countError) {
@@ -116,6 +119,7 @@ async function createKey(
       is_active: isActive,
       special_prompt: params.special_prompt ?? null,
       created_by: ctx.keyId,
+      workspace_id: ctx.workspaceId,
     })
     .abortSignal(AbortSignal.timeout(10_000))
 
@@ -132,6 +136,7 @@ async function createKey(
     actorId: ctx.keyId,
     actorLabel: ctx.name,
     source: 'mcp',
+    workspaceId: ctx.workspaceId,
   })
 
   return {
@@ -179,6 +184,7 @@ async function updateKey(
     .from('agent_keys')
     .update(updates)
     .eq('id', params.key_id)
+    .eq('workspace_id', ctx.workspaceId)
     .select('id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at')
     .abortSignal(AbortSignal.timeout(10_000))
     .single()
@@ -197,6 +203,7 @@ async function updateKey(
     actorId: ctx.keyId,
     actorLabel: ctx.name,
     source: 'mcp',
+    workspaceId: ctx.workspaceId,
   })
 
   return {
@@ -221,6 +228,7 @@ async function deactivateKey(
     .from('agent_keys')
     .update({ is_active: false })
     .eq('id', params.key_id)
+    .eq('workspace_id', ctx.workspaceId)
     .select('id, name, role, is_active')
     .abortSignal(AbortSignal.timeout(10_000))
     .single()
@@ -238,6 +246,7 @@ async function deactivateKey(
     actorId: ctx.keyId,
     actorLabel: ctx.name,
     source: 'mcp',
+    workspaceId: ctx.workspaceId,
   })
 
   return {
@@ -268,6 +277,7 @@ async function rotateKey(
       key_prefix: keyData.keyPrefix,
     })
     .eq('id', params.key_id)
+    .eq('workspace_id', ctx.workspaceId)
     .abortSignal(AbortSignal.timeout(10_000))
 
   if (error) {
@@ -283,6 +293,7 @@ async function rotateKey(
     actorId: ctx.keyId,
     actorLabel: ctx.name,
     source: 'mcp',
+    workspaceId: ctx.workspaceId,
   })
 
   // Build the full key using the existing key_id but the new secret

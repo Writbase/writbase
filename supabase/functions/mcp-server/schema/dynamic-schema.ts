@@ -28,6 +28,7 @@ export async function createMcpServerForAgent(
   const { data: settings } = await supabase
     .from('app_settings')
     .select('department_required')
+    .eq('workspace_id', ctx.workspaceId)
     .single()
   const departmentRequired: boolean = settings?.department_required ?? false
 

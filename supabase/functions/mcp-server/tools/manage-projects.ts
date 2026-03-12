@@ -51,6 +51,7 @@ async function createProject(
     data = await insertWithUniqueSlug(supabase, 'projects', {
       name: params.name.trim(),
       is_archived: false,
+      workspace_id: ctx.workspaceId,
     }, baseSlug)
   } catch (err) {
     return mcpError({ code: 'internal_error', message: (err as Error).message })
@@ -66,6 +67,7 @@ async function createProject(
     actorId: ctx.keyId,
     actorLabel: ctx.name,
     source: 'mcp',
+    workspaceId: ctx.workspaceId,
   })
 
   return {
@@ -95,6 +97,7 @@ async function renameProject(
     .from('projects')
     .select('*')
     .eq('id', params.project_id)
+    .eq('workspace_id', ctx.workspaceId)
     .abortSignal(AbortSignal.timeout(10_000))
     .single()
 
@@ -124,6 +127,7 @@ async function renameProject(
     actorId: ctx.keyId,
     actorLabel: ctx.name,
     source: 'mcp',
+    workspaceId: ctx.workspaceId,
   })
 
   return {
@@ -144,6 +148,7 @@ async function archiveProject(
     .from('projects')
     .update({ is_archived: true })
     .eq('id', params.project_id)
+    .eq('workspace_id', ctx.workspaceId)
     .select()
     .abortSignal(AbortSignal.timeout(10_000))
     .single()
@@ -161,6 +166,7 @@ async function archiveProject(
     actorId: ctx.keyId,
     actorLabel: ctx.name,
     source: 'mcp',
+    workspaceId: ctx.workspaceId,
   })
 
   return {

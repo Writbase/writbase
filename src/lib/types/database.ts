@@ -8,6 +8,24 @@ import type {
   TargetType,
 } from './enums';
 
+export type WorkspaceRole = 'owner' | 'admin' | 'member';
+
+export interface Workspace {
+  id: string;
+  name: string;
+  slug: string;
+  owner_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkspaceMember {
+  workspace_id: string;
+  user_id: string;
+  role: WorkspaceRole;
+  created_at: string;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -15,6 +33,7 @@ export interface Project {
   is_archived: boolean;
   created_at: string;
   created_by: string | null;
+  workspace_id: string;
 }
 
 export interface Department {
@@ -24,6 +43,7 @@ export interface Department {
   is_archived: boolean;
   created_at: string;
   created_by: string | null;
+  workspace_id: string;
 }
 
 export interface Task {
@@ -47,6 +67,7 @@ export interface Task {
   requested_by_agent_key_id: string | null;
   delegation_depth: number;
   assignment_chain: string[];
+  workspace_id: string;
 }
 
 export interface EventLog {
@@ -63,6 +84,7 @@ export interface EventLog {
   actor_label: string;
   source: Source;
   created_at: string;
+  workspace_id: string;
 }
 
 export interface AgentKey {
@@ -76,6 +98,7 @@ export interface AgentKey {
   created_at: string;
   last_used_at: string | null;
   created_by: string;
+  workspace_id: string;
 }
 
 export interface AgentPermission {
@@ -88,6 +111,7 @@ export interface AgentPermission {
   can_update: boolean;
   can_assign: boolean;
   created_at: string;
+  workspace_id: string;
 }
 
 export interface AppSettings {
@@ -97,6 +121,7 @@ export interface AppSettings {
   max_agent_keys_per_manager: number | null;
   created_at: string;
   updated_at: string;
+  workspace_id: string;
 }
 
 export interface RateLimit {
@@ -115,6 +140,7 @@ export interface WebhookSubscription {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  workspace_id: string;
 }
 
 export interface AgentCapabilities {
@@ -124,8 +150,5 @@ export interface AgentCapabilities {
   accepts_tasks: boolean;
   created_at: string;
   updated_at: string;
-}
-
-export interface AdminUser {
-  user_id: string;
+  workspace_id: string;
 }

@@ -63,7 +63,7 @@ export async function handleAddTask(
   // 4. Resolve department if provided
   let departmentId: string | null = null
   if (params.department) {
-    const result = await resolveDepartment(params.department, projectPerms, supabase, 'create', params.project)
+    const result = await resolveDepartment(params.department, projectPerms, supabase, 'create', params.project, ctx.workspaceId)
     if ('error' in result) {
       return mcpError(result.error)
     }
@@ -73,6 +73,7 @@ export async function handleAddTask(
     const { data: settings } = await supabase
       .from('app_settings')
       .select('department_required')
+      .eq('workspace_id', ctx.workspaceId)
       .abortSignal(AbortSignal.timeout(10_000))
       .single()
 
@@ -107,6 +108,7 @@ export async function handleAddTask(
       .from('agent_keys')
       .select('id, is_active')
       .eq(isAssigneeUuid ? 'id' : 'name', params.assign_to)
+      .eq('workspace_id', ctx.workspaceId)
       .abortSignal(AbortSignal.timeout(10_000))
       .maybeSingle()
 
@@ -120,6 +122,7 @@ export async function handleAddTask(
       .select('id', { count: 'exact', head: true })
       .eq('agent_key_id', assignee.id)
       .eq('project_id', projectId)
+      .eq('workspace_id', ctx.workspaceId)
       .abortSignal(AbortSignal.timeout(10_000))
 
     if (!count || count === 0) {
@@ -133,6 +136,7 @@ export async function handleAddTask(
   const { data: task, error: rpcError } = await supabase
     .rpc('create_task_with_event', {
       p_payload: {
+        workspace_id: ctx.workspaceId,
         project_id: projectId,
         department_id: departmentId,
         priority: params.priority ?? 'medium',
