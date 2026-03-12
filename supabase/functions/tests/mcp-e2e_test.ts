@@ -25,13 +25,19 @@ import { assertEquals, assertExists } from '@std/assert'
 
 // ── Configuration ───────────────────────────────────────────────────
 
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? 'https://bblhnneesokjhcbvffkp.supabase.co'
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 const MCP_URL = Deno.env.get('MCP_TEST_URL') ?? `${SUPABASE_URL}/functions/v1/mcp-server`
-const WORKSPACE_ID = Deno.env.get('TEST_WORKSPACE_ID') ?? '56b58c18-5828-4df8-a581-855f6d94fb4d'
+const WORKSPACE_ID = Deno.env.get('TEST_WORKSPACE_ID') ?? ''
 
+if (!SUPABASE_URL) {
+  throw new Error('SUPABASE_URL is required (e.g. https://your-project.supabase.co)')
+}
 if (!SERVICE_ROLE_KEY) {
   throw new Error('SUPABASE_SERVICE_ROLE_KEY is required. Set it in env or .env')
+}
+if (!WORKSPACE_ID) {
+  throw new Error('TEST_WORKSPACE_ID is required (UUID of a workspace with a provisioned user)')
 }
 
 // ── Crypto helpers (mirrors _shared/auth.ts) ────────────────────────
