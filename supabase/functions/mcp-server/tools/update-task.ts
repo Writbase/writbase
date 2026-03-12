@@ -57,22 +57,43 @@ export async function handleUpdateTask(
     return mcpError(taskNotFoundError(params.task_id))
   }
 
-  const hasUpdate = projectPerms.some((p) => p.canUpdate)
-  if (!hasUpdate) {
-    const projectSlug = projectPerms[0].projectSlug
-    return mcpError(scopeNotAllowedError(projectSlug, 'update'))
-  }
+  // 2b. Determine effective permission for the task's CURRENT department scope
+  let effectiveCanUpdate = false
+  let effectiveCanComment = false
 
-  // 3. Check task's current department scope — agent needs can_update for it
   if (existingTask.department_id) {
+    // Task is in a specific department — check dept-level permissions
     const hasProjectWideUpdate = projectPerms.some((p) => p.departmentId === null && p.canUpdate)
     const hasDeptUpdate = projectPerms.some(
       (p) => p.departmentId === existingTask.department_id && p.canUpdate
     )
+    effectiveCanUpdate = hasProjectWideUpdate || hasDeptUpdate
 
-    if (!hasProjectWideUpdate && !hasDeptUpdate) {
-      const projectSlug = projectPerms[0].projectSlug
-      return mcpError(scopeNotAllowedError(projectSlug, 'update'))
+    const hasProjectWideComment = projectPerms.some((p) => p.departmentId === null && p.canComment)
+    const hasDeptComment = projectPerms.some(
+      (p) => p.departmentId === existingTask.department_id && p.canComment
+    )
+    effectiveCanComment = hasProjectWideComment || hasDeptComment
+  } else {
+    // Task has no department — project-level check
+    effectiveCanUpdate = projectPerms.some((p) => p.canUpdate)
+    effectiveCanComment = projectPerms.some((p) => p.canComment)
+  }
+
+  if (!effectiveCanUpdate && !effectiveCanComment) {
+    return mcpError(scopeNotAllowedError(projectPerms[0].projectSlug, 'update'))
+  }
+
+  // If only can_comment (not can_update) for this scope, restrict fields
+  if (!effectiveCanUpdate && effectiveCanComment) {
+    const restrictedFields = ['priority', 'description', 'department', 'due_date', 'assign_to'] as const
+    const attempted = restrictedFields.filter((f) => params[f] !== undefined)
+    if (attempted.length > 0) {
+      return mcpError({
+        code: 'scope_not_allowed',
+        message: `Comment-only permission: cannot change ${attempted.join(', ')}. Only notes and status are allowed.`,
+        recovery: 'Remove restricted fields and retry with only notes and/or status.',
+      })
     }
   }
 

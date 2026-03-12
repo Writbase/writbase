@@ -26,9 +26,17 @@ CREATE INDEX idx_request_log_agent_key_id ON request_log (agent_key_id);
 CREATE INDEX idx_request_log_errors ON request_log (created_at, error_code)
   WHERE status != 'ok';
 
--- pg_cron cleanup: purge entries older than 30 days, daily at 04:00 UTC
-SELECT cron.schedule(
-  'cleanup-request-log',
-  '0 4 * * *',
-  $$DELETE FROM request_log WHERE created_at < now() - interval '30 days'$$
-);
+-- pg_cron cleanup: purge entries older than 30 days, daily at 04:00 UTC (no-op if pg_cron not available)
+DO $outer$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'cron') THEN
+    PERFORM cron.schedule(
+      'cleanup-request-log',
+      '0 4 * * *',
+      $$DELETE FROM request_log WHERE created_at < now() - interval '30 days'$$
+    );
+  ELSE
+    RAISE NOTICE 'pg_cron not available — skipping request log cleanup schedule';
+  END IF;
+END;
+$outer$;

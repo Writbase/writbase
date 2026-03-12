@@ -181,6 +181,7 @@ export async function createMcpServerForAgent(
           can_create: z.boolean().optional(),
           can_update: z.boolean().optional(),
           can_assign: z.boolean().optional(),
+          can_comment: z.boolean().optional(),
         })).optional().describe('Permissions to grant or revoke'),
       },
       { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },

@@ -53,9 +53,17 @@ AS $$
   DELETE FROM auth_rate_limits WHERE window_start < now() - interval '1 hour';
 $$;
 
--- Schedule cleanup daily at 04:00 UTC
-SELECT cron.schedule(
-  'cleanup-auth-rate-limits',
-  '0 4 * * *',
-  $$SELECT public.cleanup_auth_rate_limits()$$
-);
+-- Schedule cleanup daily at 04:00 UTC (no-op if pg_cron not available)
+DO $outer$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'cron') THEN
+    PERFORM cron.schedule(
+      'cleanup-auth-rate-limits',
+      '0 4 * * *',
+      'SELECT public.cleanup_auth_rate_limits()'
+    );
+  ELSE
+    RAISE NOTICE 'pg_cron not available — skipping auth rate limit cleanup schedule';
+  END IF;
+END;
+$outer$;

@@ -243,7 +243,14 @@ describe('updateAgentKeyPermissions', () => {
     await updateAgentKeyPermissions(mock, {
       keyId: 'k1',
       permissions: [
-        { projectId: 'p1', canRead: true, canCreate: false, canUpdate: false, canAssign: false },
+        {
+          projectId: 'p1',
+          canRead: true,
+          canCreate: false,
+          canUpdate: false,
+          canAssign: false,
+          canComment: false,
+        },
       ],
       actorId: 'user-1',
       workspaceId: 'ws-test-1',
@@ -266,7 +273,14 @@ describe('updateAgentKeyPermissions', () => {
       updateAgentKeyPermissions(mock, {
         keyId: 'k1',
         permissions: [
-          { projectId: 'p1', canRead: true, canCreate: false, canUpdate: false, canAssign: false },
+          {
+            projectId: 'p1',
+            canRead: true,
+            canCreate: false,
+            canUpdate: false,
+            canAssign: false,
+            canComment: false,
+          },
         ],
         actorId: 'user-1',
         workspaceId: 'ws-test-1',
@@ -282,7 +296,14 @@ describe('updateAgentKeyPermissions', () => {
       updateAgentKeyPermissions(mock, {
         keyId: 'k1',
         permissions: [
-          { projectId: 'p1', canRead: true, canCreate: false, canUpdate: false, canAssign: false },
+          {
+            projectId: 'p1',
+            canRead: true,
+            canCreate: false,
+            canUpdate: false,
+            canAssign: false,
+            canComment: false,
+          },
         ],
         actorId: 'user-1',
         workspaceId: 'ws-test-1',

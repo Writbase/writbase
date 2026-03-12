@@ -54,10 +54,20 @@ export async function handleAddTask(
     })
   }
 
-  // 3. Check agent has can_create for this project scope
-  const hasCreate = projectPerms.some((p) => p.canCreate)
-  if (!hasCreate) {
-    return mcpError(scopeNotAllowedError(params.project, 'create'))
+  // 3. Check can_create for the appropriate scope
+  if (params.department) {
+    // Department specified — department-resolver (called below) will enforce can_create per-dept
+    // But still need at least one can_create row in the project for the early gate
+    const hasCreate = projectPerms.some((p) => p.canCreate)
+    if (!hasCreate) {
+      return mcpError(scopeNotAllowedError(params.project, 'create'))
+    }
+  } else {
+    // No department — require project-wide can_create (departmentId === null)
+    const hasProjectWideCreate = projectPerms.some((p) => p.departmentId === null && p.canCreate)
+    if (!hasProjectWideCreate) {
+      return mcpError(scopeNotAllowedError(params.project, 'create'))
+    }
   }
 
   // 4. Resolve department if provided
