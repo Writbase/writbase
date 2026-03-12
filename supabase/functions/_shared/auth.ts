@@ -13,6 +13,7 @@ interface PermissionRow {
   can_create: boolean
   can_update: boolean
   can_assign: boolean
+  can_comment: boolean
   projects: { slug: string; name: string; is_archived: boolean } | null
   departments: { slug: string; name: string; is_archived: boolean } | null
 }
@@ -150,6 +151,7 @@ export async function loadPermissions(
       can_create,
       can_update,
       can_assign,
+      can_comment,
       projects:project_id ( slug, name, is_archived ),
       departments:department_id ( slug, name, is_archived )
     `)
@@ -173,6 +175,7 @@ export async function loadPermissions(
     canCreate: row.can_create,
     canUpdate: row.can_update,
     canAssign: row.can_assign,
+    canComment: row.can_comment,
     isProjectArchived: row.projects?.is_archived ?? false,
     isDepartmentArchived: row.departments?.is_archived ?? null,
   }))

@@ -18,6 +18,7 @@ export interface AgentPermission {
   canCreate: boolean
   canUpdate: boolean
   canAssign: boolean
+  canComment: boolean
   isProjectArchived: boolean
   isDepartmentArchived: boolean | null
 }

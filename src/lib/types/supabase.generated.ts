@@ -133,6 +133,7 @@ export type Database = {
         Row: {
           agent_key_id: string;
           can_assign: boolean;
+          can_comment: boolean;
           can_create: boolean;
           can_read: boolean;
           can_update: boolean;
@@ -145,6 +146,7 @@ export type Database = {
         Insert: {
           agent_key_id: string;
           can_assign?: boolean;
+          can_comment?: boolean;
           can_create?: boolean;
           can_read?: boolean;
           can_update?: boolean;
@@ -157,6 +159,7 @@ export type Database = {
         Update: {
           agent_key_id?: string;
           can_assign?: boolean;
+          can_comment?: boolean;
           can_create?: boolean;
           can_read?: boolean;
           can_update?: boolean;

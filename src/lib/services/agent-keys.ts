@@ -193,6 +193,7 @@ export async function updateAgentKeyPermissions(
       canCreate: boolean;
       canUpdate: boolean;
       canAssign: boolean;
+      canComment: boolean;
     }>;
     actorId: string;
     workspaceId: string;
@@ -216,6 +217,7 @@ export async function updateAgentKeyPermissions(
     can_create: p.canCreate,
     can_update: p.canUpdate,
     can_assign: p.canAssign,
+    can_comment: p.canComment,
   }));
 
   const { error: rpcError } = await supabase.rpc('update_agent_permissions', {

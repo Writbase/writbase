@@ -74,6 +74,7 @@ export const permissionSchema = z.object({
   canCreate: z.boolean().default(false),
   canUpdate: z.boolean().default(false),
   canAssign: z.boolean().default(false),
+  canComment: z.boolean().default(false),
 });
 
 export const permissionsUpdateSchema = z.object({
@@ -86,6 +87,7 @@ export const permissionsUpdateSchema = z.object({
       canCreate: z.boolean().default(false),
       canUpdate: z.boolean().default(false),
       canAssign: z.boolean().default(false),
+      canComment: z.boolean().default(false),
     }),
   ),
 });

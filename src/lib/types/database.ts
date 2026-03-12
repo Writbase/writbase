@@ -110,6 +110,7 @@ export interface AgentPermission {
   can_create: boolean;
   can_update: boolean;
   can_assign: boolean;
+  can_comment: boolean;
   created_at: string;
   workspace_id: string;
 }

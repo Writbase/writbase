@@ -132,6 +132,7 @@ export async function updateAgentKeyPermissionsAction(data: {
     canCreate: boolean;
     canUpdate: boolean;
     canAssign: boolean;
+    canComment: boolean;
   }>;
 }) {
   try {

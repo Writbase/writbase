@@ -5,13 +5,14 @@ import { invalidDepartmentError, scopeNotAllowedError } from './errors.ts'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-type RequiredAction = 'read' | 'create' | 'update'
+type RequiredAction = 'read' | 'create' | 'update' | 'comment'
 
 function hasAction(perm: AgentPermission, action: RequiredAction): boolean {
   switch (action) {
     case 'read': return perm.canRead
     case 'create': return perm.canCreate
     case 'update': return perm.canCreate || perm.canUpdate
+    case 'comment': return perm.canComment
   }
 }
 
@@ -53,6 +54,9 @@ export async function resolveDepartment(
   if (deptPerm) {
     if (deptPerm.isDepartmentArchived) {
       return { error: invalidDepartmentError(departmentInput) }
+    }
+    if (!hasAction(deptPerm, requiredAction)) {
+      return { error: scopeNotAllowedError(projectLabel, requiredAction) }
     }
     return { departmentId: deptPerm.departmentId! }
   }
