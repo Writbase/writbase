@@ -28,21 +28,26 @@ AI agents need a shared, persistent task registry — not ephemeral in-memory st
 
 ### 1. Deploy WritBase
 
-See the [Deployment Guide](docs/deployment.md) for full instructions. The fastest path:
+The fastest path uses [Supabase Cloud](https://supabase.com) (free tier: 500MB DB, 50K MAUs, 500K Edge Function invocations — no credit card, no Docker):
 
 ```bash
 # Clone and install
 git clone https://github.com/dynreadme/writbase.git
 cd writbase && npm install
 
-# Set up Supabase
+# Create a free Supabase project at supabase.com/dashboard
+# Then link, push schema, and deploy the MCP server:
 supabase link --project-ref <your-project-ref>
 supabase db push
 supabase functions deploy mcp-server --no-verify-jwt
 
 # Start the dashboard
+cp .env.example .env.local
+# Edit .env.local with your Supabase project URL and publishable key
 npm run dev
 ```
+
+See the [Deployment Guide](docs/deployment.md) for production deployment, Vercel hosting, and self-hosted Supabase options.
 
 ### 2. Create an Agent Key
 
@@ -113,21 +118,22 @@ See the [MCP Config Reference](docs/mcp-config-reference.md) for Cursor, Windsur
 - **Frontend**: Next.js 16 (App Router) + Tailwind CSS
 - **Auth**: Supabase Auth (humans) + SHA-256 agent keys (agents)
 
-## Self-Host vs Cloud
+## Deployment Options
 
-| | Self-Hosted | Cloud (coming soon) |
+| | Supabase Cloud (recommended) | Self-Hosted Supabase |
 |---|---|---|
-| Control | Full | Managed |
-| Setup | Deploy yourself | Sign up and go |
-| Cost | Your infrastructure | Free tier available |
-| Updates | Manual | Automatic |
+| Setup | Create project → `supabase db push` → done | Docker Compose (5 containers) |
+| Cost | [Free tier](https://supabase.com/pricing): 500MB DB, 50K MAUs | Your infrastructure |
+| Dashboard | Deploy to Vercel (free) | Self-host Next.js |
+| Updates | Automatic platform updates | Manual |
+| Control | Supabase-managed | Full |
 
-See [docs/deployment.md](docs/deployment.md) for self-hosted setup.
+See [docs/deployment.md](docs/deployment.md) for detailed setup instructions.
 
 ## Documentation
 
 - [Quickstart](docs/quickstart.md) — Connect Claude Code in 5 minutes
-- [Deployment Guide](docs/deployment.md) — Self-host with Supabase
+- [Deployment Guide](docs/deployment.md) — Supabase Cloud, Vercel, and self-hosted setup
 - [Core Concepts](docs/concepts.md) — Permissions, provenance, error codes, delegation
 - [MCP Config Reference](docs/mcp-config-reference.md) — Client configs for Claude Code, Cursor, VS Code, Windsurf
 
