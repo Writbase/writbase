@@ -43,6 +43,10 @@ export interface Task {
   updated_by_type: ActorType;
   updated_by_id: string;
   source: Source;
+  assigned_to_agent_key_id: string | null;
+  requested_by_agent_key_id: string | null;
+  delegation_depth: number;
+  assignment_chain: string[];
 }
 
 export interface EventLog {
@@ -82,6 +86,7 @@ export interface AgentPermission {
   can_read: boolean;
   can_create: boolean;
   can_update: boolean;
+  can_assign: boolean;
   created_at: string;
 }
 
@@ -98,6 +103,27 @@ export interface RateLimit {
   agent_key_id: string;
   window_start: string;
   request_count: number;
+}
+
+export interface WebhookSubscription {
+  id: string;
+  agent_key_id: string;
+  project_id: string;
+  event_types: string[];
+  url: string;
+  secret: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AgentCapabilities {
+  agent_key_id: string;
+  skills: string[];
+  description: string | null;
+  accepts_tasks: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AdminUser {

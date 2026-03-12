@@ -14,6 +14,7 @@ interface PermissionRow {
   canRead: boolean;
   canCreate: boolean;
   canUpdate: boolean;
+  canAssign: boolean;
 }
 
 interface ProjectOption {
@@ -72,6 +73,7 @@ export function PermissionEditor({ keyId, initialPermissions }: PermissionEditor
         canRead: true,
         canCreate: false,
         canUpdate: false,
+        canAssign: false,
       },
     ]);
   }
@@ -97,6 +99,7 @@ export function PermissionEditor({ keyId, initialPermissions }: PermissionEditor
         canRead: r.canRead,
         canCreate: r.canCreate,
         canUpdate: r.canUpdate,
+        canAssign: r.canAssign,
       })),
     });
 
@@ -130,6 +133,7 @@ export function PermissionEditor({ keyId, initialPermissions }: PermissionEditor
                 <th className="px-3 py-2 text-center">Read</th>
                 <th className="px-3 py-2 text-center">Create</th>
                 <th className="px-3 py-2 text-center">Update</th>
+                <th className="px-3 py-2 text-center">Assign</th>
                 <th className="px-3 py-2"></th>
               </tr>
             </thead>
@@ -204,6 +208,17 @@ export function PermissionEditor({ keyId, initialPermissions }: PermissionEditor
                         updateRow(i, { canUpdate: e.target.checked });
                       }}
                       aria-label={`Update access for ${row.projectName}${row.departmentName ? ` / ${row.departmentName}` : ''}`}
+                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <input
+                      type="checkbox"
+                      checked={row.canAssign}
+                      onChange={(e) => {
+                        updateRow(i, { canAssign: e.target.checked });
+                      }}
+                      aria-label={`Assign access for ${row.projectName}${row.departmentName ? ` / ${row.departmentName}` : ''}`}
                       className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                     />
                   </td>

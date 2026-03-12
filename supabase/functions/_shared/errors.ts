@@ -21,6 +21,10 @@ export const ErrorCodes = {
   RATE_LIMITED: 'rate_limited',
   INSUFFICIENT_MANAGER_SCOPE: 'insufficient_manager_scope',
   SELF_MODIFICATION_DENIED: 'self_modification_denied',
+  INVALID_ASSIGNEE: 'invalid_assignee',
+  CIRCULAR_DELEGATION: 'circular_delegation',
+  DELEGATION_DEPTH_EXCEEDED: 'delegation_depth_exceeded',
+  ASSIGN_NOT_ALLOWED: 'assign_not_allowed',
   INTERNAL_ERROR: 'internal_error',
 } as const
 
@@ -120,6 +124,38 @@ export function selfModificationDeniedError(): WritBaseError {
     code: ErrorCodes.SELF_MODIFICATION_DENIED,
     message: 'An agent cannot modify its own key.',
     recovery: 'Ask a different agent or a human admin to make this change.',
+  }
+}
+
+export function invalidAssigneeError(assignee: string): WritBaseError {
+  return {
+    code: ErrorCodes.INVALID_ASSIGNEE,
+    message: `Agent "${assignee}" does not exist, is inactive, or has no permissions in this project.`,
+    recovery: 'Verify the agent key ID or name is correct and the agent is active with project access.',
+  }
+}
+
+export function circularDelegationError(): WritBaseError {
+  return {
+    code: ErrorCodes.CIRCULAR_DELEGATION,
+    message: 'This agent has already been in the delegation chain for this task.',
+    recovery: 'Assign the task to a different agent that has not previously handled it.',
+  }
+}
+
+export function delegationDepthExceededError(): WritBaseError {
+  return {
+    code: ErrorCodes.DELEGATION_DEPTH_EXCEEDED,
+    message: 'Maximum delegation depth (3) reached for this task.',
+    recovery: 'This task has been reassigned too many times. Complete it directly or create a new task.',
+  }
+}
+
+export function assignNotAllowedError(project: string): WritBaseError {
+  return {
+    code: ErrorCodes.ASSIGN_NOT_ALLOWED,
+    message: `Agent does not have "assign" permission for project "${project}".`,
+    recovery: 'Request the can_assign permission from an admin via the dashboard.',
   }
 }
 

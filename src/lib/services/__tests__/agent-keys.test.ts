@@ -232,7 +232,9 @@ describe('updateAgentKeyPermissions', () => {
 
     await updateAgentKeyPermissions(mock, {
       keyId: 'k1',
-      permissions: [{ projectId: 'p1', canRead: true, canCreate: false, canUpdate: false }],
+      permissions: [
+        { projectId: 'p1', canRead: true, canCreate: false, canUpdate: false, canAssign: false },
+      ],
       actorId: 'user-1',
     });
 
@@ -252,7 +254,9 @@ describe('updateAgentKeyPermissions', () => {
     await expect(
       updateAgentKeyPermissions(mock, {
         keyId: 'k1',
-        permissions: [{ projectId: 'p1', canRead: true, canCreate: false, canUpdate: false }],
+        permissions: [
+          { projectId: 'p1', canRead: true, canCreate: false, canUpdate: false, canAssign: false },
+        ],
         actorId: 'user-1',
       }),
     ).rejects.toThrow();
@@ -265,7 +269,9 @@ describe('updateAgentKeyPermissions', () => {
     await expect(
       updateAgentKeyPermissions(mock, {
         keyId: 'k1',
-        permissions: [{ projectId: 'p1', canRead: true, canCreate: false, canUpdate: false }],
+        permissions: [
+          { projectId: 'p1', canRead: true, canCreate: false, canUpdate: false, canAssign: false },
+        ],
         actorId: 'user-1',
       }),
     ).rejects.toThrow('Cannot update permissions on an inactive key');

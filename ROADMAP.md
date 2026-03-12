@@ -61,7 +61,7 @@ cross-domain dependencies noted at the bottom.
 - [x] Unauthenticated requests return 401 (including `tools/list`)
 - [x] Rate limit check middleware: query rate_limits table before tool execution, return `rate_limited` error with `retry_after`
 - [x] Origin header handling: allow missing Origin (agents don't send it), reject unauthorized Origin (rogue browsers)
-- [ ] Request logging: key ID, tool name, auth result, latency
+- [x] Request logging: key ID, tool name, auth result, latency
 
 ### M7: Worker tools — info + get_tasks
 - [x] `info` tool: return agent name, role, scopes, special prompt, valid projects/depts (excluding archived)
@@ -110,7 +110,7 @@ cross-domain dependencies noted at the bottom.
 - [x] Department CRUD: GET/POST/PATCH /api/departments
 - [x] Task CRUD: GET/POST/PATCH /api/tasks
 - [x] Task history: GET /api/tasks/:id/history (filtered event_log query)
-- [ ] Agent keys: GET/POST/PATCH /api/agent-keys, POST /api/agent-keys/:id/rotate
+- [x] Agent keys: GET/POST/PATCH /api/agent-keys, POST /api/agent-keys/:id/rotate
 - [x] Event log: GET /api/event-log (admin access)
 
 ## Backend (Business Logic)
@@ -165,6 +165,36 @@ cross-domain dependencies noted at the bottom.
 - [x] Error states and loading states in UI
 - [x] Archived entity behavior in UI (hide from selectors, show on existing tasks)
 - [x] Edge-case validation (slug changes, empty results, etc.)
+
+## Inter-Agent Task Exchange (Post-MVP)
+
+### M19: Task assignment + delegation safety
+- [x] Add `failed` to status enum (A2A alignment) + TS types + UI
+- [x] Create bidirectional `a2a-status-map.ts` (WritBase ↔ A2A status mapping)
+- [x] Add `assigned_to_agent_key_id`, `requested_by_agent_key_id` to tasks table
+- [x] Add `delegation_depth` (CHECK ≤ 3) + `assignment_chain` (UUID[]) for circular delegation prevention
+- [x] Add `can_assign` permission to `agent_permissions` (separate from `can_create`)
+- [x] Extend `add_task` with `assign_to` param (resolve by UUID or agent name, validate assignee is active + has project access)
+- [x] Extend `get_tasks` with `assigned_to_me` / `requested_by_me` filters
+- [x] Extend `update_task` with `assign_to` for reassignment (delegation safety enforced in RPC)
+- [x] Event log: `task.assigned` + `task.reassigned` events
+- [x] Update `update_agent_permissions` RPC, MCP tool, permission editor UI for `can_assign`
+
+### M20: Webhook notifications
+- [x] `webhook_subscriptions` table (agent_key_id, project_id, event_types[], url, HMAC secret)
+- [x] `subscribe` MCP tool (create/list/delete subscriptions, manager only)
+- [ ] pg_net trigger on tasks table → Edge Function → fan out to registered webhook URLs with HMAC-SHA256
+- Deferred: at-least-once delivery (`webhook_delivery_log` + `pg_cron` retry) — at-most-once sufficient for agent consumers
+
+### M21: Agent discovery (A2A Agent Cards)
+- [x] `agent_capabilities` table (skills[], description, accepts_tasks)
+- [x] `discover_agents` MCP tool (manager only, filterable by skill)
+- Deferred: worker-visible discovery (add `allow_worker_discovery` project flag when peer-to-peer delegation needed)
+
+### M22: A2A protocol endpoints (deferred)
+- [ ] Implement A2A-compliant task lifecycle endpoints (wait for A2A spec v1.0 to stabilize)
+- [ ] Serve Agent Cards at well-known endpoint (`.well-known/agent.json`)
+- Note: internal vocabulary already aligned; WritBase's MCP-native approach provides interop. A2A endpoints needed for cross-org agent communication.
 
 ## Cross-domain dependencies
 

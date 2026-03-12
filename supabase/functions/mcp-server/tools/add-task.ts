@@ -6,6 +6,8 @@ import {
   invalidDepartmentError,
   scopeNotAllowedError,
   validationError,
+  invalidAssigneeError,
+  assignNotAllowedError,
   internalError,
 } from '../../_shared/errors.ts'
 import { validateTaskInput } from '../../_shared/validation.ts'
@@ -20,6 +22,7 @@ interface AddTaskParams {
   notes?: string
   due_date?: string
   status?: string
+  assign_to?: string
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -89,7 +92,44 @@ export async function handleAddTask(
     return mcpError(validationError(fieldErrors))
   }
 
-  // 7. Create task atomically via RPC (task + event_log in one transaction)
+  // 7. Resolve assign_to if provided
+  let assignedToKeyId: string | null = null
+  if (params.assign_to) {
+    // Check that caller has can_assign permission for this project
+    const hasAssign = projectPerms.some((p) => p.canAssign)
+    if (!hasAssign) {
+      return mcpError(assignNotAllowedError(params.project))
+    }
+
+    // Resolve by agent key ID (UUID) or agent name
+    const isAssigneeUuid = UUID_RE.test(params.assign_to)
+    const { data: assignee } = await supabase
+      .from('agent_keys')
+      .select('id, is_active')
+      .eq(isAssigneeUuid ? 'id' : 'name', params.assign_to)
+      .abortSignal(AbortSignal.timeout(10_000))
+      .maybeSingle()
+
+    if (!assignee || !assignee.is_active) {
+      return mcpError(invalidAssigneeError(params.assign_to))
+    }
+
+    // Verify assignee has permissions in this project
+    const { count } = await supabase
+      .from('agent_permissions')
+      .select('id', { count: 'exact', head: true })
+      .eq('agent_key_id', assignee.id)
+      .eq('project_id', projectId)
+      .abortSignal(AbortSignal.timeout(10_000))
+
+    if (!count || count === 0) {
+      return mcpError(invalidAssigneeError(params.assign_to))
+    }
+
+    assignedToKeyId = assignee.id
+  }
+
+  // 8. Create task atomically via RPC (task + event_log in one transaction)
   const { data: task, error: rpcError } = await supabase
     .rpc('create_task_with_event', {
       p_payload: {
@@ -106,6 +146,8 @@ export async function handleAddTask(
         actor_id: ctx.keyId,
         actor_label: ctx.name,
         source: 'mcp',
+        assigned_to_agent_key_id: assignedToKeyId,
+        requested_by_agent_key_id: assignedToKeyId ? ctx.keyId : null,
       },
     })
     .single()
@@ -124,12 +166,14 @@ export async function handleAddTask(
       case 'department_not_found':
       case 'department_archived':
         return mcpError(invalidDepartmentError(params.department ?? 'unknown'))
+      case 'invalid_assignee':
+        return mcpError(invalidAssigneeError(params.assign_to ?? 'unknown'))
       default:
         return mcpError(internalError(rpcError.message))
     }
   }
 
-  // 8. Return created task
+  // 9. Return created task
   return {
     content: [{ type: 'text' as const, text: JSON.stringify(task) }],
   }

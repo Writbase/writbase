@@ -43,7 +43,7 @@ export const taskUpdateSchema = z
     description: z.string().min(3).max(5000).optional(),
     notes: z.string().max(10000).optional().nullable(),
     dueDate: z.iso.datetime().optional().nullable(),
-    status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled']).optional(),
+    status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled', 'failed']).optional(),
   })
   .refine(
     (data) => {
@@ -73,6 +73,7 @@ export const permissionSchema = z.object({
   canRead: z.boolean().default(true),
   canCreate: z.boolean().default(false),
   canUpdate: z.boolean().default(false),
+  canAssign: z.boolean().default(false),
 });
 
 export const permissionsUpdateSchema = z.object({
@@ -84,6 +85,7 @@ export const permissionsUpdateSchema = z.object({
       canRead: z.boolean().default(true),
       canCreate: z.boolean().default(false),
       canUpdate: z.boolean().default(false),
+      canAssign: z.boolean().default(false),
     }),
   ),
 });

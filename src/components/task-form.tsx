@@ -172,6 +172,7 @@ export function TaskForm({
               <option value="blocked">Blocked</option>
               <option value="done">Done</option>
               <option value="cancelled">Cancelled</option>
+              <option value="failed">Failed</option>
             </Select>
           </div>
 

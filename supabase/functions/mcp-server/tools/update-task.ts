@@ -6,6 +6,10 @@ import {
   taskNotFoundError,
   validationError,
   versionConflictError,
+  invalidAssigneeError,
+  circularDelegationError,
+  delegationDepthExceededError,
+  assignNotAllowedError,
   internalError,
 } from '../../_shared/errors.ts'
 import { validateTaskInput } from '../../_shared/validation.ts'
@@ -21,7 +25,10 @@ interface UpdateTaskParams {
   department?: string
   due_date?: string
   status?: string
+  assign_to?: string
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export async function handleUpdateTask(
   params: UpdateTaskParams,
@@ -101,7 +108,48 @@ export async function handleUpdateTask(
     return mcpError(validationError(fieldErrors))
   }
 
-  // 6. Build fields payload for the RPC (only provided fields)
+  // 6. Resolve assign_to if provided
+  let assignedToKeyId: string | null | undefined = undefined
+  if (params.assign_to !== undefined) {
+    // Check that caller has can_assign permission
+    const hasAssign = projectPerms.some((p) => p.canAssign)
+    if (!hasAssign) {
+      return mcpError(assignNotAllowedError(projectPerms[0].projectSlug))
+    }
+
+    if (params.assign_to === '') {
+      // Unassign
+      assignedToKeyId = null
+    } else {
+      const isAssigneeUuid = UUID_RE.test(params.assign_to)
+      const { data: assignee } = await supabase
+        .from('agent_keys')
+        .select('id, is_active')
+        .eq(isAssigneeUuid ? 'id' : 'name', params.assign_to)
+        .abortSignal(AbortSignal.timeout(10_000))
+        .maybeSingle()
+
+      if (!assignee || !assignee.is_active) {
+        return mcpError(invalidAssigneeError(params.assign_to))
+      }
+
+      // Verify assignee has permissions in this project
+      const { count } = await supabase
+        .from('agent_permissions')
+        .select('id', { count: 'exact', head: true })
+        .eq('agent_key_id', assignee.id)
+        .eq('project_id', existingTask.project_id)
+        .abortSignal(AbortSignal.timeout(10_000))
+
+      if (!count || count === 0) {
+        return mcpError(invalidAssigneeError(params.assign_to))
+      }
+
+      assignedToKeyId = assignee.id
+    }
+  }
+
+  // 7. Build fields payload for the RPC (only provided fields)
   const fields: Record<string, unknown> = {}
   if (params.priority !== undefined) fields.priority = params.priority
   if (params.description !== undefined) fields.description = params.description.trim()
@@ -109,8 +157,9 @@ export async function handleUpdateTask(
   if (params.due_date !== undefined) fields.due_date = params.due_date
   if (params.status !== undefined) fields.status = params.status
   if (newDepartmentId !== undefined) fields.department_id = newDepartmentId
+  if (assignedToKeyId !== undefined) fields.assigned_to_agent_key_id = assignedToKeyId
 
-  // 7. Atomic update via RPC (task + field-level event_log in one transaction)
+  // 8. Atomic update via RPC (task + field-level event_log in one transaction)
   const { data: updated, error: rpcError } = await supabase
     .rpc('update_task_with_events', {
       p_payload: {
@@ -134,12 +183,18 @@ export async function handleUpdateTask(
         const currentVersion = parseVersionFromError(rpcError.message) ?? existingTask.version
         return mcpError(versionConflictError(currentVersion))
       }
+      case 'invalid_assignee':
+        return mcpError(invalidAssigneeError(params.assign_to ?? 'unknown'))
+      case 'circular_delegation':
+        return mcpError(circularDelegationError())
+      case 'delegation_depth_exceeded':
+        return mcpError(delegationDepthExceededError())
       default:
         return mcpError(internalError(rpcError.message))
     }
   }
 
-  // 8. Return updated task
+  // 9. Return updated task
   return {
     content: [{ type: 'text' as const, text: JSON.stringify(updated) }],
   }

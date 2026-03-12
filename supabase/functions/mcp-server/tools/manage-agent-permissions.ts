@@ -48,6 +48,7 @@ async function listPermissions(
       can_read: p.canRead,
       can_create: p.canCreate,
       can_update: p.canUpdate,
+      can_assign: p.canAssign,
     }))
 
     return {
@@ -144,6 +145,7 @@ async function grantPermissions(
     can_read: row.can_read ?? false,
     can_create: row.can_create ?? false,
     can_update: row.can_update ?? false,
+    can_assign: row.can_assign ?? false,
   }))
 
   const { data, error } = await supabase
@@ -165,7 +167,7 @@ async function grantPermissions(
       targetType: 'agent_key',
       targetId: params.key_id,
       eventType: 'permission_granted',
-      newValue: { project_id: row.project_id, department_id: row.department_id, can_read: row.can_read, can_create: row.can_create, can_update: row.can_update },
+      newValue: { project_id: row.project_id, department_id: row.department_id, can_read: row.can_read, can_create: row.can_create, can_update: row.can_update, can_assign: row.can_assign },
       actorType: 'agent',
       actorId: ctx.keyId,
       actorLabel: ctx.name,
@@ -206,7 +208,7 @@ async function revokePermissions(
   // Fetch all permissions for this key in one query
   const { data: existing, error: fetchError } = await supabase
     .from('agent_permissions')
-    .select('id, project_id, department_id, can_read, can_create, can_update')
+    .select('id, project_id, department_id, can_read, can_create, can_update, can_assign')
     .eq('agent_key_id', params.key_id)
     .abortSignal(AbortSignal.timeout(10_000))
 

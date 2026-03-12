@@ -124,6 +124,7 @@ export async function updateAgentKeyPermissionsAction(data: {
     canRead: boolean;
     canCreate: boolean;
     canUpdate: boolean;
+    canAssign: boolean;
   }>;
 }) {
   try {

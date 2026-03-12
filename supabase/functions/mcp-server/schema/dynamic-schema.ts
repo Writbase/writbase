@@ -11,6 +11,8 @@ import { handleManageAgentPermissions } from '../tools/manage-agent-permissions.
 import { handleGetProvenance } from '../tools/get-provenance.ts'
 import { handleManageProjects } from '../tools/manage-projects.ts'
 import { handleManageDepartments } from '../tools/manage-departments.ts'
+import { handleSubscribe } from '../tools/subscribe.ts'
+import { handleDiscoverAgents } from '../tools/discover-agents.ts'
 
 /**
  * Build a per-request McpServer whose tool set is scoped to the
@@ -92,12 +94,14 @@ export async function createMcpServerForAgent(
         ? projectEnum.default(defaultProject).describe('Project slug')
         : projectEnum.describe('Project slug'),
       department: deptEnum.optional().describe('Filter by department slug'),
-      status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled']).optional().describe('Filter by status'),
+      status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled', 'failed']).optional().describe('Filter by status'),
       priority: z.enum(['low', 'medium', 'high', 'critical']).optional().describe('Filter by priority'),
       limit: z.number().max(50).optional().describe('Max results (default 20, max 50)'),
       cursor: z.string().optional().describe('Pagination cursor from previous response'),
       updated_after: z.string().optional().describe('ISO 8601 timestamp to filter tasks updated after'),
       search: z.string().optional().describe('Full-text search query (supports AND/OR/NOT operators)'),
+      assigned_to_me: z.boolean().optional().describe('Filter tasks assigned to this agent'),
+      requested_by_me: z.boolean().optional().describe('Filter tasks this agent created for others'),
     },
     { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     (params) => handleGetTasks(params, ctx, supabase)
@@ -118,7 +122,8 @@ export async function createMcpServerForAgent(
       description: z.string().min(3).describe('Task description (min 3 chars)'),
       notes: z.string().optional().describe('Additional notes'),
       due_date: z.string().optional().describe('Due date as ISO 8601 string'),
-      status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled']).optional().describe('Initial status'),
+      status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled', 'failed']).optional().describe('Initial status'),
+      assign_to: z.string().optional().describe('Agent key ID or name to assign this task to (requires can_assign permission)'),
     },
     { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     (params) => handleAddTask(params, ctx, supabase)
@@ -136,7 +141,8 @@ export async function createMcpServerForAgent(
       notes: z.string().optional().describe('New notes'),
       department: deptEnum.optional().describe('New department slug'),
       due_date: z.string().optional().describe('New due date as ISO 8601'),
-      status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled']).optional().describe('New status'),
+      status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled', 'failed']).optional().describe('New status'),
+      assign_to: z.string().optional().describe('Agent key ID or name to reassign to (empty string to unassign, requires can_assign permission)'),
     },
     { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     (params) => handleUpdateTask(params, ctx, supabase)
@@ -173,6 +179,7 @@ export async function createMcpServerForAgent(
           can_read: z.boolean().optional(),
           can_create: z.boolean().optional(),
           can_update: z.boolean().optional(),
+          can_assign: z.boolean().optional(),
         })).optional().describe('Permissions to grant or revoke'),
       },
       { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
@@ -218,6 +225,33 @@ export async function createMcpServerForAgent(
       },
       { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
       (params) => handleManageDepartments(params, ctx, supabase)
+    )
+
+    // 10. subscribe — register webhook for task notifications
+    server.tool(
+      'subscribe',
+      `Register or manage webhook subscriptions for task event notifications. ${projectHint}`,
+      {
+        action: z.enum(['create', 'list', 'delete']).describe('Action to perform'),
+        project: projectEnum.optional().describe('Project slug (required for create)'),
+        url: z.string().optional().describe('Webhook HTTPS URL (required for create)'),
+        event_types: z.array(z.string()).optional().describe('Event types to subscribe to (default: ["task.completed"])'),
+        subscription_id: z.string().optional().describe('Subscription ID (required for delete)'),
+      },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+      (params) => handleSubscribe(params, ctx, supabase)
+    )
+
+    // 11. discover_agents — list agents with capabilities in a project
+    server.tool(
+      'discover_agents',
+      `List agents and their capabilities in a project. Manager only. ${projectHint}`,
+      {
+        project: projectEnum.describe('Project slug'),
+        skill: z.string().optional().describe('Filter by skill (e.g. "design", "coding")'),
+      },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      (params) => handleDiscoverAgents(params, ctx, supabase)
     )
   }
 

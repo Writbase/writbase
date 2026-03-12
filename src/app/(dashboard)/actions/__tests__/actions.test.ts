@@ -678,6 +678,7 @@ describe('Agent Key Actions', () => {
         canRead: true,
         canCreate: true,
         canUpdate: false,
+        canAssign: false,
       },
     ];
 

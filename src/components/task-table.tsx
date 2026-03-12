@@ -28,6 +28,7 @@ const statusColor: Record<Status, 'gray' | 'blue' | 'yellow' | 'green' | 'red'> 
   blocked: 'yellow',
   done: 'green',
   cancelled: 'red',
+  failed: 'red',
 };
 
 const statusLabel: Record<Status, string> = {
@@ -36,6 +37,7 @@ const statusLabel: Record<Status, string> = {
   blocked: 'Blocked',
   done: 'Done',
   cancelled: 'Cancelled',
+  failed: 'Failed',
 };
 
 const PAGE_SIZE = 25;
@@ -295,6 +297,7 @@ export function TaskTable({ projectId, departmentId }: TaskTableProps) {
             <option value="blocked">Blocked</option>
             <option value="done">Done</option>
             <option value="cancelled">Cancelled</option>
+            <option value="failed">Failed</option>
           </select>
           <select
             value={filterPriority ?? ''}

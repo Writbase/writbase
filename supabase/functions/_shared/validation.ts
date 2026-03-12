@@ -1,7 +1,7 @@
 import type { Priority, Status } from './types.ts'
 
 const VALID_PRIORITIES: Priority[] = ['low', 'medium', 'high', 'critical']
-const VALID_STATUSES: Status[] = ['todo', 'in_progress', 'blocked', 'done', 'cancelled']
+const VALID_STATUSES: Status[] = ['todo', 'in_progress', 'blocked', 'done', 'cancelled', 'failed']
 
 const ISO_DATE_RE =
   /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])(?:T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d))?$/

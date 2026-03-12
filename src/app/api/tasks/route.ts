@@ -7,7 +7,7 @@ import { parsePagination } from '@/lib/utils/pagination';
 const taskQuerySchema = z.object({
   projectId: z.uuid().optional(),
   departmentId: z.uuid().optional(),
-  status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled']).optional(),
+  status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled', 'failed']).optional(),
   priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
   sortBy: z.enum(['created_at', 'updated_at', 'due_date', 'priority', 'status']).optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),

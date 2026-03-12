@@ -19,6 +19,7 @@ export async function handleInfo(ctx: AgentContext, supabase: SupabaseClient) {
       can_read: p.canRead,
       can_create: p.canCreate,
       can_update: p.canUpdate,
+      can_assign: p.canAssign,
     }))
 
   const result = {
