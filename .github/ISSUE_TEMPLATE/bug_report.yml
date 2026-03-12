@@ -2,6 +2,16 @@ name: Bug Report
 description: Report a problem with WritBase
 labels: ["bug"]
 body:
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment type
+      options:
+        - Supabase Cloud
+        - Self-hosted Supabase
+        - Local development (supabase start)
+    validations:
+      required: true
   - type: textarea
     id: description
     attributes:

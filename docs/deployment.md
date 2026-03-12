@@ -8,13 +8,20 @@
 
 ## Supabase Cloud (Recommended)
 
+The [Supabase free tier](https://supabase.com/pricing) includes everything WritBase needs — no credit card, no Docker:
+- 500MB database storage
+- 50,000 monthly active users
+- 500,000 Edge Function invocations
+- Unlimited API requests
+- Auto-pauses after 7 days of inactivity (wakes on next request)
+
 ### 1. Create a Supabase Project
 
 Create a new project at [supabase.com/dashboard](https://supabase.com/dashboard). Note your:
 - **Project Reference ID** (Settings > General)
 - **Database Password** (set during creation)
 - **Project URL** (`https://<project-ref>.supabase.co`)
-- **Anon Key** (Settings > API)
+- **Publishable Key** (Settings > API, also called "anon key")
 
 ### 2. Clone and Install
 
@@ -73,14 +80,14 @@ Connect your repository to [Vercel](https://vercel.com). It auto-deploys on ever
 
 Set these environment variables in Vercel:
 - `NEXT_PUBLIC_SUPABASE_URL` = `https://<project-ref>.supabase.co`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` = your Supabase anon key
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` = your Supabase anon/publishable key
 
 **Option B: Self-hosted**
 
 ```bash
 # Create .env.local
 echo "NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co" > .env.local
-echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>" >> .env.local
+echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<your-anon-key>" >> .env.local
 
 # Build and start
 npm run build
@@ -108,22 +115,95 @@ The repository includes GitHub Actions workflows:
 
 The deploy workflow handles Supabase only. Next.js deployment is handled by the Vercel GitHub integration.
 
-## Advanced: Self-Hosted Supabase
+## Self-Hosted Supabase
 
-For full control, you can self-host Supabase using Docker Compose. This runs ~11 containers (Postgres, Auth, Storage, Realtime, etc.).
+### Minimal Profile (5 containers)
 
-Refer to the [Supabase self-hosting guide](https://supabase.com/docs/guides/self-hosting/docker) for setup. Key caveats:
+WritBase only uses 5 of Supabase's ~13 services. You can run a minimal deployment on a 2GB VPS:
 
-- **pg_cron**: Not included in default Docker setup. Migrations 00012, 00015, 00016 will be skipped (conditional `DO` blocks).
-- **Edge Runtime**: Uses Deno 2.1.4. Ensure `deno.lock` is not present (see note above).
-- **DNS/TLS**: You'll need to configure HTTPS for MCP clients that require secure transport.
+| Service | Container | Role |
+|---------|-----------|------|
+| `db` | Postgres 17 | Database (tasks, permissions, audit log) |
+| `auth` | GoTrue | User signup/login for the dashboard |
+| `rest` | PostgREST | Auto-generated REST API from Postgres schema |
+| `kong` | Kong | API gateway — routes all traffic through `:8000` |
+| `edge_runtime` | Deno Edge Runtime | Hosts the MCP server Edge Function |
+
+**Not required by WritBase** (safe to omit):
+- `realtime` — WritBase uses webhooks, not Realtime subscriptions
+- `storage` — No file uploads
+- `studio` — Database admin UI (use `psql` or any Postgres client instead)
+- `imgproxy` — Image transformation (depends on Storage)
+- `analytics` / `logflare` / `vector` — WritBase has its own `request_log` table
+- `supavisor` — Connection pooler (disabled in WritBase config)
+- `postgres-meta` — Metadata API for Studio
+- `inbucket` — Fake SMTP for local email testing
+
+### Setup
+
+1. **Clone the official Supabase Docker setup**:
+
+   ```bash
+   git clone --depth 1 https://github.com/supabase/supabase
+   cd supabase/docker
+   cp .env.example .env
+   ```
+
+2. **Generate secrets** and edit `.env`:
+   - `POSTGRES_PASSWORD` — strong random password
+   - `JWT_SECRET` — 32+ character secret for JWT signing
+   - `ANON_KEY` / `SERVICE_ROLE_KEY` — generate with `supabase init` or the [JWT generator](https://supabase.com/docs/guides/self-hosting/docker#generate-api-keys)
+
+3. **Start only required services**:
+
+   ```bash
+   docker compose up db auth rest kong edge_runtime -d
+   ```
+
+4. **Apply WritBase schema**: From your WritBase directory:
+
+   ```bash
+   # Point to your self-hosted instance
+   supabase db push --db-url postgresql://postgres:<password>@<host>:5432/postgres
+   ```
+
+5. **Deploy the MCP Edge Function**: Copy the function to the Edge Runtime's functions directory, or use the Supabase CLI:
+
+   ```bash
+   supabase functions deploy mcp-server --no-verify-jwt --project-ref <self-hosted-ref>
+   ```
+
+6. **Deploy the Next.js dashboard**:
+
+   ```bash
+   cp .env.example .env.local
+   # Edit .env.local:
+   #   NEXT_PUBLIC_SUPABASE_URL=http://<host>:8000
+   #   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<your-anon-key>
+   npm run build && npm start
+   ```
+
+### Kong Routing
+
+Kong exposes all services through a single port (`:8000`):
+- `:8000/auth/v1/*` → GoTrue (authentication)
+- `:8000/rest/v1/*` → PostgREST (database API)
+- `:8000/functions/v1/*` → Edge Runtime (MCP server)
+
+### Caveats
+
+- **pg_cron**: Not included in Docker setup. Migrations 00012, 00015, 00016 are skipped automatically (conditional `DO` blocks).
+- **Edge Runtime**: Uses Deno 2.1.4. Ensure `deno.lock` is not present (see note in Cloud section above).
+- **DNS/TLS**: Configure HTTPS for MCP clients that require secure transport. Use a reverse proxy (nginx, Caddy) in front of Kong.
+- **Email confirmation**: GoTrue defaults to requiring email confirmation. For testing, set `GOTRUE_MAILER_AUTOCONFIRM=true` in the GoTrue environment.
+- **No Studio UI**: Without Studio, manage the database via `psql`, pgAdmin, or any Postgres client.
 
 ## Environment Variables Reference
 
 | Variable | Where | Required | Description |
 |----------|-------|----------|-------------|
 | `NEXT_PUBLIC_SUPABASE_URL` | Next.js | Yes | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Next.js | Yes | Supabase anonymous key |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Next.js | Yes | Supabase anon/publishable key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Edge Functions | Auto | Set automatically by Supabase |
 | `ALLOWED_ORIGINS` | Edge Functions | Production | Comma-separated allowed CORS origins |
 | `ENVIRONMENT` | Edge Functions | No | Set to "production" for production |
