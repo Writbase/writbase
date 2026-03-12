@@ -20,7 +20,7 @@ export async function handleManageAgentPermissions(
 
   switch (params.action) {
     case 'list':
-      return await listPermissions(params, supabase)
+      return await listPermissions(params, ctx, supabase)
     case 'grant':
       return await grantPermissions(params, ctx, supabase)
     case 'revoke':
@@ -32,10 +32,11 @@ export async function handleManageAgentPermissions(
 
 async function listPermissions(
   params: ManageAgentPermissionsParams,
+  ctx: AgentContext,
   supabase: SupabaseClient
 ) {
   try {
-    const loaded = await loadPermissions(supabase, params.key_id)
+    const loaded = await loadPermissions(supabase, params.key_id, ctx.workspaceId)
 
     const permissions = loaded.map((p) => ({
       id: p.id,

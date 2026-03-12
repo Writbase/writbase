@@ -19,7 +19,7 @@ type AppEnv = {
   }
 }
 
-const app = new Hono<AppEnv>()
+const app = new Hono<AppEnv>({ strict: false }).basePath('/mcp-server')
 
 // ── Request ID middleware ─────────────────────────────────────────────
 app.use('*', async (c, next) => {
@@ -84,9 +84,15 @@ app.post('/mcp', async (c) => {
   // Create a per-request MCP server scoped to this agent
   const mcpServer = await createMcpServerForAgent(agentContext, supabase)
 
-  // Create a web-standard Streamable HTTP transport for this request
+  // Create a web-standard Streamable HTTP transport for this request.
+  // - enableJsonResponse: returns a complete JSON response instead of an SSE
+  //   stream, correct for per-request McpServer where transport.close() is
+  //   called immediately after handleRequest().
+  // - sessionIdGenerator omitted: disables session validation, which is
+  //   meaningless in a per-request architecture (each request gets a fresh
+  //   transport that would never have been "initialized").
   const transport = new WebStandardStreamableHTTPServerTransport({
-    sessionIdGenerator: () => crypto.randomUUID(),
+    enableJsonResponse: true,
   })
 
   // Connect the server to the transport
@@ -151,17 +157,12 @@ app.get('/mcp', async (c) => {
   const mcpServer = await createMcpServerForAgent(agentContext, supabase)
 
   const transport = new WebStandardStreamableHTTPServerTransport({
-    sessionIdGenerator: () => crypto.randomUUID(),
+    enableJsonResponse: true,
   })
 
   await mcpServer.connect(transport)
 
-  const req = new Request(c.req.url, {
-    method: 'GET',
-    headers: c.req.raw.headers,
-  })
-
-  const response = await transport.handleRequest(req)
+  const response = await transport.handleRequest(c.req.raw)
 
   return response
 })

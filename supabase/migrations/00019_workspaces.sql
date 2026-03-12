@@ -651,6 +651,7 @@ $$;
 -- get_tasks_page: add workspace_id parameter
 CREATE OR REPLACE FUNCTION get_tasks_page(
   p_project_id uuid,
+  p_workspace_id uuid,
   p_department_id uuid DEFAULT NULL,
   p_status status DEFAULT NULL,
   p_priority priority DEFAULT NULL,
@@ -660,8 +661,7 @@ CREATE OR REPLACE FUNCTION get_tasks_page(
   p_limit integer DEFAULT 20,
   p_search text DEFAULT NULL,
   p_assigned_to uuid DEFAULT NULL,
-  p_requested_by uuid DEFAULT NULL,
-  p_workspace_id uuid
+  p_requested_by uuid DEFAULT NULL
 )
 RETURNS TABLE (
   id uuid,

@@ -1,7 +1,7 @@
 {
   "imports": {
     "hono": "jsr:@hono/hono@^4.12",
-    "hono/": "jsr:@hono/hono@^4.12/",
+    "hono/cors": "jsr:@hono/hono@^4.12/cors",
     "@modelcontextprotocol/sdk": "npm:@modelcontextprotocol/sdk@^1.27",
     "@supabase/supabase-js": "jsr:@supabase/supabase-js@2",
     "@std/crypto/timing-safe-equal": "jsr:@std/crypto@1/timing-safe-equal",
