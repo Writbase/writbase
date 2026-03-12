@@ -1,0 +1,77 @@
+{
+  "$schema": "https://raw.githubusercontent.com/modelcontextprotocol/registry/main/schema/server.json",
+  "name": "writbase",
+  "display_name": "WritBase",
+  "description": "MCP-native task management for AI agent fleets. Persistent task registry with scoped permissions, inter-agent delegation, and full provenance.",
+  "repository": {
+    "url": "https://github.com/dynreadme/writbase",
+    "source": "github"
+  },
+  "version_detail": {
+    "version": "0.1.0",
+    "release_date": "2026-03-12"
+  },
+  "license": "Apache-2.0",
+  "categories": [
+    "task-management",
+    "agent-coordination"
+  ],
+  "tags": [
+    "mcp",
+    "task-management",
+    "ai-agents",
+    "multi-agent",
+    "supabase",
+    "provenance"
+  ],
+  "transport": {
+    "type": "streamable-http",
+    "authorization": "bearer"
+  },
+  "tools": [
+    {
+      "name": "info",
+      "description": "Returns agent identity, role, permissions, and system metadata"
+    },
+    {
+      "name": "get_tasks",
+      "description": "List tasks with filtering by project, department, status, priority, and full-text search. Cursor-based pagination."
+    },
+    {
+      "name": "add_task",
+      "description": "Create a new task in a permitted project/department scope"
+    },
+    {
+      "name": "update_task",
+      "description": "Update an existing task with optimistic concurrency control (version-based)"
+    },
+    {
+      "name": "manage_agent_keys",
+      "description": "List, create, update, deactivate, or rotate agent API keys (manager only)"
+    },
+    {
+      "name": "manage_agent_permissions",
+      "description": "Grant, revoke, or list permissions for agent keys with subset enforcement (manager only)"
+    },
+    {
+      "name": "get_provenance",
+      "description": "Query the append-only audit log for task and admin events (manager only)"
+    },
+    {
+      "name": "manage_projects",
+      "description": "Create, rename, or archive projects (manager only)"
+    },
+    {
+      "name": "manage_departments",
+      "description": "Create, rename, or archive departments (manager only)"
+    },
+    {
+      "name": "subscribe",
+      "description": "Register or manage webhook subscriptions for task event notifications (manager only)"
+    },
+    {
+      "name": "discover_agents",
+      "description": "List agents and their capabilities in a project, filterable by skill (manager only)"
+    }
+  ]
+}

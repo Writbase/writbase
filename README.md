@@ -1,36 +1,144 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<div align="center">
 
-## Getting Started
+# WritBase
 
-First, run the development server:
+**MCP-native task management for AI agent fleets**
+
+A control plane for AI agents and human supervisors. Persistent task registry with scoped permissions, inter-agent delegation, and full provenance — all accessible via MCP.
+
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/dynreadme/writbase/ci.yml?label=CI)](https://github.com/dynreadme/writbase/actions)
+[![MCP Compatible](https://img.shields.io/badge/MCP-compatible-green.svg)](https://modelcontextprotocol.io)
+
+</div>
+
+---
+
+## Why WritBase?
+
+AI agents need a shared, persistent task registry — not ephemeral in-memory state that vanishes between sessions. WritBase gives your agent fleet:
+
+- **One source of truth** — Tasks live in Postgres, not scattered across files and chat threads
+- **Scoped permissions** — Each agent gets exactly the access it needs, nothing more
+- **Full provenance** — Every change is recorded: who, what, when, and why
+- **Inter-agent delegation** — Agents can assign tasks to each other with depth limits and cycle detection
+- **MCP-native** — Agents connect via the Model Context Protocol, no custom integration needed
+
+## Quickstart
+
+### 1. Deploy WritBase
+
+See the [Deployment Guide](docs/deployment.md) for full instructions. The fastest path:
 
 ```bash
+# Clone and install
+git clone https://github.com/dynreadme/writbase.git
+cd writbase && npm install
+
+# Set up Supabase
+supabase link --project-ref <your-project-ref>
+supabase db push
+supabase functions deploy mcp-server --no-verify-jwt
+
+# Start the dashboard
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Create an Agent Key
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Sign up at your WritBase dashboard, create a project, then create an agent key from the Agent Keys page. You'll receive a key in the format `wb_<key_id>_<secret>` — save it, it's shown only once.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. Connect Your MCP Client
 
-## Learn More
+**Claude Code:**
+```bash
+claude mcp add writbase \
+  --transport http \
+  --url https://<project-ref>.supabase.co/functions/v1/mcp-server/mcp \
+  --header "Authorization: Bearer wb_<key_id>_<secret>"
+```
 
-To learn more about Next.js, take a look at the following resources:
+See the [MCP Config Reference](docs/mcp-config-reference.md) for Cursor, Windsurf, VS Code, and other clients.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## MCP Tools
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Worker Tools (all agents)
 
-## Deploy on Vercel
+| Tool | Description |
+|------|-------------|
+| `info` | Agent identity, permissions, and system metadata |
+| `get_tasks` | List tasks with filtering, pagination, and full-text search |
+| `add_task` | Create a task in permitted scope |
+| `update_task` | Update a task with optimistic concurrency control |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Manager Tools (manager agents only)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Tool | Description |
+|------|-------------|
+| `manage_agent_keys` | Create, update, deactivate, rotate agent keys |
+| `manage_agent_permissions` | Grant/revoke permissions with subset enforcement |
+| `get_provenance` | Query the append-only audit log |
+| `manage_projects` | Create, rename, archive projects |
+| `manage_departments` | Create, rename, archive departments |
+| `subscribe` | Register webhooks for task event notifications |
+| `discover_agents` | Find agents by capability and skill |
+
+## Features
+
+- **Multi-tenant workspaces** — Signup auto-provisions an isolated workspace
+- **Dynamic MCP schema** — Tool visibility and parameter enums adapt per agent's role and permissions
+- **5 permission types** — `can_read`, `can_create`, `can_update`, `can_assign`, `can_comment`
+- **Project + department scoping** — Permissions are granted per (project, department) pair
+- **Optimistic concurrency** — Version-based conflict detection prevents silent overwrites
+- **Cursor pagination** — Efficient traversal of large task sets
+- **Rate limiting** — Per-agent-key request throttling
+- **Request logging** — Every MCP call logged with latency, status, and agent context
+
+## Architecture
+
+```
+┌─────────────┐     ┌──────────────────┐     ┌──────────────┐
+│  MCP Client │────▶│  Edge Function   │────▶│   Postgres   │
+│  (Agent)    │◀────│  (Hono + MCP SDK)│◀────│  (Supabase)  │
+└─────────────┘     └──────────────────┘     └──────────────┘
+                           │
+                    ┌──────┴──────┐
+                    │  Next.js 16 │
+                    │  Dashboard  │
+                    └─────────────┘
+```
+
+- **Backend**: Supabase (Postgres + Edge Functions with Deno runtime)
+- **Transport**: Streamable HTTP (MCP SDK)
+- **Frontend**: Next.js 16 (App Router) + Tailwind CSS
+- **Auth**: Supabase Auth (humans) + SHA-256 agent keys (agents)
+
+## Self-Host vs Cloud
+
+| | Self-Hosted | Cloud (coming soon) |
+|---|---|---|
+| Control | Full | Managed |
+| Setup | Deploy yourself | Sign up and go |
+| Cost | Your infrastructure | Free tier available |
+| Updates | Manual | Automatic |
+
+See [docs/deployment.md](docs/deployment.md) for self-hosted setup.
+
+## Documentation
+
+- [Quickstart](docs/quickstart.md) — Connect Claude Code in 5 minutes
+- [Deployment Guide](docs/deployment.md) — Self-host with Supabase
+- [Core Concepts](docs/concepts.md) — Permissions, provenance, error codes, delegation
+- [MCP Config Reference](docs/mcp-config-reference.md) — Client configs for Claude Code, Cursor, VS Code, Windsurf
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, and PR guidelines.
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for vulnerability reporting.
+
+## License
+
+Apache 2.0 — see [LICENSE](LICENSE).
