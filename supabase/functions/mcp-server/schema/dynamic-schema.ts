@@ -168,7 +168,7 @@ export async function createMcpServerForAgent(
   // 4b. get_top_tasks
   server.tool(
     'get_top_tasks',
-    `Get top tasks by priority.${noProjectsNote}`,
+    `Get top actionable tasks by priority (excludes done/cancelled/failed/blocked unless status filter is set).${noProjectsNote}`,
     {
       project: defaultProject
         ? projectEnum.default(defaultProject).describe('Project slug')

@@ -1,9 +1,7 @@
--- Top-N tasks by priority: index + RPC
+-- Fix get_top_tasks: exclude non-actionable statuses (done, cancelled, failed, blocked) by default.
+-- When p_status is explicitly set, filter to that exact status (including non-actionable ones).
 
-CREATE INDEX idx_tasks_project_priority_created
-  ON tasks(project_id, priority DESC, created_at ASC);
-
-CREATE FUNCTION get_top_tasks(
+CREATE OR REPLACE FUNCTION get_top_tasks(
   p_workspace_id uuid, p_project_id uuid,
   p_department_id uuid DEFAULT NULL,
   p_status text DEFAULT NULL,
