@@ -702,6 +702,7 @@ describe('Agent Key Actions', () => {
         canUpdate: false,
         canAssign: false,
         canComment: false,
+        canArchive: false,
       },
     ];
 

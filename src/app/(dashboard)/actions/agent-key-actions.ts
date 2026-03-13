@@ -37,12 +37,16 @@ export async function createAgentKeyAction(formData: FormData) {
     }
 
     const workspace = await getWorkspaceForUser(supabase);
+    const defaultProjectId = formData.get('defaultProjectId') as string | null;
+    const defaultDepartmentId = formData.get('defaultDepartmentId') as string | null;
     const result = await createAgentKey(supabase, {
       name: parsed.data.name,
       role: parsed.data.role,
       specialPrompt: parsed.data.specialPrompt,
       createdBy: user.id,
       workspaceId: workspace.id,
+      defaultProjectId: defaultProjectId ?? null,
+      defaultDepartmentId: defaultDepartmentId ?? null,
     });
 
     revalidatePath('/agent-keys');
@@ -74,6 +78,11 @@ export async function updateAgentKeyAction(formData: FormData) {
     const isActive = formData.get('isActive');
     if (isActive !== null) raw.isActive = isActive === 'true';
 
+    const defaultProjectId = formData.get('defaultProjectId');
+    if (defaultProjectId !== null) raw.defaultProjectId = defaultProjectId || null;
+    const defaultDepartmentId = formData.get('defaultDepartmentId');
+    if (defaultDepartmentId !== null) raw.defaultDepartmentId = defaultDepartmentId || null;
+
     const parsed = agentKeyUpdateSchema.safeParse(raw);
     if (!parsed.success) {
       return { success: false, error: parsed.error.issues[0].message };
@@ -85,6 +94,14 @@ export async function updateAgentKeyAction(formData: FormData) {
       name: parsed.data.name,
       specialPrompt: parsed.data.specialPrompt,
       isActive: parsed.data.isActive,
+      defaultProjectId: (parsed.data as Record<string, unknown>).defaultProjectId as
+        | string
+        | null
+        | undefined,
+      defaultDepartmentId: (parsed.data as Record<string, unknown>).defaultDepartmentId as
+        | string
+        | null
+        | undefined,
       actorId: user.id,
       workspaceId: workspace.id,
     });
@@ -133,6 +150,7 @@ export async function updateAgentKeyPermissionsAction(data: {
     canUpdate: boolean;
     canAssign: boolean;
     canComment: boolean;
+    canArchive: boolean;
   }>;
 }) {
   try {

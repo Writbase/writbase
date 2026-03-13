@@ -5,7 +5,7 @@ import { invalidDepartmentError, scopeNotAllowedError } from './errors.ts'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-type RequiredAction = 'read' | 'create' | 'update' | 'comment'
+type RequiredAction = 'read' | 'create' | 'update' | 'comment' | 'assign'
 
 function hasAction(perm: AgentPermission, action: RequiredAction): boolean {
   switch (action) {
@@ -13,6 +13,7 @@ function hasAction(perm: AgentPermission, action: RequiredAction): boolean {
     case 'create': return perm.canCreate
     case 'update': return perm.canCreate || perm.canUpdate
     case 'comment': return perm.canComment
+    case 'assign': return perm.canAssign
   }
 }
 
@@ -22,7 +23,7 @@ export async function resolveDepartment(
   supabase: SupabaseClient,
   requiredAction: RequiredAction,
   projectLabel: string,
-  workspaceId?: string,
+  workspaceId: string,
 ): Promise<{ departmentId: string } | { error: WritBaseError }> {
   const isDeptUuid = UUID_RE.test(departmentInput)
 
@@ -66,9 +67,7 @@ export async function resolveDepartment(
     .from('departments')
     .select('id, is_archived')
     .eq(column, departmentInput)
-  if (workspaceId) {
-    deptQuery = deptQuery.eq('workspace_id', workspaceId)
-  }
+  deptQuery = deptQuery.eq('workspace_id', workspaceId)
   const { data: dept } = await deptQuery
     .abortSignal(AbortSignal.timeout(10_000))
     .single()

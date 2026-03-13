@@ -20,6 +20,7 @@ interface GetTasksParams {
   search?: string
   assigned_to_me?: boolean
   requested_by_me?: boolean
+  include_archived?: boolean
 }
 
 // UUID v4 pattern
@@ -87,6 +88,7 @@ export async function handleGetTasks(
     p_cursor_id: cursorId,
     p_limit: limit,
     p_search: params.search || null,
+    p_include_archived: params.include_archived ?? false,
     p_assigned_to: params.assigned_to_me ? ctx.keyId : null,
     p_requested_by: params.requested_by_me ? ctx.keyId : null,
   }).abortSignal(AbortSignal.timeout(10_000))

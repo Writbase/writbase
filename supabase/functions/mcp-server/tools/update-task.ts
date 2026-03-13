@@ -26,6 +26,7 @@ interface UpdateTaskParams {
   due_date?: string
   status?: string
   assign_to?: string
+  is_archived?: boolean
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -86,13 +87,32 @@ export async function handleUpdateTask(
 
   // If only can_comment (not can_update) for this scope, restrict fields
   if (!effectiveCanUpdate && effectiveCanComment) {
-    const restrictedFields = ['priority', 'description', 'department', 'due_date', 'assign_to'] as const
+    const restrictedFields = ['priority', 'description', 'department', 'due_date', 'assign_to', 'is_archived'] as const
     const attempted = restrictedFields.filter((f) => params[f] !== undefined)
     if (attempted.length > 0) {
       return mcpError({
         code: 'scope_not_allowed',
         message: `Comment-only permission: cannot change ${attempted.join(', ')}. Only notes and status are allowed.`,
         recovery: 'Remove restricted fields and retry with only notes and/or status.',
+      })
+    }
+  }
+
+  // 3b. Archive permission check: is_archived requires canArchive (separate from canUpdate)
+  if (params.is_archived !== undefined) {
+    let effectiveCanArchive: boolean
+    if (existingTask.department_id) {
+      effectiveCanArchive =
+        projectPerms.some((p) => p.departmentId === null && p.canArchive) ||
+        projectPerms.some((p) => p.departmentId === existingTask.department_id && p.canArchive)
+    } else {
+      effectiveCanArchive = projectPerms.some((p) => p.departmentId === null && p.canArchive)
+    }
+    if (!effectiveCanArchive) {
+      return mcpError({
+        code: 'scope_not_allowed',
+        message: 'Archive permission required to change is_archived.',
+        recovery: 'Request can_archive permission from an admin.',
       })
     }
   }
@@ -133,9 +153,16 @@ export async function handleUpdateTask(
   // 6. Resolve assign_to if provided
   let assignedToKeyId: string | null | undefined = undefined
   if (params.assign_to !== undefined) {
-    // Check that caller has can_assign permission
-    const hasAssign = projectPerms.some((p) => p.canAssign)
-    if (!hasAssign) {
+    // Check that caller has can_assign for the task's current department scope
+    let effectiveCanAssign: boolean
+    if (existingTask.department_id) {
+      effectiveCanAssign =
+        projectPerms.some((p) => p.departmentId === null && p.canAssign) ||
+        projectPerms.some((p) => p.departmentId === existingTask.department_id && p.canAssign)
+    } else {
+      effectiveCanAssign = projectPerms.some((p) => p.departmentId === null && p.canAssign)
+    }
+    if (!effectiveCanAssign) {
       return mcpError(assignNotAllowedError(projectPerms[0].projectSlug))
     }
 
@@ -181,6 +208,7 @@ export async function handleUpdateTask(
   if (params.due_date !== undefined) fields.due_date = params.due_date
   if (params.status !== undefined) fields.status = params.status
   if (newDepartmentId !== undefined) fields.department_id = newDepartmentId
+  if (params.is_archived !== undefined) fields.is_archived = params.is_archived
   if (assignedToKeyId !== undefined) fields.assigned_to_agent_key_id = assignedToKeyId
 
   // 8. Atomic update via RPC (task + field-level event_log in one transaction)

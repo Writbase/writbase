@@ -11,6 +11,7 @@ export interface PermissionGrant {
   can_update?: boolean
   can_assign?: boolean
   can_comment?: boolean
+  can_archive?: boolean
 }
 
 /**
@@ -34,6 +35,7 @@ export function checkDominance(managerPerms: AgentPermission[], grantedRow: Perm
     if (grantedRow.can_update && !mp.canUpdate) return false
     if (grantedRow.can_assign && !mp.canAssign) return false
     if (grantedRow.can_comment && !mp.canComment) return false
+    if (grantedRow.can_archive && !mp.canArchive) return false
     return true
   })
 }
@@ -45,7 +47,7 @@ export function checkDominance(managerPerms: AgentPermission[], grantedRow: Perm
 export function checkToolScope(
   permissions: AgentPermission[],
   projectId: string,
-  action: 'read' | 'create' | 'update' | 'assign' | 'comment',
+  action: 'read' | 'create' | 'update' | 'assign' | 'comment' | 'archive',
   departmentId?: string | null,
 ): boolean {
   const projectPerms = permissions.filter((p) => p.projectId === projectId && !p.isProjectArchived)
@@ -65,6 +67,7 @@ export function checkToolScope(
       case 'update': return p.canUpdate
       case 'assign': return p.canAssign
       case 'comment': return p.canComment
+      case 'archive': return p.canArchive
     }
   })
 }

@@ -13,7 +13,7 @@ export async function handleInfo(ctx: AgentContext, supabase: SupabaseClient) {
 
   // Build scopes from non-archived permissions
   const scopes = ctx.permissions
-    .filter((p) => !p.isProjectArchived)
+    .filter((p) => !p.isProjectArchived && !p.isDepartmentArchived)
     .map((p) => ({
       project: p.projectSlug,
       department: p.departmentSlug ?? null,
@@ -22,6 +22,7 @@ export async function handleInfo(ctx: AgentContext, supabase: SupabaseClient) {
       can_update: p.canUpdate,
       can_assign: p.canAssign,
       can_comment: p.canComment,
+      can_archive: p.canArchive,
     }))
 
   const result = {

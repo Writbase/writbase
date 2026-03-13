@@ -11,6 +11,10 @@ interface ManageAgentKeysParams {
   role?: string
   special_prompt?: string
   is_active?: boolean
+  default_project_id?: string
+  default_department_id?: string
+  limit?: number
+  cursor?: string
 }
 
 export async function handleManageAgentKeys(
@@ -22,7 +26,7 @@ export async function handleManageAgentKeys(
 
   switch (params.action) {
     case 'list':
-      return await listKeys(ctx, supabase)
+      return await listKeys(ctx, supabase, params.limit, params.cursor)
     case 'create':
       return await createKey(params, ctx, supabase)
     case 'update':
@@ -36,20 +40,33 @@ export async function handleManageAgentKeys(
   }
 }
 
-async function listKeys(ctx: AgentContext, supabase: SupabaseClient) {
-  const { data, error } = await supabase
+async function listKeys(ctx: AgentContext, supabase: SupabaseClient, limit = 20, cursor?: string) {
+  const pageLimit = Math.min(limit, 50)
+  let query = supabase
     .from('agent_keys')
-    .select('id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by')
+    .select('id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by, default_project_id, default_department_id')
     .eq('workspace_id', ctx.workspaceId)
     .order('created_at', { ascending: false })
-    .abortSignal(AbortSignal.timeout(10_000))
+    .limit(pageLimit)
+
+  if (cursor) {
+    // Cursor is the created_at of the last item from previous page
+    query = query.lt('created_at', cursor)
+  }
+
+  const { data, error } = await query.abortSignal(AbortSignal.timeout(10_000))
 
   if (error) {
     return mcpError({ code: 'internal_error', message: error.message })
   }
 
+  const result: { keys: unknown[]; next_cursor?: string } = { keys: data ?? [] }
+  if (data && data.length === pageLimit) {
+    result.next_cursor = data[data.length - 1].created_at
+  }
+
   return {
-    content: [{ type: 'text' as const, text: JSON.stringify({ keys: data }) }],
+    content: [{ type: 'text' as const, text: JSON.stringify(result) }],
   }
 }
 
@@ -120,6 +137,8 @@ async function createKey(
       special_prompt: params.special_prompt ?? null,
       created_by: ctx.keyId,
       workspace_id: ctx.workspaceId,
+      default_project_id: params.default_project_id ?? null,
+      default_department_id: params.default_department_id ?? null,
     })
     .abortSignal(AbortSignal.timeout(10_000))
 
@@ -175,9 +194,15 @@ async function updateKey(
   if (params.name !== undefined) updates.name = params.name.trim()
   if (params.special_prompt !== undefined) updates.special_prompt = params.special_prompt
   if (params.is_active !== undefined) updates.is_active = params.is_active
+  if (params.default_project_id !== undefined) {
+    updates.default_project_id = params.default_project_id || null
+    // Clearing project must also clear department (DB CHECK constraint)
+    if (!params.default_project_id) updates.default_department_id = null
+  }
+  if (params.default_department_id !== undefined) updates.default_department_id = params.default_department_id || null
 
   if (Object.keys(updates).length === 0) {
-    return mcpError(validationError({ _: 'No fields to update. Provide name, special_prompt, or is_active.' }))
+    return mcpError(validationError({ _: 'No fields to update. Provide name, special_prompt, is_active, default_project_id, or default_department_id.' }))
   }
 
   const { data, error } = await supabase
@@ -185,7 +210,7 @@ async function updateKey(
     .update(updates)
     .eq('id', params.key_id)
     .eq('workspace_id', ctx.workspaceId)
-    .select('id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at')
+    .select('id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, default_project_id, default_department_id')
     .abortSignal(AbortSignal.timeout(10_000))
     .single()
 
