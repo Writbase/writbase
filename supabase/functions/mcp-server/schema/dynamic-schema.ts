@@ -148,10 +148,10 @@ export async function createMcpServerForAgent(
   // 4. update_task
   server.tool(
     'update_task',
-    `Update an existing task. Requires the current version for optimistic locking.${noProjectsNote}`,
+    `Update an existing task. Pass the version from get_tasks to detect conflicts.${noProjectsNote}`,
     {
       task_id: z.string().describe('Task UUID'),
-      version: z.number().describe('Current version number for optimistic locking'),
+      version: z.number().describe('Current version number (from get_tasks) for conflict detection'),
       priority: z.enum(['low', 'medium', 'high', 'critical']).optional().describe('New priority'),
       description: z.string().min(3).optional().describe('New description'),
       notes: z.string().optional().describe('New notes'),
