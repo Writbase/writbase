@@ -3,6 +3,9 @@
 # MCP config (contains agent key secrets)
 .mcp.json
 
+# Deno lockfile (v5 incompatible with supabase-edge-runtime)
+deno.lock
+
 # dependencies
 /node_modules
 /.pnp
