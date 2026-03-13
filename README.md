@@ -28,46 +28,117 @@ AI agents need a shared, persistent task registry — not ephemeral in-memory st
 - **Inter-agent delegation** — Agents can assign tasks to each other with depth limits and cycle detection
 - **MCP-native** — Agents connect via the Model Context Protocol, no custom integration needed
 
-## Quickstart
+## Getting Started
 
-### 1. Deploy WritBase
+### 1. Deploy to Supabase Cloud (free)
 
-The fastest path uses [Supabase Cloud](https://supabase.com) (free tier: 500MB DB, 50K MAUs, 500K Edge Function invocations — no credit card, no Docker):
+No Docker, no credit card. [Supabase free tier](https://supabase.com/pricing) includes 500MB DB, 50K MAUs, and 500K Edge Function invocations.
 
 ```bash
-# Clone and install
-git clone https://github.com/dynreadme/writbase.git
+git clone https://github.com/Writbase/writbase.git
 cd writbase && npm install
 
-# Create a free Supabase project at supabase.com/dashboard
-# Then link, push schema, and deploy the MCP server:
-supabase link --project-ref <your-project-ref>
-supabase db push
-supabase functions deploy mcp-server --no-verify-jwt
-
-# Start the dashboard
-cp .env.example .env.local
-# Edit .env.local with your Supabase project URL and publishable key
-npm run dev
+# Create a free project at supabase.com/dashboard, then:
+npx supabase link --project-ref <your-project-ref>
+npx supabase db push
+npx supabase functions deploy mcp-server --no-verify-jwt
 ```
 
-See the [Deployment Guide](docs/deployment.md) for production deployment, Vercel hosting, and self-hosted Supabase options.
+That's it — your MCP endpoint is live at:
 
-### 2. Create an Agent Key
+```
+https://<project-ref>.supabase.co/functions/v1/mcp-server/mcp
+```
 
-Sign up at your WritBase dashboard, create a project, then create an agent key from the Agent Keys page. You'll receive a key in the format `wb_<key_id>_<secret>` — save it, it's shown only once.
+> **Optional dashboard**: `cp .env.example .env.local` → edit with your Supabase URL + anon key → `npm run dev`
+>
+> See the [Deployment Guide](docs/deployment.md) for Vercel hosting and self-hosted Supabase.
 
-### 3. Connect Your MCP Client
+### 2. Create a project and agent key
 
-**Claude Code:**
+In the dashboard (or via a manager agent):
+
+1. **Create a project** — e.g., `my-app`. Optionally add departments (`backend`, `frontend`, `devops`)
+2. **Create an agent key** — name it, pick the `worker` role, save the key (`wb_<key_id>_<secret>` — shown once)
+3. **Grant permissions** — select your project, check `can_read`, `can_create`, `can_update`
+
+### 3. Connect your MCP client
+
+<details>
+<summary><strong>Claude Code</strong></summary>
+
 ```bash
 claude mcp add writbase \
   --transport http \
   --url https://<project-ref>.supabase.co/functions/v1/mcp-server/mcp \
   --header "Authorization: Bearer wb_<key_id>_<secret>"
 ```
+</details>
 
-See the [MCP Config Reference](docs/mcp-config-reference.md) for Cursor, Windsurf, VS Code, and other clients.
+<details>
+<summary><strong>Cursor</strong></summary>
+
+Add to `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "writbase": {
+      "type": "streamableHttp",
+      "url": "https://<project-ref>.supabase.co/functions/v1/mcp-server/mcp",
+      "headers": { "Authorization": "Bearer wb_<key_id>_<secret>" }
+    }
+  }
+}
+```
+</details>
+
+<details>
+<summary><strong>VS Code / Copilot</strong></summary>
+
+Add to `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "writbase": {
+      "type": "http",
+      "url": "https://<project-ref>.supabase.co/functions/v1/mcp-server/mcp",
+      "headers": { "Authorization": "Bearer wb_<key_id>_<secret>" }
+    }
+  }
+}
+```
+</details>
+
+<details>
+<summary><strong>Windsurf / Claude Desktop / Other</strong></summary>
+
+See the [MCP Config Reference](docs/mcp-config-reference.md) for all supported clients.
+</details>
+
+### 4. Use it
+
+Ask your agent:
+
+```
+"Check my WritBase permissions"          → calls info
+"Create a task in my-app: Fix login bug" → calls add_task
+"Mark it as in_progress"                 → calls update_task (with version for concurrency)
+"Show all high priority tasks"           → calls get_tasks with priority filter
+```
+
+### 5. Scale up
+
+| Agent | Role | Scoped to | Use case |
+|-------|------|-----------|----------|
+| `ci-bot` | worker | `my-app/devops` — can_create | CI creates tasks on build failure |
+| `triage-agent` | worker | `my-app` (all depts) — can_comment | Reviews tasks, adds notes |
+| `ops-manager` | manager | (workspace-wide) | Manages keys, permissions, projects |
+
+Each agent gets its own key with exactly the permissions it needs — nothing more.
+
+> **Full walkthrough**: [Getting Started Guide](docs/quickstart.md) — permissions, departments, troubleshooting
 
 ## MCP Tools
 
