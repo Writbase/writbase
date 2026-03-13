@@ -1,0 +1,209 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 520">
+  <style>
+    @keyframes blink { 0%,49% { opacity: 1 } 50%,100% { opacity: 0 } }
+    @keyframes t1  { 0%,2%  { opacity:0 } 3%  { opacity:1 } }
+    @keyframes t2  { 0%,8%  { opacity:0 } 9%  { opacity:1 } }
+    @keyframes t3  { 0%,18% { opacity:0 } 19% { opacity:1 } }
+    @keyframes t4  { 0%,26% { opacity:0 } 27% { opacity:1 } }
+    @keyframes t5  { 0%,36% { opacity:0 } 37% { opacity:1 } }
+    @keyframes t6  { 0%,46% { opacity:0 } 47% { opacity:1 } }
+    @keyframes t7  { 0%,56% { opacity:0 } 57% { opacity:1 } }
+    @keyframes t8  { 0%,66% { opacity:0 } 67% { opacity:1 } }
+    @keyframes t9  { 0%,76% { opacity:0 } 77% { opacity:1 } }
+    @keyframes t10 { 0%,86% { opacity:0 } 87% { opacity:1 } }
+    .t { font-family: 'SF Mono','Cascadia Code','Fira Code','JetBrains Mono',Menlo,monospace; font-size: 13px }
+    .p  { fill: #a78bfa }
+    .c  { fill: #e2e8f0 }
+    .cm { fill: #64748b }
+    .k  { fill: #67e8f9 }
+    .v  { fill: #86efac }
+    .w  { fill: #fbbf24 }
+    .ok { fill: #34d399 }
+    .d  { fill: #475569 }
+    .n  { fill: #f9a8d4 }
+    .l  { opacity: 0 }
+    .l1  { animation: t1  26s infinite }
+    .l2  { animation: t2  26s infinite }
+    .l3  { animation: t3  26s infinite }
+    .l4  { animation: t4  26s infinite }
+    .l5  { animation: t5  26s infinite }
+    .l6  { animation: t6  26s infinite }
+    .l7  { animation: t7  26s infinite }
+    .l8  { animation: t8  26s infinite }
+    .l9  { animation: t9  26s infinite }
+    .l10 { animation: t10 26s infinite }
+    .cur { animation: blink 1s step-end infinite; fill: #e2e8f0 }
+  </style>
+
+  <!-- Terminal chrome -->
+  <rect width="840" height="520" rx="10" fill="#0f172a"/>
+  <rect width="840" height="36" rx="10" fill="#1e293b"/>
+  <rect y="26" width="840" height="10" fill="#1e293b"/>
+  <circle cx="20" cy="18" r="6" fill="#f87171"/>
+  <circle cx="40" cy="18" r="6" fill="#fbbf24"/>
+  <circle cx="60" cy="18" r="6" fill="#34d399"/>
+  <text x="420" y="22" text-anchor="middle" class="t" fill="#94a3b8" font-size="12">ops-agent &#x2014; WritBase MCP session</text>
+
+  <g transform="translate(20, 58)" class="t">
+
+    <!-- ── Step 1: info ── -->
+    <g class="l l1">
+      <text y="0" class="p">&#x276F;</text>
+      <text y="0" x="14" class="c">tools/call</text>
+      <text y="0" x="98" class="k">info</text>
+    </g>
+
+    <g class="l l2">
+      <text y="24" class="d">{</text>
+      <text y="24" x="14" class="k">"agent"</text><text y="24" x="64" class="d">: {</text>
+      <text y="24" x="86" class="k">"name"</text><text y="24" x="132" class="d">:</text>
+      <text y="24" x="142" class="v">"ops-agent"</text><text y="24" x="230" class="d">,</text>
+      <text y="24" x="242" class="k">"role"</text><text y="24" x="286" class="d">:</text>
+      <text y="24" x="296" class="v">"worker"</text>
+      <text y="24" x="362" class="d">},</text>
+    </g>
+
+    <g class="l l2">
+      <text y="46" x="14" class="k">"permissions"</text><text y="46" x="120" class="d">: {</text>
+      <text y="46" x="142" class="k">"scopes"</text><text y="46" x="202" class="d">: [{</text>
+    </g>
+
+    <g class="l l2">
+      <text y="68" x="36" class="k">"project"</text><text y="68" x="110" class="d">:</text>
+      <text y="68" x="120" class="v">"radiancefleet"</text><text y="68" x="234" class="d">,</text>
+      <text y="68" x="248" class="k">"department"</text><text y="68" x="344" class="d">:</text>
+      <text y="68" x="354" class="v">"operations"</text><text y="68" x="448" class="d">,</text>
+    </g>
+
+    <g class="l l2">
+      <text y="90" x="36" class="k">"can_read"</text><text y="90" x="116" class="d">:</text>
+      <text y="90" x="126" class="ok">true</text><text y="90" x="160" class="d">,</text>
+      <text y="90" x="174" class="k">"can_create"</text><text y="90" x="272" class="d">:</text>
+      <text y="90" x="282" class="ok">true</text><text y="90" x="316" class="d">,</text>
+      <text y="90" x="330" class="k">"can_update"</text><text y="90" x="428" class="d">:</text>
+      <text y="90" x="438" class="ok">true</text>
+      <text y="90" x="470" class="d">}] } }</text>
+    </g>
+
+    <!-- ── Step 2: add_task ── -->
+    <g class="l l3">
+      <text y="124" class="p">&#x276F;</text>
+      <text y="124" x="14" class="c">tools/call</text>
+      <text y="124" x="98" class="k">add_task</text>
+    </g>
+
+    <g class="l l4">
+      <text y="148" class="d">{</text>
+      <text y="148" x="14" class="k">"project"</text><text y="148" x="88" class="d">:</text>
+      <text y="148" x="98" class="v">"radiancefleet"</text><text y="148" x="212" class="d">,</text>
+      <text y="148" x="226" class="k">"department"</text><text y="148" x="322" class="d">:</text>
+      <text y="148" x="332" class="v">"operations"</text><text y="148" x="428" class="d">,</text>
+    </g>
+
+    <g class="l l4">
+      <text y="170" x="14" class="k">"description"</text><text y="170" x="122" class="d">:</text>
+      <text y="170" x="132" class="v">"Audit API rate limits for fleet endpoints"</text><text y="170" x="478" class="d">,</text>
+    </g>
+
+    <g class="l l4">
+      <text y="192" x="14" class="k">"priority"</text><text y="192" x="94" class="d">:</text>
+      <text y="192" x="104" class="w">"high"</text>
+      <text y="192" x="148" class="d">}</text>
+    </g>
+
+    <!-- add_task response -->
+    <g class="l l5">
+      <text y="220" class="ok">&#x2713;</text>
+      <text y="220" x="16" class="d">{</text>
+      <text y="220" x="28" class="k">"id"</text><text y="220" x="52" class="d">:</text>
+      <text y="220" x="62" class="v">"d4f1a..."</text><text y="220" x="144" class="d">,</text>
+      <text y="220" x="158" class="k">"status"</text><text y="220" x="224" class="d">:</text>
+      <text y="220" x="234" class="v">"todo"</text><text y="220" x="278" class="d">,</text>
+      <text y="220" x="292" class="k">"priority"</text><text y="220" x="374" class="d">:</text>
+      <text y="220" x="384" class="w">"high"</text><text y="220" x="428" class="d">,</text>
+      <text y="220" x="442" class="k">"version"</text><text y="220" x="520" class="d">:</text>
+      <text y="220" x="530" class="n">1</text>
+      <text y="220" x="542" class="d">}</text>
+    </g>
+
+    <!-- ── Step 3: update_task — change status ── -->
+    <g class="l l6">
+      <text y="258" class="p">&#x276F;</text>
+      <text y="258" x="14" class="c">tools/call</text>
+      <text y="258" x="98" class="k">update_task</text>
+    </g>
+
+    <g class="l l7">
+      <text y="282" class="d">{</text>
+      <text y="282" x="14" class="k">"task_id"</text><text y="282" x="82" class="d">:</text>
+      <text y="282" x="92" class="v">"d4f1a..."</text><text y="282" x="174" class="d">,</text>
+      <text y="282" x="188" class="k">"version"</text><text y="282" x="266" class="d">:</text>
+      <text y="282" x="276" class="n">1</text><text y="282" x="286" class="d">,</text>
+    </g>
+
+    <g class="l l7">
+      <text y="304" x="14" class="k">"status"</text><text y="304" x="80" class="d">:</text>
+      <text y="304" x="90" class="v">"in_progress"</text><text y="304" x="200" class="d">,</text>
+      <text y="304" x="214" class="k">"notes"</text><text y="304" x="268" class="d">:</text>
+      <text y="304" x="278" class="v">"Starting rate limit audit, checking /v1/* endpoints"</text>
+      <text y="304" x="680" class="d">}</text>
+    </g>
+
+    <!-- update_task response -->
+    <g class="l l8">
+      <text y="336" class="ok">&#x2713;</text>
+      <text y="336" x="16" class="d">{</text>
+      <text y="336" x="28" class="k">"id"</text><text y="336" x="52" class="d">:</text>
+      <text y="336" x="62" class="v">"d4f1a..."</text><text y="336" x="144" class="d">,</text>
+      <text y="336" x="158" class="k">"status"</text><text y="336" x="224" class="d">:</text>
+      <text y="336" x="234" class="v">"in_progress"</text><text y="336" x="340" class="d">,</text>
+      <text y="336" x="354" class="k">"version"</text><text y="336" x="432" class="d">:</text>
+      <text y="336" x="442" class="n">2</text>
+      <text y="336" x="454" class="d">}</text>
+    </g>
+
+    <!-- ── Step 4: get_tasks — list tasks in department ── -->
+    <g class="l l9">
+      <text y="374" class="p">&#x276F;</text>
+      <text y="374" x="14" class="c">tools/call</text>
+      <text y="374" x="98" class="k">get_tasks</text>
+      <text y="374" x="178" class="d">{</text>
+      <text y="374" x="190" class="k">"project"</text><text y="374" x="264" class="d">:</text>
+      <text y="374" x="274" class="v">"radiancefleet"</text><text y="374" x="388" class="d">,</text>
+      <text y="374" x="402" class="k">"department"</text><text y="374" x="498" class="d">:</text>
+      <text y="374" x="508" class="v">"operations"</text>
+      <text y="374" x="604" class="d">}</text>
+    </g>
+
+    <g class="l l10">
+      <text y="402" class="ok">&#x2713;</text>
+      <text y="402" x="16" class="d">{</text>
+      <text y="402" x="28" class="k">"tasks"</text><text y="402" x="78" class="d">: [{</text>
+      <text y="402" x="106" class="k">"description"</text><text y="402" x="214" class="d">:</text>
+      <text y="402" x="224" class="v">"Audit API rate limits..."</text><text y="402" x="434" class="d">,</text>
+    </g>
+
+    <g class="l l10">
+      <text y="424" x="106" class="k">"status"</text><text y="424" x="172" class="d">:</text>
+      <text y="424" x="182" class="v">"in_progress"</text><text y="424" x="288" class="d">,</text>
+      <text y="424" x="302" class="k">"priority"</text><text y="424" x="384" class="d">:</text>
+      <text y="424" x="394" class="w">"high"</text><text y="424" x="438" class="d">,</text>
+      <text y="424" x="452" class="k">"version"</text><text y="424" x="530" class="d">:</text>
+      <text y="424" x="540" class="n">2</text>
+      <text y="424" x="552" class="d">}],</text>
+    </g>
+
+    <g class="l l10">
+      <text y="446" x="28" class="k">"next_cursor"</text><text y="446" x="134" class="d">:</text>
+      <text y="446" x="144" class="cm">null</text>
+      <text y="446" x="180" class="d">}</text>
+    </g>
+
+    <!-- Cursor -->
+    <g class="l l10">
+      <text y="476" class="p">&#x276F;</text>
+      <rect x="14" y="464" width="8" height="16" class="cur"/>
+    </g>
+
+  </g>
+</svg>

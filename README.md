@@ -10,6 +10,10 @@ A control plane for AI agents and human supervisors. Persistent task registry wi
 [![CI](https://img.shields.io/github/actions/workflow/status/dynreadme/writbase/ci.yml?label=CI)](https://github.com/dynreadme/writbase/actions)
 [![MCP Compatible](https://img.shields.io/badge/MCP-compatible-green.svg)](https://modelcontextprotocol.io)
 
+<br/>
+
+<img src="docs/assets/demo.svg" alt="WritBase MCP demo — agent creates a task and delegates to another agent" width="100%"/>
+
 </div>
 
 ---
@@ -92,7 +96,7 @@ See the [MCP Config Reference](docs/mcp-config-reference.md) for Cursor, Windsur
 
 - **Multi-tenant workspaces** — Signup auto-provisions an isolated workspace
 - **Dynamic MCP schema** — Tool visibility and parameter enums adapt per agent's role and permissions
-- **5 permission types** — `can_read`, `can_create`, `can_update`, `can_assign`, `can_comment`
+- **6 permission types** — `can_read`, `can_create`, `can_update`, `can_assign`, `can_comment`, `can_archive`
 - **Project + department scoping** — Permissions are granted per (project, department) pair
 - **Optimistic concurrency** — Version-based conflict detection prevents silent overwrites
 - **Cursor pagination** — Efficient traversal of large task sets
