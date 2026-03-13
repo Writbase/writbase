@@ -55,10 +55,14 @@ export async function handleGetTasks(
     return mcpError(scopeNotAllowedError(params.project, 'read'))
   }
 
-  // 3. Resolve department if provided
+  // 3. Resolve department: explicit param → agent default → null (all)
+  const effectiveDept = params.department
+    ?? (ctx.defaultDepartmentId && projectPerms.some((p) => p.departmentId === ctx.defaultDepartmentId)
+      ? ctx.defaultDepartmentId
+      : undefined)
   let departmentId: string | null = null
-  if (params.department) {
-    const result = await resolveDepartment(params.department, projectPerms, supabase, 'read', params.project, ctx.workspaceId)
+  if (effectiveDept) {
+    const result = await resolveDepartment(effectiveDept, projectPerms, supabase, 'read', params.project, ctx.workspaceId)
     if ('error' in result) {
       return mcpError(result.error)
     }
