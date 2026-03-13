@@ -45,8 +45,8 @@ export async function handleGetTopTasks(
 
   // 2. Resolve department: explicit param → agent default → null (all)
   const effectiveDept = params.department
-    ?? (ctx.defaultDepartmentId && projectPerms.some((p) => p.departmentId === ctx.defaultDepartmentId)
-      ? ctx.defaultDepartmentId
+    ?? (ctx.departmentId && projectPerms.some((p) => p.departmentId === ctx.departmentId)
+      ? ctx.departmentId
       : undefined)
   let departmentId: string | null = null
   if (effectiveDept) {

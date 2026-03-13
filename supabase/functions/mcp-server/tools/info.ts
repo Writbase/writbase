@@ -25,12 +25,12 @@ export async function handleInfo(ctx: AgentContext, supabase: SupabaseClient) {
       can_archive: p.canArchive,
     }))
 
-  // Resolve default project/department slugs from permissions
-  const defaultProject = ctx.defaultProjectId
-    ? ctx.permissions.find((p) => p.projectId === ctx.defaultProjectId)?.projectSlug ?? null
+  // Resolve agent's home project/department slugs from permissions
+  const agentProject = ctx.projectId
+    ? ctx.permissions.find((p) => p.projectId === ctx.projectId)?.projectSlug ?? null
     : null
-  const defaultDepartment = ctx.defaultDepartmentId
-    ? ctx.permissions.find((p) => p.departmentId === ctx.defaultDepartmentId)?.departmentSlug ?? null
+  const agentDepartment = ctx.departmentId
+    ? ctx.permissions.find((p) => p.departmentId === ctx.departmentId)?.departmentSlug ?? null
     : null
 
   const result = {
@@ -38,8 +38,8 @@ export async function handleInfo(ctx: AgentContext, supabase: SupabaseClient) {
       name: ctx.name,
       role: ctx.role,
       is_active: ctx.isActive,
-      default_project: defaultProject,
-      default_department: defaultDepartment,
+      project: agentProject,
+      department: agentDepartment,
     },
     permissions: {
       department_required: departmentRequired,

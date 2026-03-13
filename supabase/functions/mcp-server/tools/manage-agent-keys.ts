@@ -11,8 +11,8 @@ interface ManageAgentKeysParams {
   role?: string
   special_prompt?: string
   is_active?: boolean
-  default_project_id?: string
-  default_department_id?: string
+  project_id?: string
+  department_id?: string
   limit?: number
   cursor?: string
 }
@@ -44,7 +44,7 @@ async function listKeys(ctx: AgentContext, supabase: SupabaseClient, limit = 20,
   const pageLimit = Math.min(limit, 50)
   let query = supabase
     .from('agent_keys')
-    .select('id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by, default_project_id, default_department_id')
+    .select('id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by, project_id, department_id')
     .eq('workspace_id', ctx.workspaceId)
     .order('created_at', { ascending: false })
     .limit(pageLimit)
@@ -137,8 +137,8 @@ async function createKey(
       special_prompt: params.special_prompt ?? null,
       created_by: ctx.keyId,
       workspace_id: ctx.workspaceId,
-      default_project_id: params.default_project_id ?? null,
-      default_department_id: params.default_department_id ?? null,
+      project_id: params.project_id ?? null,
+      department_id: params.department_id ?? null,
     })
     .abortSignal(AbortSignal.timeout(10_000))
 
@@ -194,15 +194,15 @@ async function updateKey(
   if (params.name !== undefined) updates.name = params.name.trim()
   if (params.special_prompt !== undefined) updates.special_prompt = params.special_prompt
   if (params.is_active !== undefined) updates.is_active = params.is_active
-  if (params.default_project_id !== undefined) {
-    updates.default_project_id = params.default_project_id || null
+  if (params.project_id !== undefined) {
+    updates.project_id = params.project_id || null
     // Clearing project must also clear department (DB CHECK constraint)
-    if (!params.default_project_id) updates.default_department_id = null
+    if (!params.project_id) updates.department_id = null
   }
-  if (params.default_department_id !== undefined) updates.default_department_id = params.default_department_id || null
+  if (params.department_id !== undefined) updates.department_id = params.department_id || null
 
   if (Object.keys(updates).length === 0) {
-    return mcpError(validationError({ _: 'No fields to update. Provide name, special_prompt, is_active, default_project_id, or default_department_id.' }))
+    return mcpError(validationError({ _: 'No fields to update. Provide name, special_prompt, is_active, project_id, or department_id.' }))
   }
 
   const { data, error } = await supabase
@@ -210,7 +210,7 @@ async function updateKey(
     .update(updates)
     .eq('id', params.key_id)
     .eq('workspace_id', ctx.workspaceId)
-    .select('id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, default_project_id, default_department_id')
+    .select('id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, project_id, department_id')
     .abortSignal(AbortSignal.timeout(10_000))
     .single()
 

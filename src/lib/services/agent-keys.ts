@@ -31,7 +31,7 @@ export async function listAgentKeys(
   const { data, error } = await supabase
     .from('agent_keys')
     .select(
-      'id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by, default_project_id, default_department_id',
+      'id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by, project_id, department_id',
     )
     .order('created_at', { ascending: false });
 
@@ -47,8 +47,8 @@ export async function createAgentKey(
     specialPrompt?: string | null;
     createdBy: string;
     workspaceId: string;
-    defaultProjectId?: string | null;
-    defaultDepartmentId?: string | null;
+    projectId?: string | null;
+    departmentId?: string | null;
   },
 ): Promise<{ key: Omit<AgentKey, 'key_hash'>; fullKey: string }> {
   const keyId = crypto.randomUUID();
@@ -65,11 +65,11 @@ export async function createAgentKey(
       special_prompt: params.specialPrompt ?? null,
       created_by: params.createdBy,
       workspace_id: params.workspaceId,
-      default_project_id: params.defaultProjectId ?? null,
-      default_department_id: params.defaultDepartmentId ?? null,
+      project_id: params.projectId ?? null,
+      department_id: params.departmentId ?? null,
     })
     .select(
-      'id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by, default_project_id, default_department_id',
+      'id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by, project_id, department_id',
     )
     .single();
 
@@ -98,8 +98,8 @@ export async function updateAgentKey(
     name?: string;
     specialPrompt?: string | null;
     isActive?: boolean;
-    defaultProjectId?: string | null;
-    defaultDepartmentId?: string | null;
+    projectId?: string | null;
+    departmentId?: string | null;
     actorId: string;
     workspaceId: string;
   },
@@ -108,20 +108,19 @@ export async function updateAgentKey(
   if (params.name !== undefined) updates.name = params.name;
   if (params.specialPrompt !== undefined) updates.special_prompt = params.specialPrompt;
   if (params.isActive !== undefined) updates.is_active = params.isActive;
-  if (params.defaultProjectId !== undefined) {
-    updates.default_project_id = params.defaultProjectId;
+  if (params.projectId !== undefined) {
+    updates.project_id = params.projectId;
     // Clearing project must also clear department (DB CHECK constraint)
-    if (params.defaultProjectId === null) updates.default_department_id = null;
+    if (params.projectId === null) updates.department_id = null;
   }
-  if (params.defaultDepartmentId !== undefined)
-    updates.default_department_id = params.defaultDepartmentId;
+  if (params.departmentId !== undefined) updates.department_id = params.departmentId;
 
   const { data, error } = await supabase
     .from('agent_keys')
     .update(updates)
     .eq('id', params.id)
     .select(
-      'id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by, default_project_id, default_department_id',
+      'id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by, project_id, department_id',
     )
     .single();
 
@@ -154,7 +153,7 @@ export async function rotateAgentKey(
     .update({ key_hash: hash, key_prefix: prefix })
     .eq('id', params.id)
     .select(
-      'id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by, default_project_id, default_department_id',
+      'id, name, role, key_prefix, is_active, special_prompt, created_at, last_used_at, created_by, project_id, department_id',
     )
     .single();
 

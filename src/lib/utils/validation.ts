@@ -64,8 +64,8 @@ export const agentKeyUpdateSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   specialPrompt: z.string().max(5000).optional().nullable(),
   isActive: z.boolean().optional(),
-  defaultProjectId: z.uuid().optional().nullable(),
-  defaultDepartmentId: z.uuid().optional().nullable(),
+  projectId: z.uuid().optional().nullable(),
+  departmentId: z.uuid().optional().nullable(),
 });
 
 export const permissionSchema = z.object({

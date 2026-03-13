@@ -57,15 +57,15 @@ export async function createMcpServerForAgent(
     .map(([slug, depts]) => `Departments for ${slug}: ${depts.join(', ')}`)
     .join('; ')
 
-  // Default project: stored default overrides computed (F5b → F5a fallback)
-  const defaultProject = ctx.defaultProjectId
-    ? projectSlugs.find(s => activePerms.find(p => p.projectSlug === s)?.projectId === ctx.defaultProjectId)
+  // Agent's home project: stored value overrides computed (single-project fallback)
+  const defaultProject = ctx.projectId
+    ? projectSlugs.find(s => activePerms.find(p => p.projectSlug === s)?.projectId === ctx.projectId)
     : (projectSlugs.length === 1 ? projectSlugs[0] : undefined)
 
-  // Default department: stored default overrides computed (F5b → F5a fallback)
-  const defaultDept = ctx.defaultDepartmentId
+  // Agent's home department: stored value overrides computed (single-dept fallback)
+  const defaultDept = ctx.departmentId
     ? (() => {
-        const dp = activePerms.find(p => p.departmentId === ctx.defaultDepartmentId && p.projectId === ctx.defaultProjectId && !p.isDepartmentArchived)
+        const dp = activePerms.find(p => p.departmentId === ctx.departmentId && p.projectId === ctx.projectId && !p.isDepartmentArchived)
         return dp?.departmentSlug ?? undefined
       })()
     : (defaultProject && deptsByProject[defaultProject]?.length === 1
@@ -198,8 +198,8 @@ export async function createMcpServerForAgent(
         role: z.enum(['worker', 'manager']).optional().describe('Agent role (for create/update)'),
         special_prompt: z.string().optional().describe('Special system prompt (for create/update)'),
         is_active: z.boolean().optional().describe('Active status (for update)'),
-        default_project_id: z.string().optional().describe('Default project UUID (for create/update)'),
-        default_department_id: z.string().optional().describe('Default department UUID (for create/update, requires default_project_id)'),
+        project_id: z.string().optional().describe('Project UUID (for create/update)'),
+        department_id: z.string().optional().describe('Department UUID (for create/update, requires project_id)'),
         limit: z.number().max(50).optional().describe('Max results for list action (default 20, max 50)'),
         cursor: z.string().optional().describe('Pagination cursor for list action'),
       },

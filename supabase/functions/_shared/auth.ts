@@ -131,8 +131,8 @@ export async function authenticateAgent(
     specialPrompt: keyRecord.special_prompt,
     permissions,
     workspaceId: keyRecord.workspace_id,
-    defaultProjectId: keyRecord.default_project_id,
-    defaultDepartmentId: keyRecord.default_department_id,
+    projectId: keyRecord.project_id,
+    departmentId: keyRecord.department_id,
   }
 }
 

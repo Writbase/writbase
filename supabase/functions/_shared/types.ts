@@ -32,8 +32,8 @@ export interface AgentContext {
   specialPrompt: string | null
   permissions: AgentPermission[]
   workspaceId: string
-  defaultProjectId: string | null
-  defaultDepartmentId: string | null
+  projectId: string | null
+  departmentId: string | null
 }
 
 export interface AgentKeyRecord {
@@ -48,6 +48,6 @@ export interface AgentKeyRecord {
   last_used_at: string | null
   created_by: string
   workspace_id: string
-  default_project_id: string | null
-  default_department_id: string | null
+  project_id: string | null
+  department_id: string | null
 }

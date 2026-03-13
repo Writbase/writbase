@@ -100,8 +100,8 @@ export interface AgentKey {
   last_used_at: string | null;
   created_by: string;
   workspace_id: string;
-  default_project_id: string | null;
-  default_department_id: string | null;
+  project_id: string | null;
+  department_id: string | null;
 }
 
 export interface AgentPermission {

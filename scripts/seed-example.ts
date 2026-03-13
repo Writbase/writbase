@@ -164,7 +164,7 @@ async function getOrCreateAgentKey(
   workspaceId: string,
   name: string,
   createdBy: string,
-  defaults?: { defaultProjectId: string; defaultDepartmentId: string },
+  defaults?: { projectId: string; departmentId: string },
 ): Promise<{ row: AgentKeyRow; fullKey: string | null; isNew: boolean }> {
   const existing = await rest('agent_keys', {
     query: `workspace_id=eq.${workspaceId}&name=eq.${encodeURIComponent(name)}&select=id,name`,
@@ -179,8 +179,8 @@ async function getOrCreateAgentKey(
         method: 'PATCH',
         query: `id=eq.${existing[0].id}`,
         body: {
-          default_project_id: defaults.defaultProjectId,
-          default_department_id: defaults.defaultDepartmentId,
+          project_id: defaults.projectId,
+          department_id: defaults.departmentId,
         },
       })
       console.log(`    Updated defaults on existing key`)
@@ -202,8 +202,8 @@ async function getOrCreateAgentKey(
       workspace_id: workspaceId,
       created_by: createdBy,
       ...(defaults && {
-        default_project_id: defaults.defaultProjectId,
-        default_department_id: defaults.defaultDepartmentId,
+        project_id: defaults.projectId,
+        department_id: defaults.departmentId,
       }),
     },
     prefer: 'return=representation',
@@ -271,12 +271,12 @@ async function main() {
   // 2. Agent keys
   console.log('\nCreating agent keys...')
   const opsAgent = await getOrCreateAgentKey(workspaceId, 'exampleproject-ops-agent', ownerId, {
-    defaultProjectId: project.id,
-    defaultDepartmentId: opsDept.id,
+    projectId: project.id,
+    departmentId: opsDept.id,
   })
   const coreAgent = await getOrCreateAgentKey(workspaceId, 'exampleproject-core-agent', ownerId, {
-    defaultProjectId: project.id,
-    defaultDepartmentId: coreDept.id,
+    projectId: project.id,
+    departmentId: coreDept.id,
   })
 
   // 3. Permissions

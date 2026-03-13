@@ -37,16 +37,16 @@ export async function createAgentKeyAction(formData: FormData) {
     }
 
     const workspace = await getWorkspaceForUser(supabase);
-    const defaultProjectId = formData.get('defaultProjectId') as string | null;
-    const defaultDepartmentId = formData.get('defaultDepartmentId') as string | null;
+    const projectId = formData.get('projectId') as string | null;
+    const departmentId = formData.get('departmentId') as string | null;
     const result = await createAgentKey(supabase, {
       name: parsed.data.name,
       role: parsed.data.role,
       specialPrompt: parsed.data.specialPrompt,
       createdBy: user.id,
       workspaceId: workspace.id,
-      defaultProjectId: defaultProjectId ?? null,
-      defaultDepartmentId: defaultDepartmentId ?? null,
+      projectId: projectId ?? null,
+      departmentId: departmentId ?? null,
     });
 
     revalidatePath('/agent-keys');
@@ -78,10 +78,10 @@ export async function updateAgentKeyAction(formData: FormData) {
     const isActive = formData.get('isActive');
     if (isActive !== null) raw.isActive = isActive === 'true';
 
-    const defaultProjectId = formData.get('defaultProjectId');
-    if (defaultProjectId !== null) raw.defaultProjectId = defaultProjectId || null;
-    const defaultDepartmentId = formData.get('defaultDepartmentId');
-    if (defaultDepartmentId !== null) raw.defaultDepartmentId = defaultDepartmentId || null;
+    const projectId = formData.get('projectId');
+    if (projectId !== null) raw.projectId = projectId || null;
+    const departmentId = formData.get('departmentId');
+    if (departmentId !== null) raw.departmentId = departmentId || null;
 
     const parsed = agentKeyUpdateSchema.safeParse(raw);
     if (!parsed.success) {
@@ -94,11 +94,8 @@ export async function updateAgentKeyAction(formData: FormData) {
       name: parsed.data.name,
       specialPrompt: parsed.data.specialPrompt,
       isActive: parsed.data.isActive,
-      defaultProjectId: (parsed.data as Record<string, unknown>).defaultProjectId as
-        | string
-        | null
-        | undefined,
-      defaultDepartmentId: (parsed.data as Record<string, unknown>).defaultDepartmentId as
+      projectId: (parsed.data as Record<string, unknown>).projectId as string | null | undefined,
+      departmentId: (parsed.data as Record<string, unknown>).departmentId as
         | string
         | null
         | undefined,
