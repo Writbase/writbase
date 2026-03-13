@@ -136,7 +136,7 @@ See [docs/deployment.md](docs/deployment.md) for detailed setup instructions.
 
 ## Documentation
 
-- [Quickstart](docs/quickstart.md) — Connect Claude Code in 5 minutes
+- [Getting Started](docs/quickstart.md) — Deploy, create an agent key, connect your MCP client, and manage tasks
 - [Deployment Guide](docs/deployment.md) — Supabase Cloud, Vercel, and self-hosted setup
 - [Core Concepts](docs/concepts.md) — Permissions, provenance, error codes, delegation
 - [MCP Config Reference](docs/mcp-config-reference.md) — Client configs for Claude Code, Cursor, VS Code, Windsurf
