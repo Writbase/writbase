@@ -157,3 +157,30 @@ export interface AgentCapabilities {
   updated_at: string;
   workspace_id: string;
 }
+
+export interface WebhookDeliveryLog {
+  id: string;
+  workspace_id: string;
+  subscription_id: string;
+  task_id: string;
+  event_type: string;
+  payload: unknown;
+  status: 'pending' | 'delivered' | 'failed' | 'dead';
+  attempts: number;
+  last_attempt_at: string | null;
+  next_retry_at: string | null;
+  last_error: string | null;
+  created_at: string;
+}
+
+export interface WorkspaceUsage {
+  id: string;
+  workspace_id: string;
+  period_start: string;
+  period_end: string;
+  tasks_created: number;
+  tasks_active: number;
+  api_requests: number;
+  agent_keys_active: number;
+  computed_at: string;
+}
