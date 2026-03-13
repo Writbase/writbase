@@ -25,7 +25,7 @@ const FULL_TASK = {
 
 const MOCK_PERMS: AgentPermission[] = [
   {
-    id: 'perm-1', projectId: 'proj-1', projectSlug: 'exampleproject', projectName: 'ExampleProject',
+    id: 'perm-1', projectId: 'proj-1', projectSlug: 'testproject', projectName: 'TestProject',
     isProjectArchived: false,
     departmentId: 'dept-1', departmentSlug: 'core', departmentName: 'Core', isDepartmentArchived: false,
     canRead: true, canCreate: true, canUpdate: true, canAssign: false, canComment: false, canArchive: false,
@@ -90,7 +90,7 @@ Deno.test('compactTasks maps correctly over array', () => {
 
 Deno.test('buildSlugMaps builds correct lookups', () => {
   const slugs = buildSlugMaps(MOCK_PERMS)
-  assertEquals(slugs.projects.get('proj-1'), 'exampleproject')
+  assertEquals(slugs.projects.get('proj-1'), 'testproject')
   assertEquals(slugs.departments.get('dept-1'), 'core')
   assertEquals(slugs.projects.size, 1)
   assertEquals(slugs.departments.size, 1)

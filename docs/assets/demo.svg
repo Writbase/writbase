@@ -70,7 +70,7 @@
 
     <g class="l l2">
       <text y="68" x="36" class="k">"project"</text><text y="68" x="110" class="d">:</text>
-      <text y="68" x="120" class="v">"exampleproject"</text><text y="68" x="234" class="d">,</text>
+      <text y="68" x="120" class="v">"myproject"</text><text y="68" x="234" class="d">,</text>
       <text y="68" x="248" class="k">"department"</text><text y="68" x="344" class="d">:</text>
       <text y="68" x="354" class="v">"operations"</text><text y="68" x="448" class="d">,</text>
     </g>
@@ -95,7 +95,7 @@
     <g class="l l4">
       <text y="148" class="d">{</text>
       <text y="148" x="14" class="k">"project"</text><text y="148" x="88" class="d">:</text>
-      <text y="148" x="98" class="v">"exampleproject"</text><text y="148" x="212" class="d">,</text>
+      <text y="148" x="98" class="v">"myproject"</text><text y="148" x="212" class="d">,</text>
       <text y="148" x="226" class="k">"department"</text><text y="148" x="322" class="d">:</text>
       <text y="148" x="332" class="v">"operations"</text><text y="148" x="428" class="d">,</text>
     </g>
@@ -169,7 +169,7 @@
       <text y="374" x="98" class="k">get_tasks</text>
       <text y="374" x="178" class="d">{</text>
       <text y="374" x="190" class="k">"project"</text><text y="374" x="264" class="d">:</text>
-      <text y="374" x="274" class="v">"exampleproject"</text><text y="374" x="388" class="d">,</text>
+      <text y="374" x="274" class="v">"myproject"</text><text y="374" x="388" class="d">,</text>
       <text y="374" x="402" class="k">"department"</text><text y="374" x="498" class="d">:</text>
       <text y="374" x="508" class="v">"operations"</text>
       <text y="374" x="604" class="d">}</text>
