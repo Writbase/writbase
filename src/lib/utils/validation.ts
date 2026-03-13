@@ -64,6 +64,8 @@ export const agentKeyUpdateSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   specialPrompt: z.string().max(5000).optional().nullable(),
   isActive: z.boolean().optional(),
+  defaultProjectId: z.uuid().optional().nullable(),
+  defaultDepartmentId: z.uuid().optional().nullable(),
 });
 
 export const permissionSchema = z.object({
@@ -75,6 +77,7 @@ export const permissionSchema = z.object({
   canUpdate: z.boolean().default(false),
   canAssign: z.boolean().default(false),
   canComment: z.boolean().default(false),
+  canArchive: z.boolean().default(false),
 });
 
 export const permissionsUpdateSchema = z.object({
@@ -88,6 +91,7 @@ export const permissionsUpdateSchema = z.object({
       canUpdate: z.boolean().default(false),
       canAssign: z.boolean().default(false),
       canComment: z.boolean().default(false),
+      canArchive: z.boolean().default(false),
     }),
   ),
 });

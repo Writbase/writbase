@@ -578,6 +578,200 @@ Deno.test('subscribe: manager deletes subscription', async () => {
 })
 
 // ═══════════════════════════════════════════════════════════════════
+// WEBHOOK DELIVERY (Edge Function direct tests)
+// ═══════════════════════════════════════════════════════════════════
+
+const WEBHOOK_URL = `${SUPABASE_URL}/functions/v1/webhook-deliver`
+const WEBHOOK_INTERNAL_SECRET = Deno.env.get('WEBHOOK_INTERNAL_SECRET') ?? ''
+
+const webhookDeliveryState = {
+  subscriptionId: '',
+  subscriptionSecret: '',
+  deliveryTaskId: '',
+}
+
+Deno.test('webhook-deliver: rejects missing internal secret', async () => {
+  const res = await fetch(WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ task_id: 'fake', project_id: 'fake', workspace_id: 'fake', events: ['task.created'], new_record: {}, old_record: null }),
+  })
+  assertEquals(res.status, 401)
+  await res.body?.cancel()
+})
+
+Deno.test('webhook-deliver: rejects wrong internal secret', async () => {
+  const res = await fetch(WEBHOOK_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Webhook-Internal-Secret': 'wrong-secret',
+    },
+    body: JSON.stringify({ task_id: 'fake', project_id: 'fake', workspace_id: 'fake', events: ['task.created'], new_record: {}, old_record: null }),
+  })
+  assertEquals(res.status, 401)
+  await res.body?.cancel()
+})
+
+Deno.test('webhook-deliver: rejects non-POST methods', async () => {
+  const res = await fetch(WEBHOOK_URL, {
+    method: 'GET',
+    headers: { 'X-Webhook-Internal-Secret': WEBHOOK_INTERNAL_SECRET },
+  })
+  assertEquals(res.status, 405)
+  await res.body?.cancel()
+})
+
+Deno.test('webhook-deliver: returns 400 on missing fields', async () => {
+  const res = await fetch(WEBHOOK_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Webhook-Internal-Secret': WEBHOOK_INTERNAL_SECRET,
+    },
+    body: JSON.stringify({ task_id: 'abc' }), // missing required fields
+  })
+  assertEquals(res.status, 400)
+  await res.body?.cancel()
+})
+
+Deno.test('webhook-deliver: returns delivered=0 when no subscriptions match', async () => {
+  const res = await fetch(WEBHOOK_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Webhook-Internal-Secret': WEBHOOK_INTERNAL_SECRET,
+    },
+    body: JSON.stringify({
+      task_id: crypto.randomUUID(),
+      project_id: ids.projectId,
+      workspace_id: WORKSPACE_ID,
+      version: 1,
+      events: ['task.created'],
+      new_record: { status: 'todo', updated_by_type: 'agent', updated_by_id: keys.workerA!.keyId },
+      old_record: null,
+    }),
+  })
+  assertEquals(res.status, 200)
+  const body = await res.json()
+  assertEquals(body.delivered, 0)
+})
+
+Deno.test('webhook-deliver: setup subscription + task for delivery test', async () => {
+  // Create a subscription via MCP
+  const { body } = await mcpCall(keys.manager!.fullKey, 'tools/call', {
+    name: 'subscribe',
+    arguments: {
+      action: 'create',
+      project: ids.projectSlug,
+      url: 'https://httpbin.org/post', // Will accept POST and return 200
+      event_types: ['task.completed', 'task.updated'],
+    },
+  })
+  assertEquals(isToolError(body), false, `subscribe create: ${JSON.stringify(body)}`)
+  const result = extractToolResult(body) as Record<string, unknown>
+  webhookDeliveryState.subscriptionId = result.id as string
+  webhookDeliveryState.subscriptionSecret = result.secret as string
+  cleanup.webhooks.push(webhookDeliveryState.subscriptionId)
+
+  // Create a task for delivery testing
+  const { body: taskBody } = await mcpCall(keys.workerA!.fullKey, 'tools/call', {
+    name: 'add_task',
+    arguments: {
+      project: ids.projectSlug,
+      description: 'Webhook delivery test task',
+    },
+  })
+  assertEquals(isToolError(taskBody), false)
+  const task = extractToolResult(taskBody) as Record<string, unknown>
+  webhookDeliveryState.deliveryTaskId = task.id as string
+  cleanup.tasks.push(webhookDeliveryState.deliveryTaskId)
+})
+
+Deno.test('webhook-deliver: delivers to matching subscription', async () => {
+  const res = await fetch(WEBHOOK_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Webhook-Internal-Secret': WEBHOOK_INTERNAL_SECRET,
+    },
+    body: JSON.stringify({
+      task_id: webhookDeliveryState.deliveryTaskId,
+      project_id: ids.projectId,
+      workspace_id: WORKSPACE_ID,
+      version: 2,
+      events: ['task.updated', 'task.completed'],
+      new_record: {
+        status: 'done',
+        updated_by_type: 'agent',
+        updated_by_id: keys.workerA!.keyId,
+        updated_at: new Date().toISOString(),
+      },
+      old_record: { status: 'todo' },
+    }),
+  })
+  assertEquals(res.status, 200)
+  const body = await res.json()
+  // Subscription matches both task.updated and task.completed → 2 deliveries
+  assertEquals(body.total, 2)
+  assertEquals(body.delivered, 2)
+  assertEquals(body.failed, 0)
+})
+
+Deno.test('webhook-deliver: does not deliver for non-matching event', async () => {
+  const res = await fetch(WEBHOOK_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Webhook-Internal-Secret': WEBHOOK_INTERNAL_SECRET,
+    },
+    body: JSON.stringify({
+      task_id: webhookDeliveryState.deliveryTaskId,
+      project_id: ids.projectId,
+      workspace_id: WORKSPACE_ID,
+      version: 3,
+      events: ['task.assigned'], // subscription doesn't include this
+      new_record: { status: 'done', assigned_to_agent_key_id: keys.workerB!.keyId },
+      old_record: { status: 'done', assigned_to_agent_key_id: null },
+    }),
+  })
+  assertEquals(res.status, 200)
+  const body = await res.json()
+  assertEquals(body.delivered, 0)
+})
+
+Deno.test('webhook-deliver: workspace isolation — wrong workspace gets 0 deliveries', async () => {
+  const res = await fetch(WEBHOOK_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Webhook-Internal-Secret': WEBHOOK_INTERNAL_SECRET,
+    },
+    body: JSON.stringify({
+      task_id: webhookDeliveryState.deliveryTaskId,
+      project_id: ids.projectId,
+      workspace_id: crypto.randomUUID(), // different workspace
+      version: 2,
+      events: ['task.completed'],
+      new_record: { status: 'done' },
+      old_record: { status: 'todo' },
+    }),
+  })
+  assertEquals(res.status, 200)
+  const body = await res.json()
+  assertEquals(body.delivered, 0)
+})
+
+Deno.test('webhook-deliver: cleanup delivery subscription', async () => {
+  const { body } = await mcpCall(keys.manager!.fullKey, 'tools/call', {
+    name: 'subscribe',
+    arguments: { action: 'delete', subscription_id: webhookDeliveryState.subscriptionId },
+  })
+  assertEquals(isToolError(body), false)
+  cleanup.webhooks = cleanup.webhooks.filter((id) => id !== webhookDeliveryState.subscriptionId)
+})
+
+// ═══════════════════════════════════════════════════════════════════
 // PROJECT LIFECYCLE (RENAME + ARCHIVE)
 // ═══════════════════════════════════════════════════════════════════
 
@@ -806,6 +1000,138 @@ Deno.test('info: worker B has read-only scopes', async () => {
   assertEquals(scope!.can_read, true)
   assertEquals(scope!.can_create, false)
   assertEquals(scope!.can_update, false)
+})
+
+// ═══════════════════════════════════════════════════════════════════
+// DEPARTMENT-SCOPED CAN_ASSIGN (F4 bug fix)
+// ═══════════════════════════════════════════════════════════════════
+
+const assignDeptState = {
+  deptAId: '',
+  deptBId: '',
+  deptASlug: '',
+  deptBSlug: '',
+  assignWorker: null as Awaited<ReturnType<typeof generateAgentKey>> | null,
+  taskInDeptB: '',
+  taskNoDept: '',
+}
+
+Deno.test('F4 setup: create departments and worker with dept-scoped can_assign', async () => {
+  // Create dept A
+  const { body: deptABody } = await mcpCall(keys.manager!.fullKey, 'tools/call', {
+    name: 'manage_departments',
+    arguments: { action: 'create', name: 'F4 Dept A' },
+  })
+  assertEquals(isToolError(deptABody), false)
+  const deptA = extractToolResult(deptABody) as Record<string, unknown>
+  assignDeptState.deptAId = deptA.id as string
+  assignDeptState.deptASlug = deptA.slug as string
+  cleanup.departments.push(assignDeptState.deptAId)
+
+  // Create dept B
+  const { body: deptBBody } = await mcpCall(keys.manager!.fullKey, 'tools/call', {
+    name: 'manage_departments',
+    arguments: { action: 'create', name: 'F4 Dept B' },
+  })
+  assertEquals(isToolError(deptBBody), false)
+  const deptB = extractToolResult(deptBBody) as Record<string, unknown>
+  assignDeptState.deptBId = deptB.id as string
+  assignDeptState.deptBSlug = deptB.slug as string
+  cleanup.departments.push(assignDeptState.deptBId)
+
+  // Create worker with can_assign ONLY on dept A
+  assignDeptState.assignWorker = await createKeyViaRest('e2e-f4-assign-worker', 'worker')
+
+  // Grant project-wide read+create, dept-A-specific can_assign
+  const permIdWide = crypto.randomUUID()
+  await supabaseRest('agent_permissions', {
+    method: 'POST',
+    body: {
+      id: permIdWide,
+      agent_key_id: assignDeptState.assignWorker.keyId,
+      project_id: ids.projectId,
+      workspace_id: WORKSPACE_ID,
+      can_read: true,
+      can_create: true,
+      can_update: true,
+      can_assign: false,
+    },
+    prefer: 'return=minimal',
+  })
+  cleanup.permissions.push(permIdWide)
+
+  const permIdA = crypto.randomUUID()
+  await supabaseRest('agent_permissions', {
+    method: 'POST',
+    body: {
+      id: permIdA,
+      agent_key_id: assignDeptState.assignWorker.keyId,
+      project_id: ids.projectId,
+      department_id: assignDeptState.deptAId,
+      workspace_id: WORKSPACE_ID,
+      can_read: true,
+      can_create: true,
+      can_update: true,
+      can_assign: true,
+    },
+    prefer: 'return=minimal',
+  })
+  cleanup.permissions.push(permIdA)
+
+  // Create a task in dept B (via manager)
+  const { body: taskBBody } = await mcpCall(keys.manager!.fullKey, 'tools/call', {
+    name: 'add_task',
+    arguments: {
+      project: ids.projectSlug,
+      department: assignDeptState.deptBSlug,
+      description: 'Task in dept B for F4 test',
+    },
+  })
+  assertEquals(isToolError(taskBBody), false, `add_task in dept B: ${JSON.stringify(taskBBody)}`)
+  const taskB = extractToolResult(taskBBody) as Record<string, unknown>
+  assignDeptState.taskInDeptB = taskB.id as string
+  cleanup.tasks.push(assignDeptState.taskInDeptB)
+
+  // Create a task with no department (via manager)
+  const { body: taskNoDeptBody } = await mcpCall(keys.manager!.fullKey, 'tools/call', {
+    name: 'add_task',
+    arguments: {
+      project: ids.projectSlug,
+      description: 'Task with no dept for F4 test',
+    },
+  })
+  assertEquals(isToolError(taskNoDeptBody), false)
+  const taskNoDept = extractToolResult(taskNoDeptBody) as Record<string, unknown>
+  assignDeptState.taskNoDept = taskNoDept.id as string
+  cleanup.tasks.push(assignDeptState.taskNoDept)
+})
+
+Deno.test('F4: agent with can_assign on dept A cannot assign task in dept B', async () => {
+  const { body } = await mcpCall(assignDeptState.assignWorker!.fullKey, 'tools/call', {
+    name: 'update_task',
+    arguments: {
+      task_id: assignDeptState.taskInDeptB,
+      version: 1,
+      assign_to: keys.workerA!.keyId,
+    },
+  })
+  assertEquals(isToolError(body), true)
+  const result = extractToolResult(body) as Record<string, unknown>
+  assertEquals(result.code, 'assign_not_allowed')
+})
+
+Deno.test('F4: agent with dept-scoped can_assign cannot assign task with no department', async () => {
+  const { body } = await mcpCall(assignDeptState.assignWorker!.fullKey, 'tools/call', {
+    name: 'update_task',
+    arguments: {
+      task_id: assignDeptState.taskNoDept,
+      version: 1,
+      assign_to: keys.workerA!.keyId,
+    },
+  })
+  assertEquals(isToolError(body), true)
+  const result = extractToolResult(body) as Record<string, unknown>
+  assertEquals(result.code, 'assign_not_allowed')
 })
 
 // ═══════════════════════════════════════════════════════════════════

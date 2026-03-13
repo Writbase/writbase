@@ -13,6 +13,7 @@ import { handleManageProjects } from '../tools/manage-projects.ts'
 import { handleManageDepartments } from '../tools/manage-departments.ts'
 import { handleSubscribe } from '../tools/subscribe.ts'
 import { handleDiscoverAgents } from '../tools/discover-agents.ts'
+import { handleGetTopTasks } from '../tools/get-top-tasks.ts'
 
 /**
  * Build a per-request McpServer whose tool set is scoped to the
@@ -56,8 +57,19 @@ export async function createMcpServerForAgent(
     .map(([slug, depts]) => `Departments for ${slug}: ${depts.join(', ')}`)
     .join('; ')
 
-  // Default project if agent has exactly one
-  const defaultProject = projectSlugs.length === 1 ? projectSlugs[0] : undefined
+  // Default project: stored default overrides computed (F5b → F5a fallback)
+  const defaultProject = ctx.defaultProjectId
+    ? projectSlugs.find(s => activePerms.find(p => p.projectSlug === s)?.projectId === ctx.defaultProjectId)
+    : (projectSlugs.length === 1 ? projectSlugs[0] : undefined)
+
+  // Default department: stored default overrides computed (F5b → F5a fallback)
+  const defaultDept = ctx.defaultDepartmentId
+    ? (() => {
+        const dp = activePerms.find(p => p.departmentId === ctx.defaultDepartmentId && p.projectId === ctx.defaultProjectId && !p.isDepartmentArchived)
+        return dp?.departmentSlug ?? undefined
+      })()
+    : (defaultProject && deptsByProject[defaultProject]?.length === 1
+        ? deptsByProject[defaultProject][0] : undefined)
 
   // ── Helper: build project param as a Zod enum ──────────────────────
   const hasProjects = projectSlugs.length > 0
@@ -89,12 +101,14 @@ export async function createMcpServerForAgent(
   // 2. get_tasks
   server.tool(
     'get_tasks',
-    `List tasks in a project. ${projectHint}. ${deptHint}${noProjectsNote}`,
+    `List tasks in a project.${noProjectsNote}`,
     {
       project: defaultProject
         ? projectEnum.default(defaultProject).describe('Project slug')
         : projectEnum.describe('Project slug'),
-      department: deptEnum.optional().describe('Filter by department slug'),
+      department: defaultDept
+        ? deptEnum.default(defaultDept).optional().describe('Filter by department slug')
+        : deptEnum.optional().describe('Filter by department slug'),
       status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled', 'failed']).optional().describe('Filter by status'),
       priority: z.enum(['low', 'medium', 'high', 'critical']).optional().describe('Filter by priority'),
       limit: z.number().max(50).optional().describe('Max results (default 20, max 50)'),
@@ -103,6 +117,7 @@ export async function createMcpServerForAgent(
       search: z.string().optional().describe('Full-text search query (supports AND/OR/NOT operators)'),
       assigned_to_me: z.boolean().optional().describe('Filter tasks assigned to this agent'),
       requested_by_me: z.boolean().optional().describe('Filter tasks this agent created for others'),
+      include_archived: z.boolean().optional().describe('Include archived tasks (default false)'),
     },
     { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     (params) => handleGetTasks(params, ctx, supabase)
@@ -111,14 +126,14 @@ export async function createMcpServerForAgent(
   // 3. add_task
   server.tool(
     'add_task',
-    `Create a new task. ${projectHint}. ${deptHint}. ${departmentRequired ? 'Department is required.' : 'Department is optional.'}${noProjectsNote}`,
+    `Create a new task. ${departmentRequired ? 'Department is required.' : 'Department is optional.'}${noProjectsNote}`,
     {
       project: defaultProject
         ? projectEnum.default(defaultProject).describe('Project slug')
         : projectEnum.describe('Project slug'),
       department: departmentRequired
-        ? deptEnum.describe('Department slug (required)')
-        : deptEnum.optional().describe('Department slug'),
+        ? (defaultDept ? deptEnum.default(defaultDept).describe('Department slug (required)') : deptEnum.describe('Department slug (required)'))
+        : (defaultDept ? deptEnum.default(defaultDept).optional().describe('Department slug') : deptEnum.optional().describe('Department slug')),
       priority: z.enum(['low', 'medium', 'high', 'critical']).optional().describe('Task priority'),
       description: z.string().min(3).describe('Task description (min 3 chars)'),
       notes: z.string().optional().describe('Additional notes'),
@@ -133,7 +148,7 @@ export async function createMcpServerForAgent(
   // 4. update_task
   server.tool(
     'update_task',
-    `Update an existing task. Requires the current version for optimistic locking. ${projectHint}. ${deptHint}${noProjectsNote}`,
+    `Update an existing task. Requires the current version for optimistic locking.${noProjectsNote}`,
     {
       task_id: z.string().describe('Task UUID'),
       version: z.number().describe('Current version number for optimistic locking'),
@@ -144,9 +159,28 @@ export async function createMcpServerForAgent(
       due_date: z.string().optional().describe('New due date as ISO 8601'),
       status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled', 'failed']).optional().describe('New status'),
       assign_to: z.string().optional().describe('Agent key ID or name to reassign to (empty string to unassign, requires can_assign permission)'),
+      is_archived: z.boolean().optional().describe('Archive or unarchive this task (requires can_archive permission)'),
     },
     { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     (params) => handleUpdateTask(params, ctx, supabase)
+  )
+
+  // 4b. get_top_tasks
+  server.tool(
+    'get_top_tasks',
+    `Get top tasks by priority.${noProjectsNote}`,
+    {
+      project: defaultProject
+        ? projectEnum.default(defaultProject).describe('Project slug')
+        : projectEnum.describe('Project slug'),
+      department: defaultDept
+        ? deptEnum.default(defaultDept).optional().describe('Filter by department slug')
+        : deptEnum.optional().describe('Filter by department slug'),
+      status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled', 'failed']).optional().describe('Filter by status'),
+      limit: z.number().max(25).optional().describe('Max results (default 10, max 25)'),
+    },
+    { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    (params) => handleGetTopTasks(params, ctx, supabase)
   )
 
   // ── MANAGER TOOLS (manager role only) ──────────────────────────────
@@ -162,6 +196,10 @@ export async function createMcpServerForAgent(
         role: z.enum(['worker', 'manager']).optional().describe('Agent role (for create/update)'),
         special_prompt: z.string().optional().describe('Special system prompt (for create/update)'),
         is_active: z.boolean().optional().describe('Active status (for update)'),
+        default_project_id: z.string().optional().describe('Default project UUID (for create/update)'),
+        default_department_id: z.string().optional().describe('Default department UUID (for create/update, requires default_project_id)'),
+        limit: z.number().max(50).optional().describe('Max results for list action (default 20, max 50)'),
+        cursor: z.string().optional().describe('Pagination cursor for list action'),
       },
       { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
       (params) => handleManageAgentKeys(params, ctx, supabase)
@@ -182,6 +220,7 @@ export async function createMcpServerForAgent(
           can_update: z.boolean().optional(),
           can_assign: z.boolean().optional(),
           can_comment: z.boolean().optional(),
+          can_archive: z.boolean().optional(),
         })).optional().describe('Permissions to grant or revoke'),
       },
       { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
@@ -191,7 +230,7 @@ export async function createMcpServerForAgent(
     // 7. get_provenance
     server.tool(
       'get_provenance',
-      `View event log / audit trail for a project. ${projectHint}`,
+      'View event log / audit trail for a project.',
       {
         project: projectEnum.describe('Project slug'),
         target_type: z.enum(['task', 'agent_key', 'project', 'department']).optional().describe('Filter by target type'),
@@ -232,7 +271,7 @@ export async function createMcpServerForAgent(
     // 10. subscribe — register webhook for task notifications
     server.tool(
       'subscribe',
-      `Register or manage webhook subscriptions for task event notifications. ${projectHint}`,
+      'Register or manage webhook subscriptions for task event notifications.',
       {
         action: z.enum(['create', 'list', 'delete']).describe('Action to perform'),
         project: projectEnum.optional().describe('Project slug (required for create)'),
@@ -247,7 +286,7 @@ export async function createMcpServerForAgent(
     // 11. discover_agents — list agents with capabilities in a project
     server.tool(
       'discover_agents',
-      `List agents and their capabilities in a project. Manager only. ${projectHint}`,
+      'List agents and their capabilities in a project. Manager only.',
       {
         project: projectEnum.describe('Project slug'),
         skill: z.string().optional().describe('Filter by skill (e.g. "design", "coding")'),

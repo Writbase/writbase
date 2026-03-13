@@ -67,6 +67,7 @@ export interface Task {
   requested_by_agent_key_id: string | null;
   delegation_depth: number;
   assignment_chain: string[];
+  is_archived: boolean;
   workspace_id: string;
 }
 
@@ -99,6 +100,8 @@ export interface AgentKey {
   last_used_at: string | null;
   created_by: string;
   workspace_id: string;
+  default_project_id: string | null;
+  default_department_id: string | null;
 }
 
 export interface AgentPermission {
@@ -111,6 +114,7 @@ export interface AgentPermission {
   can_update: boolean;
   can_assign: boolean;
   can_comment: boolean;
+  can_archive: boolean;
   created_at: string;
   workspace_id: string;
 }

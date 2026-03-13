@@ -106,10 +106,17 @@ export async function handleAddTask(
   // 7. Resolve assign_to if provided
   let assignedToKeyId: string | null = null
   if (params.assign_to) {
-    // Check that caller has can_assign permission for this project
-    const hasAssign = projectPerms.some((p) => p.canAssign)
-    if (!hasAssign) {
-      return mcpError(assignNotAllowedError(params.project))
+    // Check that caller has can_assign for the resolved department scope
+    if (departmentId) {
+      // Dept-scoped: project-wide canAssign OR dept-specific canAssign
+      const hasAssign =
+        projectPerms.some((p) => p.departmentId === null && p.canAssign) ||
+        projectPerms.some((p) => p.departmentId === departmentId && p.canAssign)
+      if (!hasAssign) return mcpError(assignNotAllowedError(params.project))
+    } else {
+      // No department: require project-wide canAssign (departmentId === null row)
+      const hasAssign = projectPerms.some((p) => p.departmentId === null && p.canAssign)
+      if (!hasAssign) return mcpError(assignNotAllowedError(params.project))
     }
 
     // Resolve by agent key ID (UUID) or agent name

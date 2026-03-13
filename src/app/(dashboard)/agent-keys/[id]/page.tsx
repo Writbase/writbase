@@ -109,6 +109,7 @@ export default async function AgentKeyDetailPage({ params }: PageProps) {
               canUpdate: p.can_update,
               canAssign: p.can_assign,
               canComment: p.can_comment,
+              canArchive: p.can_archive,
             }))}
           />
         </ErrorBoundary>

@@ -14,6 +14,7 @@ interface PermissionRow {
   can_update: boolean
   can_assign: boolean
   can_comment: boolean
+  can_archive: boolean
   projects: { slug: string; name: string; is_archived: boolean } | null
   departments: { slug: string; name: string; is_archived: boolean } | null
 }
@@ -130,6 +131,8 @@ export async function authenticateAgent(
     specialPrompt: keyRecord.special_prompt,
     permissions,
     workspaceId: keyRecord.workspace_id,
+    defaultProjectId: keyRecord.default_project_id,
+    defaultDepartmentId: keyRecord.default_department_id,
   }
 }
 
@@ -152,6 +155,7 @@ export async function loadPermissions(
       can_update,
       can_assign,
       can_comment,
+      can_archive,
       projects:project_id ( slug, name, is_archived ),
       departments:department_id ( slug, name, is_archived )
     `)
@@ -176,6 +180,7 @@ export async function loadPermissions(
     canUpdate: row.can_update,
     canAssign: row.can_assign,
     canComment: row.can_comment,
+    canArchive: row.can_archive,
     isProjectArchived: row.projects?.is_archived ?? false,
     isDepartmentArchived: row.departments?.is_archived ?? null,
   }))

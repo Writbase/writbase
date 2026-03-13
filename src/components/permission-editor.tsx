@@ -16,6 +16,7 @@ interface PermissionRow {
   canUpdate: boolean;
   canAssign: boolean;
   canComment: boolean;
+  canArchive: boolean;
 }
 
 interface ProjectOption {
@@ -76,6 +77,7 @@ export function PermissionEditor({ keyId, initialPermissions }: PermissionEditor
         canUpdate: false,
         canAssign: false,
         canComment: false,
+        canArchive: false,
       },
     ]);
   }
@@ -103,6 +105,7 @@ export function PermissionEditor({ keyId, initialPermissions }: PermissionEditor
         canUpdate: r.canUpdate,
         canAssign: r.canAssign,
         canComment: r.canComment,
+        canArchive: r.canArchive,
       })),
     });
 
@@ -138,6 +141,7 @@ export function PermissionEditor({ keyId, initialPermissions }: PermissionEditor
                 <th className="px-3 py-2 text-center">Update</th>
                 <th className="px-3 py-2 text-center">Assign</th>
                 <th className="px-3 py-2 text-center">Comment</th>
+                <th className="px-3 py-2 text-center">Archive</th>
                 <th className="px-3 py-2"></th>
               </tr>
             </thead>
@@ -234,6 +238,17 @@ export function PermissionEditor({ keyId, initialPermissions }: PermissionEditor
                         updateRow(i, { canComment: e.target.checked });
                       }}
                       aria-label={`Comment access for ${row.projectName}${row.departmentName ? ` / ${row.departmentName}` : ''}`}
+                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <input
+                      type="checkbox"
+                      checked={row.canArchive}
+                      onChange={(e) => {
+                        updateRow(i, { canArchive: e.target.checked });
+                      }}
+                      aria-label={`Archive access for ${row.projectName}${row.departmentName ? ` / ${row.departmentName}` : ''}`}
                       className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                     />
                   </td>

@@ -51,6 +51,7 @@ async function listPermissions(
       can_update: p.canUpdate,
       can_assign: p.canAssign,
       can_comment: p.canComment,
+      can_archive: p.canArchive,
     }))
 
     return {
@@ -152,6 +153,7 @@ async function grantPermissions(
     can_update: row.can_update ?? false,
     can_assign: row.can_assign ?? false,
     can_comment: row.can_comment ?? false,
+    can_archive: row.can_archive ?? false,
     workspace_id: ctx.workspaceId,
   }))
 
@@ -174,7 +176,7 @@ async function grantPermissions(
       targetType: 'agent_key',
       targetId: params.key_id,
       eventType: 'permission_granted',
-      newValue: { project_id: row.project_id, department_id: row.department_id, can_read: row.can_read, can_create: row.can_create, can_update: row.can_update, can_assign: row.can_assign, can_comment: row.can_comment },
+      newValue: { project_id: row.project_id, department_id: row.department_id, can_read: row.can_read, can_create: row.can_create, can_update: row.can_update, can_assign: row.can_assign, can_comment: row.can_comment, can_archive: row.can_archive },
       actorType: 'agent',
       actorId: ctx.keyId,
       actorLabel: ctx.name,

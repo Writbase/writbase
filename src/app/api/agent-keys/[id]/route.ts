@@ -57,6 +57,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       name?: string;
       specialPrompt?: string | null;
       isActive?: boolean;
+      defaultProjectId?: string | null;
+      defaultDepartmentId?: string | null;
     };
 
     const workspace = await getWorkspaceForUser(supabase);
@@ -65,6 +67,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       name: body.name,
       specialPrompt: body.specialPrompt,
       isActive: body.isActive,
+      defaultProjectId: body.defaultProjectId,
+      defaultDepartmentId: body.defaultDepartmentId,
       actorId: user.id,
       workspaceId: workspace.id,
     });
