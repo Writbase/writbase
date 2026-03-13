@@ -1,5 +1,6 @@
 import { assertEquals } from '@std/assert'
-import { compactTask, compactTasks } from './task-shape.ts'
+import { compactTask, compactTasks, buildSlugMaps } from './task-shape.ts'
+import type { AgentPermission } from './types.ts'
 
 const FULL_TASK = {
   id: '00000000-0000-0000-0000-000000000001',
@@ -22,13 +23,33 @@ const FULL_TASK = {
   is_archived: false,
 }
 
+const MOCK_PERMS: AgentPermission[] = [
+  {
+    id: 'perm-1', projectId: 'proj-1', projectSlug: 'exampleproject', projectName: 'ExampleProject',
+    isProjectArchived: false,
+    departmentId: 'dept-1', departmentSlug: 'core', departmentName: 'Core', isDepartmentArchived: false,
+    canRead: true, canCreate: true, canUpdate: true, canAssign: false, canComment: false, canArchive: false,
+  },
+]
+
 Deno.test('compactTask keeps exactly 9 fields', () => {
   const result = compactTask(FULL_TASK)
   assertEquals(Object.keys(result).length, 9)
   assertEquals(Object.keys(result).sort(), [
-    'created_at', 'department_id', 'description', 'due_date', 'id',
+    'created_at', 'department', 'description', 'due_date', 'id',
     'priority', 'status', 'updated_at', 'version',
   ])
+})
+
+Deno.test('compactTask replaces department_id with slug when slugs provided', () => {
+  const slugs = buildSlugMaps(MOCK_PERMS)
+  const result = compactTask(FULL_TASK, slugs)
+  assertEquals(result.department, 'core')
+})
+
+Deno.test('compactTask falls back to raw department_id without slugs', () => {
+  const result = compactTask(FULL_TASK)
+  assertEquals(result.department, 'dept-1')
 })
 
 Deno.test('compactTask preserves null values', () => {
@@ -43,6 +64,8 @@ Deno.test('compactTask drops non-compact fields', () => {
   assertEquals('workspace_id' in result, false)
   assertEquals('search_vector' in result, false)
   assertEquals('assigned_to_agent_key_id' in result, false)
+  assertEquals('department_id' in result, false)
+  assertEquals('project_id' in result, false)
 })
 
 Deno.test('compactTask defaults missing keys to null', () => {
@@ -51,13 +74,24 @@ Deno.test('compactTask defaults missing keys to null', () => {
   assertEquals(result.due_date, null)
   assertEquals(result.updated_at, null)
   assertEquals(result.created_at, null)
+  assertEquals(result.department, null)
 })
 
 Deno.test('compactTasks maps correctly over array', () => {
+  const slugs = buildSlugMaps(MOCK_PERMS)
   const tasks = [FULL_TASK, { ...FULL_TASK, id: 'id-2', description: 'Second' }]
-  const result = compactTasks(tasks)
+  const result = compactTasks(tasks, slugs)
   assertEquals(result.length, 2)
   assertEquals(Object.keys(result[0]).length, 9)
+  assertEquals(result[0].department, 'core')
   assertEquals(result[1].description, 'Second')
   assertEquals('notes' in result[0], false)
+})
+
+Deno.test('buildSlugMaps builds correct lookups', () => {
+  const slugs = buildSlugMaps(MOCK_PERMS)
+  assertEquals(slugs.projects.get('proj-1'), 'exampleproject')
+  assertEquals(slugs.departments.get('dept-1'), 'core')
+  assertEquals(slugs.projects.size, 1)
+  assertEquals(slugs.departments.size, 1)
 })

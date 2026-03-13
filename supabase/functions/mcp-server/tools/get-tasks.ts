@@ -8,7 +8,7 @@ import {
 } from '../../_shared/errors.ts'
 import { encodeCursor, decodeCursor } from '../../_shared/pagination.ts'
 import { resolveDepartment } from '../../_shared/department-resolver.ts'
-import { compactTasks } from '../../_shared/task-shape.ts'
+import { compactTasks, buildSlugMaps } from '../../_shared/task-shape.ts'
 
 interface GetTasksParams {
   project: string
@@ -113,7 +113,7 @@ export async function handleGetTasks(
   // 7. Return result
   const taskList = tasks || []
   const result: { tasks: unknown[]; next_cursor?: string } = {
-    tasks: params.verbose ? taskList : compactTasks(taskList),
+    tasks: params.verbose ? taskList : compactTasks(taskList, buildSlugMaps(ctx.permissions)),
   }
   if (nextCursor) {
     result.next_cursor = nextCursor

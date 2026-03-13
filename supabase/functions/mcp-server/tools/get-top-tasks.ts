@@ -7,7 +7,7 @@ import {
   internalError,
 } from '../../_shared/errors.ts'
 import { resolveDepartment } from '../../_shared/department-resolver.ts'
-import { compactTasks } from '../../_shared/task-shape.ts'
+import { compactTasks, buildSlugMaps } from '../../_shared/task-shape.ts'
 
 interface GetTopTasksParams {
   project: string
@@ -73,6 +73,6 @@ export async function handleGetTopTasks(
 
   const taskList = tasks || []
   return {
-    content: [{ type: 'text' as const, text: JSON.stringify({ tasks: params.verbose ? taskList : compactTasks(taskList) }) }],
+    content: [{ type: 'text' as const, text: JSON.stringify({ tasks: params.verbose ? taskList : compactTasks(taskList, buildSlugMaps(ctx.permissions)) }) }],
   }
 }
