@@ -164,6 +164,7 @@ async function getOrCreateAgentKey(
   workspaceId: string,
   name: string,
   createdBy: string,
+  defaults?: { defaultProjectId: string; defaultDepartmentId: string },
 ): Promise<{ row: AgentKeyRow; fullKey: string | null; isNew: boolean }> {
   const existing = await rest('agent_keys', {
     query: `workspace_id=eq.${workspaceId}&name=eq.${encodeURIComponent(name)}&select=id,name`,
@@ -172,6 +173,18 @@ async function getOrCreateAgentKey(
   if (existing.length > 0) {
     console.log(`  Agent key "${name}" already exists (${existing[0].id})`)
     console.log(`    WARNING: Secret is not recoverable. Delete and re-run to regenerate.`)
+    // Patch defaults if provided (idempotent)
+    if (defaults) {
+      await rest('agent_keys', {
+        method: 'PATCH',
+        query: `id=eq.${existing[0].id}`,
+        body: {
+          default_project_id: defaults.defaultProjectId,
+          default_department_id: defaults.defaultDepartmentId,
+        },
+      })
+      console.log(`    Updated defaults on existing key`)
+    }
     return { row: existing[0], fullKey: null, isNew: false }
   }
 
@@ -188,6 +201,10 @@ async function getOrCreateAgentKey(
       is_active: true,
       workspace_id: workspaceId,
       created_by: createdBy,
+      ...(defaults && {
+        default_project_id: defaults.defaultProjectId,
+        default_department_id: defaults.defaultDepartmentId,
+      }),
     },
     prefer: 'return=representation',
   }) as AgentKeyRow[]
@@ -253,8 +270,14 @@ async function main() {
 
   // 2. Agent keys
   console.log('\nCreating agent keys...')
-  const opsAgent = await getOrCreateAgentKey(workspaceId, 'exampleproject-ops-agent', ownerId)
-  const coreAgent = await getOrCreateAgentKey(workspaceId, 'exampleproject-core-agent', ownerId)
+  const opsAgent = await getOrCreateAgentKey(workspaceId, 'exampleproject-ops-agent', ownerId, {
+    defaultProjectId: project.id,
+    defaultDepartmentId: opsDept.id,
+  })
+  const coreAgent = await getOrCreateAgentKey(workspaceId, 'exampleproject-core-agent', ownerId, {
+    defaultProjectId: project.id,
+    defaultDepartmentId: coreDept.id,
+  })
 
   // 3. Permissions
   console.log('\nSetting permissions...')

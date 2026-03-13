@@ -128,7 +128,7 @@ export async function handleUpdateTask(
 
     // Extra check: if resolved via dept-specific perm, verify canCreate || canUpdate
     const destDeptPerm = projectPerms.find((p) => p.departmentId === result.departmentId)
-    if (destDeptPerm && !(destDeptPerm.canCreate || destDeptPerm.canUpdate)) {
+    if (destDeptPerm && !destDeptPerm.canUpdate) {
       return mcpError(scopeNotAllowedError(projectSlug, 'update'))
     }
 

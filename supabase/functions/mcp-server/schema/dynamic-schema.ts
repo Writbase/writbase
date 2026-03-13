@@ -118,6 +118,7 @@ export async function createMcpServerForAgent(
       assigned_to_me: z.boolean().optional().describe('Filter tasks assigned to this agent'),
       requested_by_me: z.boolean().optional().describe('Filter tasks this agent created for others'),
       include_archived: z.boolean().optional().describe('Include archived tasks (default false)'),
+      verbose: z.boolean().optional().describe('Return all fields (default: compact 9-field summary)'),
     },
     { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     (params) => handleGetTasks(params, ctx, supabase)
@@ -178,6 +179,7 @@ export async function createMcpServerForAgent(
         : deptEnum.optional().describe('Filter by department slug'),
       status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled', 'failed']).optional().describe('Filter by status'),
       limit: z.number().max(25).optional().describe('Max results (default 10, max 25)'),
+      verbose: z.boolean().optional().describe('Return all fields (default: compact 9-field summary)'),
     },
     { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     (params) => handleGetTopTasks(params, ctx, supabase)

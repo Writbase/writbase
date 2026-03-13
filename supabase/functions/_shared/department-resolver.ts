@@ -11,7 +11,7 @@ function hasAction(perm: AgentPermission, action: RequiredAction): boolean {
   switch (action) {
     case 'read': return perm.canRead
     case 'create': return perm.canCreate
-    case 'update': return perm.canCreate || perm.canUpdate
+    case 'update': return perm.canUpdate
     case 'comment': return perm.canComment
     case 'assign': return perm.canAssign
   }

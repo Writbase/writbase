@@ -393,6 +393,21 @@ Deno.test('get_tasks: pagination with limit', async () => {
   assertEquals(result2.tasks[0].id !== result.tasks[0].id, true, 'Second page should have different task')
 })
 
+Deno.test('get_tasks: verbose=true returns all fields including notes', async () => {
+  const { body } = await mcpCall(keys.workerA!.fullKey, 'tools/call', {
+    name: 'get_tasks',
+    arguments: { project: ids.projectSlug, verbose: true },
+  })
+  assertEquals(isToolError(body), false, `get_tasks verbose: ${JSON.stringify(body)}`)
+  const result = extractToolResult(body) as { tasks: Array<Record<string, unknown>> }
+  assertEquals(result.tasks.length >= 1, true)
+  const task = result.tasks[0]
+  // Verbose should include fields not in compact set
+  assertEquals('notes' in task, true, 'Verbose response should include notes')
+  assertEquals('project_id' in task, true, 'Verbose response should include project_id')
+  assertEquals(Object.keys(task).length > 9, true, 'Verbose should have more than 9 fields')
+})
+
 // ═══════════════════════════════════════════════════════════════════
 // MULTI-FIELD UPDATE
 // ═══════════════════════════════════════════════════════════════════

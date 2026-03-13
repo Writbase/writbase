@@ -7,12 +7,14 @@ import {
   internalError,
 } from '../../_shared/errors.ts'
 import { resolveDepartment } from '../../_shared/department-resolver.ts'
+import { compactTasks } from '../../_shared/task-shape.ts'
 
 interface GetTopTasksParams {
   project: string
   department?: string
   status?: string
   limit?: number
+  verbose?: boolean
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -65,7 +67,8 @@ export async function handleGetTopTasks(
     return mcpError(internalError(error.message))
   }
 
+  const taskList = tasks || []
   return {
-    content: [{ type: 'text' as const, text: JSON.stringify({ tasks: tasks || [] }) }],
+    content: [{ type: 'text' as const, text: JSON.stringify({ tasks: params.verbose ? taskList : compactTasks(taskList) }) }],
   }
 }

@@ -8,6 +8,7 @@ import {
 } from '../../_shared/errors.ts'
 import { encodeCursor, decodeCursor } from '../../_shared/pagination.ts'
 import { resolveDepartment } from '../../_shared/department-resolver.ts'
+import { compactTasks } from '../../_shared/task-shape.ts'
 
 interface GetTasksParams {
   project: string
@@ -21,6 +22,7 @@ interface GetTasksParams {
   assigned_to_me?: boolean
   requested_by_me?: boolean
   include_archived?: boolean
+  verbose?: boolean
 }
 
 // UUID v4 pattern
@@ -105,8 +107,9 @@ export async function handleGetTasks(
   }
 
   // 7. Return result
+  const taskList = tasks || []
   const result: { tasks: unknown[]; next_cursor?: string } = {
-    tasks: tasks || [],
+    tasks: params.verbose ? taskList : compactTasks(taskList),
   }
   if (nextCursor) {
     result.next_cursor = nextCursor

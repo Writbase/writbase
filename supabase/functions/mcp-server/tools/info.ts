@@ -25,11 +25,21 @@ export async function handleInfo(ctx: AgentContext, supabase: SupabaseClient) {
       can_archive: p.canArchive,
     }))
 
+  // Resolve default project/department slugs from permissions
+  const defaultProject = ctx.defaultProjectId
+    ? ctx.permissions.find((p) => p.projectId === ctx.defaultProjectId)?.projectSlug ?? null
+    : null
+  const defaultDepartment = ctx.defaultDepartmentId
+    ? ctx.permissions.find((p) => p.departmentId === ctx.defaultDepartmentId)?.departmentSlug ?? null
+    : null
+
   const result = {
     agent: {
       name: ctx.name,
       role: ctx.role,
       is_active: ctx.isActive,
+      default_project: defaultProject,
+      default_department: defaultDepartment,
     },
     permissions: {
       department_required: departmentRequired,

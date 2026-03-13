@@ -403,6 +403,11 @@ Deno.test('get_tasks: worker sees the created task', async () => {
   const task = result.tasks.find((t) => t.id === state.taskId)
   assertExists(task, 'Created task not found in get_tasks result')
   assertEquals(task!.description, 'E2E test task: verify full MCP pipeline')
+  // Compact shape: exactly 9 fields
+  const keys = Object.keys(task!)
+  assertEquals(keys.length, 9, `Expected 9 compact fields, got ${keys.length}: ${keys.join(', ')}`)
+  assertEquals('notes' in task!, false, 'Compact response should not include notes')
+  assertEquals('workspace_id' in task!, false, 'Compact response should not include workspace_id')
 })
 
 // ── get_tasks: filter by status ─────────────────────────────────────
