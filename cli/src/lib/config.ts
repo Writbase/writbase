@@ -1,7 +1,10 @@
 import dotenv from 'dotenv';
-import { writeFileSync, renameSync } from 'node:fs';
+import { mkdirSync, writeFileSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
+import { homedir } from 'node:os';
 import { error } from './output.js';
+
+export const WRITBASE_HOME = join(homedir(), '.writbase');
 
 export interface Config {
   supabaseUrl: string;
@@ -18,7 +21,7 @@ export interface PartialConfig {
 }
 
 export function loadConfigPartial(): PartialConfig {
-  dotenv.config();
+  dotenv.config({ path: join(WRITBASE_HOME, '.env') });
   return {
     supabaseUrl: process.env.SUPABASE_URL,
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -46,8 +49,9 @@ export function loadConfig(): Config {
 }
 
 export function writeEnv(vars: Record<string, string>) {
-  const envPath = join(process.cwd(), '.env');
-  const tmpPath = join(process.cwd(), '.env.tmp');
+  mkdirSync(WRITBASE_HOME, { recursive: true });
+  const envPath = join(WRITBASE_HOME, '.env');
+  const tmpPath = join(WRITBASE_HOME, '.env.tmp');
 
   const content = Object.entries(vars)
     .map(([key, value]) => `${key}=${value}`)

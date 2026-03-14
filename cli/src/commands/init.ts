@@ -4,20 +4,23 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { confirm, input, select } from '@inquirer/prompts';
 import { createSpinner } from 'nanospinner';
-import { loadConfigPartial, writeEnv } from '../lib/config.js';
+import { loadConfigPartial, writeEnv, WRITBASE_HOME } from '../lib/config.js';
 import { createAdminClient } from '../lib/supabase.js';
+import { createAgentKey } from '../lib/agent-keys.js';
+import { installPlugin, grantBasicPermissions } from '../lib/claude-code.js';
 import { success, error, info, warn } from '../lib/output.js';
+import type { AgentRole } from '../lib/types.js';
 
 export async function initCommand() {
   console.log();
   info('WritBase — Interactive Setup');
   console.log();
 
-  // Check for existing .env
-  const envPath = join(process.cwd(), '.env');
+  // Check for existing config
+  const envPath = join(WRITBASE_HOME, '.env');
   if (existsSync(envPath)) {
     const overwrite = await confirm({
-      message: '.env file already exists. Reconfigure?',
+      message: `${WRITBASE_HOME} already configured. Reconfigure?`,
       default: false,
     });
     if (!overwrite) return;
@@ -160,7 +163,7 @@ export async function initCommand() {
       SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
       DATABASE_URL: databaseUrl,
     });
-    success('.env written (partial — no workspace yet)');
+    success(`Config written to ${WRITBASE_HOME} (partial — no workspace yet)`);
     console.log();
     info('Next steps:');
     console.log('  1. writbase migrate');
@@ -256,17 +259,109 @@ export async function initCommand() {
   });
 
   console.log();
-  success('.env written');
-  console.log();
-  info('Next steps:');
+  success(`Config written to ${WRITBASE_HOME}`);
 
-  if (!schemaExists) {
-    console.log('  1. writbase migrate');
-    console.log('  2. writbase key create');
-  } else {
-    console.log('  1. writbase key create');
+  // ── Claude Code integration ─────────────────────────────────────────
+  console.log();
+  const setupClaude = await confirm({
+    message: 'Set up Claude Code integration? (installs skills + MCP config globally)',
+    default: true,
+  });
+
+  if (setupClaude) {
+    // Create agent key inline
+    const keyName = await input({
+      message: 'Agent key name:',
+      default: 'claude-code',
+    });
+
+    const keyRole = await select<AgentRole>({
+      message: 'Agent role:',
+      choices: [
+        { name: 'worker', value: 'worker' },
+        { name: 'manager', value: 'manager' },
+      ],
+      default: 'worker',
+    });
+
+    // Select project for permissions
+    const { data: projects } = await supabase
+      .from('projects')
+      .select('id, name, slug')
+      .eq('workspace_id', workspaceId)
+      .eq('is_archived', false)
+      .order('name');
+
+    let projectId: string | null = null;
+
+    if (projects && projects.length > 0) {
+      if (projects.length === 1) {
+        projectId = projects[0].id;
+        info(`Using project: ${projects[0].name} (${projects[0].slug})`);
+      } else {
+        projectId = await select({
+          message: 'Grant permissions for project:',
+          choices: projects.map((p: { id: string; name: string; slug: string }) => ({
+            name: `${p.name} (${p.slug})`,
+            value: p.id,
+          })),
+        });
+      }
+    }
+
+    // MCP endpoint URL
+    const mcpUrl = await input({
+      message: 'MCP endpoint URL:',
+      default: `${supabaseUrl}/functions/v1/mcp-server`,
+    });
+
+    const keySpinner = createSpinner('Creating agent key...').start();
+
+    try {
+      const { key, fullKey } = await createAgentKey(supabase, {
+        name: keyName.trim() || 'claude-code',
+        role: keyRole,
+        workspaceId,
+        projectId,
+      });
+
+      keySpinner.success({ text: `Agent key created: ${key.name} (${key.role})` });
+
+      // Grant permissions if a project was selected
+      if (projectId) {
+        await grantBasicPermissions(supabase, {
+          keyId: key.id,
+          projectId,
+          workspaceId,
+          role: keyRole,
+        });
+        success('Permissions granted');
+      }
+
+      // Install plugin
+      const pluginSpinner = createSpinner('Installing Claude Code plugin...').start();
+      installPlugin({ mcpUrl, agentKey: fullKey });
+      pluginSpinner.success({ text: 'Claude Code plugin installed' });
+
+      console.log();
+      warn('Save this agent key — it cannot be retrieved later:');
+      console.log();
+      console.log(`  ${fullKey}`);
+      console.log();
+      success('Claude Code integration complete. Restart Claude Code to activate.');
+    } catch (err) {
+      keySpinner.error({ text: 'Claude Code setup failed' });
+      error(err instanceof Error ? err.message : String(err));
+      console.log();
+      info('You can set up Claude Code later with `writbase key create`');
+    }
   }
 
-  console.log('  Then: writbase status');
+  console.log();
+  info('Next steps:');
+  if (!setupClaude) {
+    console.log('  1. writbase key create');
+  }
+  console.log('  writbase status    (verify connection)');
   console.log();
 }

@@ -1,6 +1,6 @@
 {
   "name": "writbase",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "WritBase CLI — self-hosted operator toolkit for agent-first task management",
   "bin": {
@@ -8,7 +8,8 @@
   },
   "files": [
     "dist/",
-    "migrations/"
+    "migrations/",
+    "skills/"
   ],
   "scripts": {
     "build": "tsup src/bin/writbase.ts --format esm --target node18",

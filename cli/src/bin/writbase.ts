@@ -16,7 +16,7 @@ const program = new Command();
 program
   .name('writbase')
   .description('WritBase CLI — agent-first task management')
-  .version('0.1.0');
+  .version('0.1.1');
 
 program
   .command('init')
