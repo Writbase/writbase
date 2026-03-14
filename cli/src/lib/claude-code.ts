@@ -5,6 +5,7 @@ import { existsSync, mkdirSync, writeFileSync, readFileSync, renameSync, cpSync 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AgentRole } from './types.js';
 import { logEvent } from './event-log.js';
+import { WRITBASE_HOME } from './config.js';
 
 export function generatePluginJson(): string {
   return JSON.stringify(
@@ -35,22 +36,27 @@ export function generateMcpJson(mcpUrl: string, agentKey: string): string {
   );
 }
 
+function atomicWriteJson(filePath: string, content: string) {
+  const tmpPath = filePath + '.tmp';
+  writeFileSync(tmpPath, content);
+  renameSync(tmpPath, filePath);
+}
+
 export function installPlugin(config: { mcpUrl: string; agentKey: string }) {
-  const writbaseHome = join(homedir(), '.writbase');
   const claudeDir = join(homedir(), '.claude');
 
-  mkdirSync(join(writbaseHome, '.claude-plugin'), { recursive: true });
-  mkdirSync(join(writbaseHome, 'skills'), { recursive: true });
+  mkdirSync(join(WRITBASE_HOME, '.claude-plugin'), { recursive: true });
+  mkdirSync(join(WRITBASE_HOME, 'skills'), { recursive: true });
 
   const packageRoot = fileURLToPath(new URL('..', import.meta.url));
   const skillsSource = join(packageRoot, 'skills');
-  cpSync(skillsSource, join(writbaseHome, 'skills'), { recursive: true });
+  cpSync(skillsSource, join(WRITBASE_HOME, 'skills'), { recursive: true });
 
-  writeFileSync(join(writbaseHome, '.claude-plugin', 'plugin.json'), generatePluginJson());
+  writeFileSync(join(WRITBASE_HOME, '.claude-plugin', 'plugin.json'), generatePluginJson());
 
   const mcpContent = generateMcpJson(config.mcpUrl, config.agentKey);
-  const mcpPath = join(writbaseHome, '.mcp.json');
-  const mcpTmpPath = join(writbaseHome, '.mcp.json.tmp');
+  const mcpPath = join(WRITBASE_HOME, '.mcp.json');
+  const mcpTmpPath = join(WRITBASE_HOME, '.mcp.json.tmp');
   writeFileSync(mcpTmpPath, mcpContent, { mode: 0o600 });
   renameSync(mcpTmpPath, mcpPath);
 
@@ -64,11 +70,11 @@ export function installPlugin(config: { mcpUrl: string; agentKey: string }) {
     : {};
 
   marketplaces['writbase'] = {
-    source: { source: 'directory', path: writbaseHome },
+    source: { source: 'directory', path: WRITBASE_HOME },
     autoUpdate: false,
   };
 
-  writeFileSync(marketplacesPath, JSON.stringify(marketplaces, null, 2));
+  atomicWriteJson(marketplacesPath, JSON.stringify(marketplaces, null, 2));
 
   // Enable in Claude's settings.json
   const settingsPath = join(claudeDir, 'settings.json');
@@ -81,7 +87,7 @@ export function installPlugin(config: { mcpUrl: string; agentKey: string }) {
   }
   settings.enabledPlugins['writbase@writbase'] = true;
 
-  writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  atomicWriteJson(settingsPath, JSON.stringify(settings, null, 2));
 }
 
 export async function grantBasicPermissions(
