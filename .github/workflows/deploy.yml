@@ -18,37 +18,46 @@ jobs:
     needs: ci
     runs-on: ubuntu-latest
     environment: production
+    env:
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
     steps:
+      - name: Check deploy secrets
+        run: |
+          if [ -z "$SUPABASE_PROJECT_REF" ]; then
+            echo "::notice::SUPABASE_PROJECT_REF not set — skipping deploy"
+            echo "SKIP_DEPLOY=true" >> "$GITHUB_ENV"
+          fi
+
       - uses: actions/checkout@v4
+        if: env.SKIP_DEPLOY != 'true'
 
       - uses: supabase/setup-cli@v1
+        if: env.SKIP_DEPLOY != 'true'
         with:
           version: latest
 
       - name: Link Supabase project
-        run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        if: env.SKIP_DEPLOY != 'true'
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
 
       - name: Push database migrations
+        if: env.SKIP_DEPLOY != 'true'
         run: yes | supabase db push
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
 
       - name: Deploy Edge Functions
+        if: env.SKIP_DEPLOY != 'true'
         run: supabase functions deploy mcp-server --no-verify-jwt
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
       - name: Smoke test Edge Function health endpoint
+        if: env.SKIP_DEPLOY != 'true'
         run: |
           curl -sf --retry 3 --retry-delay 5 \
-            "https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co/functions/v1/mcp-server/health"
+            "https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/mcp-server/health"
 
-      # To add Slack notifications, replace the step below with slackapi/slack-github-action
       - name: Notify deploy failure
-        if: failure()
+        if: failure() && env.SKIP_DEPLOY != 'true'
         run: |
           echo "::error::Supabase deployment failed — check the logs above."
           exit 1
