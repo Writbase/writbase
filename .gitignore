@@ -50,3 +50,8 @@ next-env.d.ts
 
 # internal docs (dotfile convention)
 docs/.*
+
+# CLI build artifacts
+/cli/dist
+/cli/migrations
+/cli/node_modules

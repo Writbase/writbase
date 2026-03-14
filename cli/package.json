@@ -1,0 +1,34 @@
+{
+  "name": "writbase",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "WritBase CLI — self-hosted operator toolkit for agent-first task management",
+  "bin": {
+    "writbase": "./dist/writbase.js"
+  },
+  "files": [
+    "dist/",
+    "migrations/"
+  ],
+  "scripts": {
+    "build": "tsup src/bin/writbase.ts --format esm --target node18",
+    "postbuild": "rm -rf ./migrations && cp -r ../supabase/migrations ./migrations",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^7.0.0",
+    "@supabase/supabase-js": "^2.49.1",
+    "commander": "^13.1.0",
+    "dotenv": "^16.4.7",
+    "nanospinner": "^1.2.2",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.4.0",
+    "typescript": "^5.7.0"
+  }
+}

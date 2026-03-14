@@ -30,9 +30,32 @@ AI agents need a shared, persistent task registry — not ephemeral in-memory st
 
 ## Getting Started
 
-### 1. Deploy to Supabase Cloud (free)
+### Option A: CLI Setup (recommended)
 
-No Docker, no credit card. [Supabase free tier](https://supabase.com/pricing) includes 500MB DB, 50K MAUs, and 500K Edge Function invocations.
+No repo clone needed. Just `npx`:
+
+```bash
+npx writbase init        # Interactive setup — configures Supabase credentials
+npx writbase migrate     # Apply database schema
+npx writbase key create  # Create your first agent key
+```
+
+That's it. Your MCP endpoint is live at:
+
+```
+https://<project-ref>.supabase.co/functions/v1/mcp-server/mcp
+```
+
+> **Prerequisites**: Node 18+, [Supabase CLI](https://supabase.com/docs/guides/cli), a Supabase project ([free tier](https://supabase.com/pricing) works)
+>
+> Deploy the Edge Function: `npx supabase functions deploy mcp-server --no-verify-jwt`
+>
+> See the [CLI README](cli/README.md) for all commands.
+
+### Option B: Manual Setup
+
+<details>
+<summary>Clone and deploy manually</summary>
 
 ```bash
 git clone https://github.com/Writbase/writbase.git
@@ -44,19 +67,15 @@ npx supabase db push
 npx supabase functions deploy mcp-server --no-verify-jwt
 ```
 
-That's it — your MCP endpoint is live at:
-
-```
-https://<project-ref>.supabase.co/functions/v1/mcp-server/mcp
-```
-
 > **Optional dashboard**: `cp .env.example .env.local` → edit with your Supabase URL + anon key → `npm run dev`
 >
 > See the [Deployment Guide](docs/deployment.md) for Vercel hosting and self-hosted Supabase.
 
+</details>
+
 ### 2. Create a project and agent key
 
-In the dashboard (or via a manager agent):
+Via the CLI (`npx writbase key create`), the dashboard, or a manager agent:
 
 1. **Create a project** — e.g., `my-app`. Optionally add departments (`backend`, `frontend`, `devops`)
 2. **Create an agent key** — name it, pick the `worker` role, save the key (`wb_<key_id>_<secret>` — shown once)
@@ -197,7 +216,7 @@ Each agent gets its own key with exactly the permissions it needs — nothing mo
 
 | | Supabase Cloud (recommended) | Self-Hosted Supabase |
 |---|---|---|
-| Setup | Create project → `supabase db push` → done | Docker Compose (5 containers) |
+| Setup | `npx writbase init` → `npx writbase migrate` → done | Docker Compose (5 containers) |
 | Cost | [Free tier](https://supabase.com/pricing): 500MB DB, 50K MAUs | Your infrastructure |
 | Dashboard | Deploy to Vercel (free) | Self-host Next.js |
 | Updates | Automatic platform updates | Manual |
@@ -208,6 +227,7 @@ See [docs/deployment.md](docs/deployment.md) for detailed setup instructions.
 ## Documentation
 
 - [Getting Started](docs/quickstart.md) — Deploy, create an agent key, connect your MCP client, and manage tasks
+- [CLI Reference](cli/README.md) — `npx writbase init`, `migrate`, `key`, `status`
 - [Deployment Guide](docs/deployment.md) — Supabase Cloud, Vercel, and self-hosted setup
 - [Core Concepts](docs/concepts.md) — Permissions, provenance, error codes, delegation
 - [MCP Config Reference](docs/mcp-config-reference.md) — Client configs for Claude Code, Cursor, VS Code, Windsurf
