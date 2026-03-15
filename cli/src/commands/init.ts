@@ -1,130 +1,192 @@
 import { webcrypto } from 'node:crypto';
 import { execSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
 import { confirm, input, select } from '@inquirer/prompts';
 import { createSpinner } from 'nanospinner';
-import { loadConfigPartial, writeEnv, WRITBASE_HOME } from '../lib/config.js';
+import { loadConfigPartial, writeConfig, WRITBASE_HOME } from '../lib/config.js';
 import { createAdminClient } from '../lib/supabase.js';
-import { createAgentKey } from '../lib/agent-keys.js';
-import { installPlugin, grantBasicPermissions } from '../lib/claude-code.js';
+import { installSkills } from '../lib/claude-code.js';
+import { runMigrations } from '../lib/migrate.js';
 import { success, error, info, warn } from '../lib/output.js';
-import type { AgentRole } from '../lib/types.js';
 
-export async function initCommand() {
-  console.log();
-  info('WritBase — Interactive Setup');
-  console.log();
+interface InitOptions {
+  url?: string;
+  serviceKey?: string;
+  dbUrl?: string;
+  local?: boolean;
+  force?: boolean;
+}
 
-  // Check for existing config
-  const envPath = join(WRITBASE_HOME, '.env');
-  if (existsSync(envPath)) {
-    const overwrite = await confirm({
-      message: `${WRITBASE_HOME} already configured. Reconfigure?`,
-      default: false,
+function isNonInteractive(opts: InitOptions): boolean {
+  return !!(opts.url || opts.local || opts.force);
+}
+
+function detectLocalSupabase(): { url: string; serviceKey: string; dbUrl: string } | null {
+  try {
+    const statusJson = execSync('supabase status --output json', {
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
-    if (!overwrite) return;
+    const status = JSON.parse(statusJson);
+    if (status.API_URL && status.SERVICE_ROLE_KEY) {
+      return {
+        url: status.API_URL,
+        serviceKey: status.SERVICE_ROLE_KEY,
+        dbUrl: status.DB_URL ?? '',
+      };
+    }
+  } catch {
+    // Not available
   }
+  return null;
+}
+
+export async function initCommand(opts: InitOptions) {
+  const headless = isNonInteractive(opts);
+
+  console.log();
+  info(headless ? 'WritBase — Non-Interactive Setup' : 'WritBase — Interactive Setup');
+  console.log();
+
+  // ── Load existing config (upgrade path) ──────────────────────────────
 
   const existing = loadConfigPartial();
-  let supabaseUrl = existing.supabaseUrl ?? '';
-  let serviceRoleKey = existing.supabaseServiceRoleKey ?? '';
-  let databaseUrl = existing.databaseUrl ?? '';
 
-  // Determine Supabase source
-  const hasExisting = await confirm({
-    message: 'Do you have an existing Supabase project?',
-    default: true,
-  });
+  // Flags override stored values; stored values are defaults
+  let supabaseUrl = opts.url ?? existing.supabaseUrl ?? '';
+  let serviceRoleKey = opts.serviceKey ?? existing.supabaseServiceRoleKey ?? '';
+  let databaseUrl = opts.dbUrl ?? existing.databaseUrl ?? '';
 
-  if (hasExisting) {
-    const hosting = await select({
-      message: 'Where is your Supabase instance?',
-      choices: [
-        { name: 'Hosted (supabase.co)', value: 'hosted' },
-        { name: 'Local (supabase start)', value: 'local' },
-      ],
+  // ── Resolve credentials ──────────────────────────────────────────────
+
+  if (opts.url || opts.serviceKey || opts.dbUrl) {
+    // Explicit flags provided — validate we have all three
+    if (!supabaseUrl) {
+      if (headless) {
+        error('--url is required');
+        process.exit(1);
+      }
+      supabaseUrl = await input({ message: 'Supabase URL:' });
+    }
+    if (!serviceRoleKey) {
+      if (headless) {
+        error('--service-key is required when using --url');
+        process.exit(1);
+      }
+      serviceRoleKey = await input({ message: 'Service Role Key:' });
+    }
+    if (!databaseUrl) {
+      if (headless) {
+        error('--db-url is required when using --url');
+        process.exit(1);
+      }
+      databaseUrl = await input({ message: 'Database URL (postgresql://...):' });
+    }
+  } else if (opts.local) {
+    // Auto-detect from local Supabase
+    const local = detectLocalSupabase();
+    if (!local) {
+      error('Could not auto-detect local Supabase. Is it running? (`supabase start`)');
+      process.exit(1);
+    }
+    supabaseUrl = local.url;
+    serviceRoleKey = local.serviceKey;
+    databaseUrl = local.dbUrl;
+    success('Auto-detected local Supabase credentials');
+  } else if (supabaseUrl && serviceRoleKey && databaseUrl) {
+    // Re-run with existing config — upgrade path
+    info('Using existing configuration (upgrade mode)');
+  } else {
+    // Interactive flow — no existing config or incomplete
+    const hasExisting = await confirm({
+      message: 'Do you have an existing Supabase project?',
+      default: true,
     });
 
-    if (hosting === 'local') {
-      // Auto-detect from supabase status
+    if (hasExisting) {
+      const hosting = await select({
+        message: 'Where is your Supabase instance?',
+        choices: [
+          { name: 'Hosted (supabase.co)', value: 'hosted' },
+          { name: 'Local (supabase start)', value: 'local' },
+        ],
+      });
+
+      if (hosting === 'local') {
+        const local = detectLocalSupabase();
+        if (local) {
+          supabaseUrl = local.url;
+          serviceRoleKey = local.serviceKey;
+          databaseUrl = local.dbUrl;
+          success('Auto-detected local Supabase credentials');
+        } else {
+          warn('Could not auto-detect. Please enter credentials manually.');
+        }
+      }
+
+      if (!supabaseUrl) {
+        supabaseUrl = await input({
+          message: 'Supabase URL:',
+          default: existing.supabaseUrl,
+        });
+      }
+
+      if (!serviceRoleKey) {
+        serviceRoleKey = await input({
+          message: 'Service Role Key:',
+          default: existing.supabaseServiceRoleKey,
+        });
+      }
+
+      if (!databaseUrl) {
+        databaseUrl = await input({
+          message: 'Database URL (postgresql://...):',
+          default: existing.databaseUrl,
+        });
+      }
+    } else {
+      // Need supabase CLI
       try {
+        execSync('which supabase', { stdio: 'ignore' });
+      } catch {
+        error('Supabase CLI not found.');
+        info('Install: https://supabase.com/docs/guides/cli');
+        process.exit(1);
+      }
+
+      const startLocal = await confirm({
+        message: 'Start a new local Supabase instance? (runs `supabase init` + `supabase start`)',
+        default: true,
+      });
+
+      if (!startLocal) {
+        info('Set up a Supabase project first, then run `writbase init` again.');
+        return;
+      }
+
+      const spinner = createSpinner('Starting local Supabase...').start();
+      try {
+        execSync('supabase init --force', { stdio: 'ignore' });
+        execSync('supabase start', { stdio: 'ignore', timeout: 120000 });
         const statusJson = execSync('supabase status --output json', {
           encoding: 'utf-8',
           stdio: ['ignore', 'pipe', 'pipe'],
         });
         const status = JSON.parse(statusJson);
-        supabaseUrl = status.API_URL ?? supabaseUrl;
-        serviceRoleKey = status.SERVICE_ROLE_KEY ?? serviceRoleKey;
-        databaseUrl = status.DB_URL ?? databaseUrl;
-        success('Auto-detected local Supabase credentials');
-      } catch {
-        warn('Could not auto-detect. Please enter credentials manually.');
+        supabaseUrl = status.API_URL;
+        serviceRoleKey = status.SERVICE_ROLE_KEY;
+        databaseUrl = status.DB_URL;
+        spinner.success({ text: 'Local Supabase started' });
+      } catch (err) {
+        spinner.error({ text: 'Failed to start Supabase' });
+        error(err instanceof Error ? err.message : String(err));
+        process.exit(1);
       }
-    }
-
-    if (!supabaseUrl) {
-      supabaseUrl = await input({
-        message: 'Supabase URL:',
-        default: existing.supabaseUrl,
-      });
-    }
-
-    if (!serviceRoleKey) {
-      serviceRoleKey = await input({
-        message: 'Service Role Key:',
-        default: existing.supabaseServiceRoleKey,
-      });
-    }
-
-    if (!databaseUrl) {
-      databaseUrl = await input({
-        message: 'Database URL (postgresql://...):',
-        default: existing.databaseUrl,
-      });
-    }
-  } else {
-    // Need supabase CLI
-    try {
-      execSync('which supabase', { stdio: 'ignore' });
-    } catch {
-      error('Supabase CLI not found.');
-      info('Install: https://supabase.com/docs/guides/cli');
-      process.exit(1);
-    }
-
-    const startLocal = await confirm({
-      message: 'Start a new local Supabase instance? (runs `supabase init` + `supabase start`)',
-      default: true,
-    });
-
-    if (!startLocal) {
-      info('Set up a Supabase project first, then run `writbase init` again.');
-      return;
-    }
-
-    const spinner = createSpinner('Starting local Supabase...').start();
-    try {
-      execSync('supabase init --force', { stdio: 'ignore' });
-      execSync('supabase start', { stdio: 'ignore', timeout: 120000 });
-      const statusJson = execSync('supabase status --output json', {
-        encoding: 'utf-8',
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
-      const status = JSON.parse(statusJson);
-      supabaseUrl = status.API_URL;
-      serviceRoleKey = status.SERVICE_ROLE_KEY;
-      databaseUrl = status.DB_URL;
-      spinner.success({ text: 'Local Supabase started' });
-    } catch (err) {
-      spinner.error({ text: 'Failed to start Supabase' });
-      error(err instanceof Error ? err.message : String(err));
-      process.exit(1);
     }
   }
 
-  // Validate connection
-  const spinner = createSpinner('Validating connection...').start();
+  // ── Validate connection ──────────────────────────────────────────────
+
+  const connSpinner = createSpinner('Validating connection...').start();
   const supabase = createAdminClient(supabaseUrl, serviceRoleKey);
 
   try {
@@ -133,46 +195,55 @@ export async function initCommand() {
       .select('*')
       .limit(1);
 
-    // A "relation does not exist" error is fine — it means we connected.
-    // An auth/network error is not.
-    if (connError && !connError.message.includes('does not exist')) {
-      spinner.error({ text: 'Connection failed' });
+    // "table not found" errors mean we connected successfully
+    const isTableNotFound = connError?.message.includes('does not exist')
+      || connError?.message.includes('Could not find');
+    if (connError && !isTableNotFound) {
+      connSpinner.error({ text: 'Connection failed' });
       error(connError.message);
       process.exit(1);
     }
 
-    spinner.success({ text: 'Connection validated' });
+    connSpinner.success({ text: 'Connection validated' });
   } catch (err) {
-    spinner.error({ text: 'Connection failed' });
+    connSpinner.error({ text: 'Connection failed' });
     error(err instanceof Error ? err.message : String(err));
     process.exit(1);
   }
 
-  // Check schema state — try to query the workspaces table
-  const { error: schemaError } = await supabase
-    .from('workspaces')
-    .select('id')
-    .limit(1);
+  // ── Write partial config (needed for migrations) ─────────────────────
 
-  const schemaExists = !schemaError;
+  writeConfig({
+    supabaseUrl,
+    supabaseServiceRoleKey: serviceRoleKey,
+    databaseUrl,
+  });
 
-  if (!schemaExists) {
-    warn('Schema not initialized. Run `writbase migrate` first.');
-    writeEnv({
-      SUPABASE_URL: supabaseUrl,
-      SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
-      DATABASE_URL: databaseUrl,
-    });
-    success(`Config written to ${WRITBASE_HOME} (partial — no workspace yet)`);
-    console.log();
-    info('Next steps:');
-    console.log('  1. writbase migrate');
-    console.log('  2. writbase init    (re-run to complete setup)');
-    console.log();
-    return;
+  // ── Auto-migrate ─────────────────────────────────────────────────────
+
+  const migrateResult = await runMigrations(databaseUrl);
+
+  if (migrateResult === 'no-cli') {
+    // Check if schema already exists — if so, we can continue without CLI
+    const { error: schemaError } = await supabase
+      .from('workspaces')
+      .select('id')
+      .limit(1);
+
+    if (schemaError) {
+      error('Schema not initialized and Supabase CLI not found for migrations.');
+      info('Install supabase CLI: https://supabase.com/docs/guides/cli');
+      info('Then run: writbase init');
+      process.exit(1);
+    }
+    warn('Supabase CLI not found — skipping migrations (schema already exists)');
+  } else if (migrateResult === 'failed') {
+    error('Migration failed. Fix the issue and re-run `writbase init`.');
+    process.exit(1);
   }
 
-  // Workspace resolution
+  // ── Workspace resolution ─────────────────────────────────────────────
+
   const { data: workspaces } = await supabase
     .from('workspaces')
     .select('id, name, slug');
@@ -181,6 +252,9 @@ export async function initCommand() {
 
   if (workspaces && workspaces.length > 0) {
     if (workspaces.length === 1) {
+      workspaceId = workspaces[0].id;
+      info(`Using workspace: ${workspaces[0].name} (${workspaces[0].slug})`);
+    } else if (headless) {
       workspaceId = workspaces[0].id;
       info(`Using workspace: ${workspaces[0].name} (${workspaces[0].slug})`);
     } else {
@@ -195,7 +269,7 @@ export async function initCommand() {
   } else {
     // Create system user + workspace via trigger
     info('No workspaces found. Creating one...');
-    const spinner2 = createSpinner('Creating system user and workspace...').start();
+    const wsSpinner = createSpinner('Creating system user and workspace...').start();
 
     try {
       const { data: user, error: userError } = await supabase.auth.admin.createUser({
@@ -208,16 +282,15 @@ export async function initCommand() {
 
       if (userError) {
         if (userError.message?.includes('already') || userError.status === 422) {
-          // User exists, look them up
           const { data: existingUsers } = await supabase.auth.admin.listUsers();
-          const existing = existingUsers?.users?.find(
+          const found = existingUsers?.users?.find(
             (u: { email?: string }) => u.email === 'system@writbase.local',
           );
-          if (!existing) {
-            spinner2.error({ text: 'Could not find existing system user' });
+          if (!found) {
+            wsSpinner.error({ text: 'Could not find existing system user' });
             process.exit(1);
           }
-          userId = existing.id;
+          userId = found.id;
         } else {
           throw userError;
         }
@@ -228,7 +301,6 @@ export async function initCommand() {
       // Wait briefly for trigger to fire
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Look up workspace created by trigger
       const { data: ws } = await supabase
         .from('workspaces')
         .select('id, name, slug')
@@ -236,132 +308,46 @@ export async function initCommand() {
         .single();
 
       if (!ws) {
-        spinner2.error({ text: 'Workspace not created by trigger' });
+        wsSpinner.error({ text: 'Workspace not created by trigger' });
         error('The handle_new_user() trigger may not be set up. Run `writbase migrate` first.');
         process.exit(1);
       }
 
       workspaceId = ws.id;
-      spinner2.success({ text: `Workspace created: ${ws.name}` });
+      wsSpinner.success({ text: `Workspace created: ${ws.name}` });
     } catch (err) {
-      spinner2.error({ text: 'Failed to create workspace' });
+      wsSpinner.error({ text: 'Failed to create workspace' });
       error(err instanceof Error ? err.message : String(err));
       process.exit(1);
     }
   }
 
-  // Write .env
-  writeEnv({
-    SUPABASE_URL: supabaseUrl,
-    SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
-    DATABASE_URL: databaseUrl,
-    WRITBASE_WORKSPACE_ID: workspaceId,
+  // ── Write full config with workspace ID ──────────────────────────────
+
+  writeConfig({
+    supabaseUrl,
+    supabaseServiceRoleKey: serviceRoleKey,
+    databaseUrl,
+    workspaceId,
   });
 
   console.log();
-  success(`Config written to ${WRITBASE_HOME}`);
+  success(`Config written to ${WRITBASE_HOME}/config.json`);
 
-  // ── Claude Code integration ─────────────────────────────────────────
-  console.log();
-  const setupClaude = await confirm({
-    message: 'Set up Claude Code integration? (installs skills + MCP config globally)',
-    default: true,
-  });
+  // ── Install skills + register plugin ─────────────────────────────────
 
-  if (setupClaude) {
-    // Create agent key inline
-    const keyName = await input({
-      message: 'Agent key name:',
-      default: 'claude-code',
-    });
-
-    const keyRole = await select<AgentRole>({
-      message: 'Agent role:',
-      choices: [
-        { name: 'worker', value: 'worker' },
-        { name: 'manager', value: 'manager' },
-      ],
-      default: 'worker',
-    });
-
-    // Select project for permissions
-    const { data: projects } = await supabase
-      .from('projects')
-      .select('id, name, slug')
-      .eq('workspace_id', workspaceId)
-      .eq('is_archived', false)
-      .order('name');
-
-    let projectId: string | null = null;
-
-    if (projects && projects.length > 0) {
-      if (projects.length === 1) {
-        projectId = projects[0].id;
-        info(`Using project: ${projects[0].name} (${projects[0].slug})`);
-      } else {
-        projectId = await select({
-          message: 'Grant permissions for project:',
-          choices: projects.map((p: { id: string; name: string; slug: string }) => ({
-            name: `${p.name} (${p.slug})`,
-            value: p.id,
-          })),
-        });
-      }
-    }
-
-    // MCP endpoint URL
-    const mcpUrl = await input({
-      message: 'MCP endpoint URL:',
-      default: `${supabaseUrl}/functions/v1/mcp-server`,
-    });
-
-    const keySpinner = createSpinner('Creating agent key...').start();
-
-    try {
-      const { key, fullKey } = await createAgentKey(supabase, {
-        name: keyName.trim() || 'claude-code',
-        role: keyRole,
-        workspaceId,
-        projectId,
-      });
-
-      keySpinner.success({ text: `Agent key created: ${key.name} (${key.role})` });
-
-      // Grant permissions if a project was selected
-      if (projectId) {
-        await grantBasicPermissions(supabase, {
-          keyId: key.id,
-          projectId,
-          workspaceId,
-          role: keyRole,
-        });
-        success('Permissions granted');
-      }
-
-      // Install plugin
-      const pluginSpinner = createSpinner('Installing Claude Code plugin...').start();
-      installPlugin({ mcpUrl, agentKey: fullKey });
-      pluginSpinner.success({ text: 'Claude Code plugin installed' });
-
-      console.log();
-      warn('Save this agent key — it cannot be retrieved later:');
-      console.log();
-      console.log(`  ${fullKey}`);
-      console.log();
-      success('Claude Code integration complete. Restart Claude Code to activate.');
-    } catch (err) {
-      keySpinner.error({ text: 'Claude Code setup failed' });
-      error(err instanceof Error ? err.message : String(err));
-      console.log();
-      info('You can set up Claude Code later with `writbase key create`');
-    }
+  const skillsSpinner = createSpinner('Installing skills...').start();
+  try {
+    installSkills();
+    skillsSpinner.success({ text: 'Skills installed and plugin registered' });
+  } catch (err) {
+    skillsSpinner.error({ text: 'Skills installation failed' });
+    error(err instanceof Error ? err.message : String(err));
   }
 
   console.log();
   info('Next steps:');
-  if (!setupClaude) {
-    console.log('  1. writbase key create');
-  }
-  console.log('  writbase status    (verify connection)');
+  console.log('  writbase key create   (create an agent key)');
+  console.log('  writbase status       (verify connection)');
   console.log();
 }

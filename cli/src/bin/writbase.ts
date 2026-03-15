@@ -16,11 +16,16 @@ const program = new Command();
 program
   .name('writbase')
   .description('WritBase CLI — agent-first task management')
-  .version('0.1.2');
+  .version('0.2.2');
 
 program
   .command('init')
-  .description('Interactive setup — configure credentials and workspace')
+  .description('Configure credentials, migrate schema, and install skills')
+  .option('--url <url>', 'Supabase URL')
+  .option('--service-key <key>', 'Supabase service role key')
+  .option('--db-url <url>', 'Database URL (postgresql://...)')
+  .option('--local', 'Auto-detect credentials from local Supabase')
+  .option('--force', 'Overwrite existing config without prompting')
   .action(initCommand);
 
 program
