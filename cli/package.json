@@ -1,7 +1,7 @@
 {
   "name": "writbase",
-  "mcpName": "io.github.writbase/writbase",
-  "version": "0.1.2",
+  "mcpName": "io.github.Writbase/writbase",
+  "version": "0.1.3",
   "type": "module",
   "description": "WritBase CLI — self-hosted operator toolkit for agent-first task management",
   "bin": {

@@ -1,8 +1,8 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.writbase/writbase",
-  "description": "MCP-native task management for AI agent fleets. Persistent task registry with scoped permissions, inter-agent delegation, and full provenance.",
-  "version": "0.1.2",
+  "name": "io.github.Writbase/writbase",
+  "description": "MCP-native task management for AI agent fleets with scoped permissions and provenance.",
+  "version": "0.1.3",
   "repository": {
     "url": "https://github.com/Writbase/writbase",
     "source": "github"
@@ -10,8 +10,8 @@
   "license": "Apache-2.0",
   "remotes": [
     {
-      "transportType": "streamable-http",
-      "url": "https://${PROJECT_REF}.supabase.co/functions/v1/mcp-server/mcp",
+      "type": "streamable-http",
+      "url": "https://{PROJECT_REF}.supabase.co/functions/v1/mcp-server/mcp",
       "variables": {
         "PROJECT_REF": {
           "description": "Your Supabase project reference ID",
@@ -30,9 +30,26 @@
   "packages": [
     {
       "registryType": "npm",
-      "name": "writbase",
-      "version": "0.1.2",
-      "runtimeHint": "npx"
+      "identifier": "writbase",
+      "version": "0.1.3",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "WRITBASE_URL",
+          "description": "Your WritBase MCP endpoint URL",
+          "isRequired": true,
+          "isSecret": false
+        },
+        {
+          "name": "WRITBASE_AGENT_KEY",
+          "description": "Agent key (wb_<key_id>_<secret>)",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
     }
   ]
 }
