@@ -1,6 +1,6 @@
 {
   "name": "writbase",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "description": "WritBase CLI — self-hosted operator toolkit for agent-first task management",
   "bin": {

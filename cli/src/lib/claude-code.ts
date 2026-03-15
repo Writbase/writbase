@@ -13,7 +13,7 @@ export function generatePluginJson(): string {
       name: 'writbase',
       description:
         'WritBase — agent-first task management. Skills for MCP tool usage, permissions, and error handling.',
-      version: '0.1.1',
+      version: '0.1.2',
     },
     null,
     2,
