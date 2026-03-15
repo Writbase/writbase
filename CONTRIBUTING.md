@@ -15,7 +15,7 @@ Thank you for your interest in contributing to WritBase! This guide will help yo
 
 ```bash
 # Clone the repository
-git clone https://github.com/dynreadme/writbase.git
+git clone https://github.com/Writbase/writbase.git
 cd writbase
 
 # Install dependencies

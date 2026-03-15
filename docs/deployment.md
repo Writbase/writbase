@@ -26,7 +26,7 @@ Create a new project at [supabase.com/dashboard](https://supabase.com/dashboard)
 ### 2. Clone and Install
 
 ```bash
-git clone https://github.com/dynreadme/writbase.git
+git clone https://github.com/Writbase/writbase.git
 cd writbase
 npm install
 ```

@@ -2,7 +2,7 @@
 
 Configuration snippets for connecting MCP clients to WritBase.
 
-> **Verification status**: Claude Code config is verified. Other client configs are based on current documentation and labeled with verification status. Please [report issues](https://github.com/dynreadme/writbase/issues) if a config doesn't work.
+> **Verification status**: Claude Code config is verified. Other client configs are based on current documentation and labeled with verification status. Please [report issues](https://github.com/Writbase/writbase/issues) if a config doesn't work.
 >
 > Last verified: 2026-03-12
 

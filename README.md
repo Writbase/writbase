@@ -7,7 +7,7 @@
 A control plane for AI agents and human supervisors. Persistent task registry with scoped permissions, inter-agent delegation, and full provenance — all accessible via MCP.
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![CI](https://img.shields.io/github/actions/workflow/status/dynreadme/writbase/ci.yml?label=CI)](https://github.com/dynreadme/writbase/actions)
+[![CI](https://img.shields.io/github/actions/workflow/status/Writbase/writbase/ci.yml?label=CI)](https://github.com/Writbase/writbase/actions)
 [![MCP Compatible](https://img.shields.io/badge/MCP-compatible-green.svg)](https://modelcontextprotocol.io)
 
 <br/>

@@ -4,7 +4,7 @@
   "display_name": "WritBase",
   "description": "MCP-native task management for AI agent fleets. Persistent task registry with scoped permissions, inter-agent delegation, and full provenance.",
   "repository": {
-    "url": "https://github.com/dynreadme/writbase",
+    "url": "https://github.com/Writbase/writbase",
     "source": "github"
   },
   "version_detail": {
