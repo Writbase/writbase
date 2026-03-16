@@ -255,25 +255,25 @@ Deno.test('auth: worker key authenticates successfully', async () => {
 
 // ── tools/list ──────────────────────────────────────────────────────
 
-Deno.test('tools/list: manager sees all 11 tools', async () => {
+Deno.test('tools/list: manager sees all 12 tools', async () => {
   const { body } = await mcpCall(state.managerKey!.fullKey, 'tools/list')
   const result = body.result as { tools: Array<{ name: string }> }
   assertExists(result.tools)
   const names = result.tools.map((t) => t.name).sort()
-  assertEquals(names.length, 11, `Expected 11 tools, got: ${names.join(', ')}`)
+  assertEquals(names.length, 12, `Expected 12 tools, got: ${names.join(', ')}`)
   // Verify key tools are present
   for (const expected of ['info', 'get_tasks', 'add_task', 'update_task', 'manage_projects', 'manage_agent_keys']) {
     assertEquals(names.includes(expected), true, `Missing tool: ${expected}`)
   }
 })
 
-Deno.test('tools/list: worker sees only 4 tools', async () => {
+Deno.test('tools/list: worker sees only 6 tools', async () => {
   const { body } = await mcpCall(state.workerKey!.fullKey, 'tools/list')
   const result = body.result as { tools: Array<{ name: string }> }
   assertExists(result.tools)
   const names = result.tools.map((t) => t.name).sort()
-  assertEquals(names.length, 4, `Expected 4 tools, got: ${names.join(', ')}`)
-  assertEquals(names, ['add_task', 'get_tasks', 'info', 'update_task'])
+  assertEquals(names.length, 6, `Expected 6 tools, got: ${names.join(', ')}`)
+  assertEquals(names, ['add_task', 'assign_task', 'get_tasks', 'get_top_tasks', 'info', 'update_task'])
 })
 
 // ── info tool ───────────────────────────────────────────────────────

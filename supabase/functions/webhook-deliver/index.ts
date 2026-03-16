@@ -137,7 +137,7 @@ interface DeliveryResult {
   error?: string
 }
 
-const TRACKED_FIELDS = ['status', 'priority', 'description', 'notes', 'department_id', 'due_date', 'assigned_to_agent_key_id']
+const TRACKED_FIELDS = ['status', 'priority', 'description', 'notes', 'department_id', 'due_date']
 
 function buildChanges(
   newRecord: Record<string, unknown>,

@@ -6,6 +6,7 @@ import { handleInfo } from '../tools/info.ts'
 import { handleGetTasks } from '../tools/get-tasks.ts'
 import { handleAddTask } from '../tools/add-task.ts'
 import { handleUpdateTask } from '../tools/update-task.ts'
+import { handleAssignTask } from '../tools/assign-task.ts'
 import { handleManageAgentKeys } from '../tools/manage-agent-keys.ts'
 import { handleManageAgentPermissions } from '../tools/manage-agent-permissions.ts'
 import { handleGetProvenance } from '../tools/get-provenance.ts'
@@ -115,8 +116,6 @@ export async function createMcpServerForAgent(
       cursor: z.string().optional().describe('Pagination cursor from previous response'),
       updated_after: z.string().optional().describe('ISO 8601 timestamp to filter tasks updated after'),
       search: z.string().optional().describe('Full-text search query (supports AND/OR/NOT operators)'),
-      assigned_to_me: z.boolean().optional().describe('Filter tasks assigned to this agent'),
-      requested_by_me: z.boolean().optional().describe('Filter tasks this agent created for others'),
       include_archived: z.boolean().optional().describe('Include archived tasks (default false)'),
       verbose: z.boolean().optional().describe('Return all fields (default: compact 9-field summary)'),
     },
@@ -140,10 +139,30 @@ export async function createMcpServerForAgent(
       notes: z.string().optional().describe('Additional notes'),
       due_date: z.string().optional().describe('Due date as ISO 8601 string'),
       status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled', 'failed']).optional().describe('Initial status'),
-      assign_to: z.string().optional().describe('Agent key ID or name to assign this task to (requires can_assign permission)'),
     },
     { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     (params) => handleAddTask(params, ctx, supabase)
+  )
+
+  // 3b. assign_task
+  server.tool(
+    'assign_task',
+    `Create a task in a department where you have assign permission. Use this to create work in another team's queue.${noProjectsNote}`,
+    {
+      project: defaultProject
+        ? projectEnum.default(defaultProject).describe('Project slug')
+        : projectEnum.describe('Project slug'),
+      department: defaultDept
+        ? deptEnum.default(defaultDept).describe('Department slug (required)')
+        : deptEnum.describe('Department slug (required)'),
+      priority: z.enum(['low', 'medium', 'high', 'critical']).optional().describe('Task priority'),
+      description: z.string().min(3).describe('Task description (min 3 chars)'),
+      notes: z.string().optional().describe('Additional notes'),
+      due_date: z.string().optional().describe('Due date as ISO 8601 string'),
+      status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled', 'failed']).optional().describe('Initial status'),
+    },
+    { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    (params) => handleAssignTask(params, ctx, supabase)
   )
 
   // 4. update_task
@@ -159,7 +178,6 @@ export async function createMcpServerForAgent(
       department: deptEnum.optional().describe('New department slug'),
       due_date: z.string().optional().describe('New due date as ISO 8601'),
       status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled', 'failed']).optional().describe('New status'),
-      assign_to: z.string().optional().describe('Agent key ID or name to reassign to (empty string to unassign, requires can_assign permission)'),
       is_archived: z.boolean().optional().describe('Archive or unarchive this task (requires can_archive permission)'),
     },
     { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },

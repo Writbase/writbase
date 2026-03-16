@@ -215,6 +215,24 @@ Deno.test('setup: create project and department via MCP', async () => {
   ids.departmentId = dept.id as string
   ids.departmentSlug = dept.slug as string
   cleanup.departments.push(ids.departmentId)
+
+  // Grant manager department-scoped assign permission (for assign_task dynamic schema)
+  const deptPermId = crypto.randomUUID()
+  const deptRes = await supabaseRest('agent_permissions', {
+    method: 'POST',
+    body: {
+      id: deptPermId,
+      agent_key_id: keys.manager!.keyId,
+      project_id: ids.projectId,
+      department_id: ids.departmentId,
+      workspace_id: WORKSPACE_ID,
+      can_read: true,
+      can_assign: true,
+    },
+    prefer: 'return=minimal',
+  })
+  assertEquals(deptRes.status, 201, `Failed to grant manager dept perm: ${await deptRes.text()}`)
+  cleanup.permissions.push(deptPermId)
 })
 
 Deno.test('setup: grant worker permissions', async () => {
@@ -458,31 +476,16 @@ Deno.test('cross-agent: worker B cannot update task created by worker A', async 
 })
 
 // ═══════════════════════════════════════════════════════════════════
-// TASK ASSIGNMENT
+// CROSS-DEPARTMENT TASK ASSIGNMENT (assign_task tool)
 // ═══════════════════════════════════════════════════════════════════
 
-Deno.test('task assignment: manager assigns task to worker A', async () => {
-  const { body } = await mcpCall(keys.manager!.fullKey, 'tools/call', {
-    name: 'update_task',
-    arguments: {
-      task_id: ids.taskIds[0],
-      version: 2,
-      assign_to: keys.workerA!.keyId,
-    },
-  })
-  assertEquals(isToolError(body), false, `assign task: ${JSON.stringify(body)}`)
-  const task = extractToolResult(body) as Record<string, unknown>
-  assertEquals(task.assigned_to_agent_key_id, keys.workerA!.keyId)
-  assertEquals(task.version, 3)
-})
-
-Deno.test('task assignment: worker without can_assign cannot assign', async () => {
+Deno.test('assign_task: worker without can_assign cannot use assign_task', async () => {
   const { body } = await mcpCall(keys.workerA!.fullKey, 'tools/call', {
-    name: 'update_task',
+    name: 'assign_task',
     arguments: {
-      task_id: ids.taskIds[0],
-      version: 3,
-      assign_to: keys.workerB!.keyId,
+      project: ids.projectSlug,
+      department: ids.departmentSlug,
+      description: 'Should fail — no can_assign',
     },
   })
   assertEquals(isToolError(body), true)
@@ -490,32 +493,22 @@ Deno.test('task assignment: worker without can_assign cannot assign', async () =
   assertEquals(result.code, 'assign_not_allowed')
 })
 
-Deno.test('task assignment: cannot assign to nonexistent agent', async () => {
+Deno.test('assign_task: manager creates task via assign_task', async () => {
   const { body } = await mcpCall(keys.manager!.fullKey, 'tools/call', {
-    name: 'update_task',
+    name: 'assign_task',
     arguments: {
-      task_id: ids.taskIds[0],
-      version: 3,
-      assign_to: '00000000-0000-0000-0000-000000000099',
+      project: ids.projectSlug,
+      department: ids.departmentSlug,
+      description: 'Cross-department assigned task',
+      priority: 'high',
     },
   })
-  assertEquals(isToolError(body), true)
-  const result = extractToolResult(body) as Record<string, unknown>
-  assertEquals(result.code, 'invalid_assignee')
-})
-
-Deno.test('task assignment: manager unassigns task', async () => {
-  const { body } = await mcpCall(keys.manager!.fullKey, 'tools/call', {
-    name: 'update_task',
-    arguments: {
-      task_id: ids.taskIds[0],
-      version: 3,
-      assign_to: '',
-    },
-  })
-  assertEquals(isToolError(body), false, `unassign: ${JSON.stringify(body)}`)
+  assertEquals(isToolError(body), false, `assign_task: ${JSON.stringify(body)}`)
   const task = extractToolResult(body) as Record<string, unknown>
-  assertEquals(task.assigned_to_agent_key_id, null)
+  assertEquals(task.priority, 'high')
+  assertEquals(task.status, 'todo')
+  assertExists(task.id)
+  cleanup.tasks.push(task.id as string)
 })
 
 // ═══════════════════════════════════════════════════════════════════
@@ -745,9 +738,9 @@ Deno.test('webhook-deliver: does not deliver for non-matching event', async () =
       project_id: ids.projectId,
       workspace_id: WORKSPACE_ID,
       version: 3,
-      events: ['task.assigned'], // subscription doesn't include this
-      new_record: { status: 'done', assigned_to_agent_key_id: keys.workerB!.keyId },
-      old_record: { status: 'done', assigned_to_agent_key_id: null },
+      events: ['task.archived'], // subscription doesn't include this
+      new_record: { status: 'done', is_archived: true },
+      old_record: { status: 'done', is_archived: false },
     }),
   })
   assertEquals(res.status, 200)
@@ -1121,32 +1114,33 @@ Deno.test('F4 setup: create departments and worker with dept-scoped can_assign',
   cleanup.tasks.push(assignDeptState.taskNoDept)
 })
 
-Deno.test('F4: agent with can_assign on dept A cannot assign task in dept B', async () => {
+Deno.test('F4: agent with can_assign on dept A cannot assign_task to dept B', async () => {
   const { body } = await mcpCall(assignDeptState.assignWorker!.fullKey, 'tools/call', {
-    name: 'update_task',
+    name: 'assign_task',
     arguments: {
-      task_id: assignDeptState.taskInDeptB,
-      version: 1,
-      assign_to: keys.workerA!.keyId,
+      project: ids.projectSlug,
+      department: assignDeptState.deptBSlug,
+      description: 'Should fail — no can_assign for dept B',
     },
   })
   assertEquals(isToolError(body), true)
   const result = extractToolResult(body) as Record<string, unknown>
-  assertEquals(result.code, 'assign_not_allowed')
+  assertEquals(result.code, 'scope_not_allowed')
 })
 
-Deno.test('F4: agent with dept-scoped can_assign cannot assign task with no department', async () => {
+Deno.test('F4: agent with dept-scoped can_assign can assign_task to dept A', async () => {
   const { body } = await mcpCall(assignDeptState.assignWorker!.fullKey, 'tools/call', {
-    name: 'update_task',
+    name: 'assign_task',
     arguments: {
-      task_id: assignDeptState.taskNoDept,
-      version: 1,
-      assign_to: keys.workerA!.keyId,
+      project: ids.projectSlug,
+      department: assignDeptState.deptASlug,
+      description: 'Should succeed — has can_assign for dept A',
     },
   })
-  assertEquals(isToolError(body), true)
-  const result = extractToolResult(body) as Record<string, unknown>
-  assertEquals(result.code, 'assign_not_allowed')
+  assertEquals(isToolError(body), false, `assign_task dept A: ${JSON.stringify(body)}`)
+  const task = extractToolResult(body) as Record<string, unknown>
+  assertExists(task.id)
+  cleanup.tasks.push(task.id as string)
 })
 
 // ═══════════════════════════════════════════════════════════════════

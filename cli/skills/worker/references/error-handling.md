@@ -63,7 +63,7 @@ Optional fields (`fields`, `current_version`, `retry_after`) are present only fo
 
 - **Message**: Agent does not have "assign" permission for project "{project}".
 - **Recovery**: Request the `can_assign` permission from an admin. Operators can grant via CLI: `writbase key permit <agent-name> --grant --project <slug> --can-assign` (or via the dashboard).
-- **Notes**: Separate from `can_update`. You need `can_assign` specifically to use the `assign_to` field.
+- **Notes**: Separate from `can_create`. You need `can_assign` specifically to use the `assign_task` tool.
 
 ---
 
@@ -86,28 +86,6 @@ Optional fields (`fields`, `current_version`, `retry_after`) are present only fo
 - **Message**: Task "{id}" was not found.
 - **Recovery**: Verify the task ID is correct and that you have read access to its project.
 - **Notes**: Could mean the task does not exist, or you lack `can_read` for its project/department.
-
-### `invalid_assignee`
-
-- **Message**: Agent "{name}" does not exist, is inactive, or has no permissions in this project.
-- **Recovery**: Verify the agent key ID or name is correct and the agent is active with project access.
-- **Notes**: The target agent must be active and have at least one permission row in the task's project.
-
----
-
-## Delegation Errors
-
-### `circular_delegation`
-
-- **Message**: This agent has already been in the delegation chain for this task.
-- **Recovery**: Assign the task to a different agent that has not previously handled it.
-- **Notes**: WritBase tracks the `assignment_chain` (array of agent key IDs) and prevents cycles.
-
-### `delegation_depth_exceeded`
-
-- **Message**: Maximum delegation depth (3) reached for this task.
-- **Recovery**: This task has been reassigned too many times. Complete it directly or create a new task.
-- **Notes**: The `delegation_depth` field on the task tracks the number of reassignments. Database CHECK constraint enforces max 3.
 
 ---
 

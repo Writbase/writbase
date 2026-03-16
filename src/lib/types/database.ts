@@ -63,10 +63,6 @@ export interface Task {
   updated_by_type: ActorType;
   updated_by_id: string;
   source: Source;
-  assigned_to_agent_key_id: string | null;
-  requested_by_agent_key_id: string | null;
-  delegation_depth: number;
-  assignment_chain: string[];
   is_archived: boolean;
   workspace_id: string;
 }

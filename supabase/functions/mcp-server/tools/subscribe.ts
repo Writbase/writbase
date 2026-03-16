@@ -22,8 +22,6 @@ const VALID_EVENT_TYPES = [
   'task.updated',
   'task.completed',
   'task.failed',
-  'task.assigned',
-  'task.reassigned',
 ]
 
 export function handleSubscribe(

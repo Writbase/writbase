@@ -15,10 +15,6 @@ const FULL_TASK = {
   workspace_id: 'ws-1',
   project_id: 'proj-1',
   department_id: 'dept-1',
-  assigned_to_agent_key_id: 'key-1',
-  requested_by_agent_key_id: 'key-2',
-  delegation_depth: 0,
-  assignment_chain: [],
   search_vector: 'tsvector stuff',
   is_archived: false,
 }

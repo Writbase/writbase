@@ -19,8 +19,6 @@ interface GetTasksParams {
   cursor?: string
   updated_after?: string
   search?: string
-  assigned_to_me?: boolean
-  requested_by_me?: boolean
   include_archived?: boolean
   verbose?: boolean
 }
@@ -95,8 +93,6 @@ export async function handleGetTasks(
     p_limit: limit,
     p_search: params.search || null,
     p_include_archived: params.include_archived ?? false,
-    p_assigned_to: params.assigned_to_me ? ctx.keyId : null,
-    p_requested_by: params.requested_by_me ? ctx.keyId : null,
   }).abortSignal(AbortSignal.timeout(10_000))
 
   if (error) {

@@ -48,7 +48,7 @@ Permissions are granted per `(agent_key, project, department)` tuple with five c
 | `can_read` | List and view tasks in scope |
 | `can_create` | Create new tasks in scope |
 | `can_update` | Modify any field on tasks in scope |
-| `can_assign` | Assign/reassign tasks to other agents |
+| `can_assign` | Create tasks in other departments via assign_task |
 | `can_comment` | Restricted update: only `notes` and `status` changes |
 
 ### Scoping Rules
@@ -86,7 +86,7 @@ Grants are additive: `--grant --can-assign` on a key that already has `can_read`
 
 All task mutations and admin actions produce entries in an append-only `event_log`:
 
-- **Task events**: created, updated, status changed, priority changed, assigned, reassigned
+- **Task events**: created, updated, status changed, priority changed, archived, unarchived
 - **Admin events**: key created/deactivated, permissions granted/revoked, project/department created/archived
 
 Each event records the actor (human or agent), source (`ui`, `mcp`), timestamp, and field-level old/new values.
@@ -122,25 +122,18 @@ MCP errors include a machine-readable code, human message, and recovery guidance
 | `insufficient_manager_scope` | Cannot grant permissions exceeding own scope |
 | `self_modification_denied` | Cannot modify own key/permissions/role |
 
-## Inter-Agent Delegation
+## Cross-Department Task Assignment
 
-There is no separate `assign_task` tool. Assignment uses the `assign_to` parameter on `add_task` and `update_task`:
+The `assign_task` tool creates tasks in departments where the caller has `can_assign` permission. This is how agents create work in another team's queue.
 
 ```
-# Create and assign in one call
-writbase:add_task { "project": "my-app", "description": "...", "assign_to": "frontend-agent" }
-
-# Reassign an existing task
-writbase:update_task { "task_id": "...", "version": 3, "assign_to": "backend-agent" }
-
-# Unassign (return to pool)
-writbase:update_task { "task_id": "...", "version": 4, "assign_to": "" }
+# Create work in the frontend team's queue
+writbase:assign_task { "project": "my-app", "department": "frontend", "description": "..." }
 ```
 
 Rules:
-- `assign_to` accepts an agent **name** or **key ID**
-- Requires `can_assign` permission in the task's scope
-- Assignee must be active and have access to the task's project
-- **Delegation depth limit**: Maximum 3 levels of re-delegation (A→B→C→D)
-- **Cycle detection**: `assignment_chain` array prevents circular delegation
-- `can_comment`-only agents cannot assign — requires `can_update` or `can_assign`
+- Department is **required** — you're assigning to a specific team
+- Checks `can_assign` permission (not `can_create`)
+- Same fields as `add_task` (project, department, description, priority, notes, due_date, status)
+- Provenance (who requested the task) is tracked via `event_log` actor fields
+- `can_comment`-only agents cannot use `assign_task` — requires `can_assign`

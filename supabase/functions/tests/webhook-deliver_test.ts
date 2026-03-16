@@ -82,7 +82,7 @@ Deno.test('hmac: can be verified with Web Crypto API', async () => {
 // WEBHOOK PAYLOAD ASSEMBLY
 // ═══════════════════════════════════════════════════════════════════
 
-const TRACKED_FIELDS = ['status', 'priority', 'description', 'notes', 'department_id', 'due_date', 'assigned_to_agent_key_id']
+const TRACKED_FIELDS = ['status', 'priority', 'description', 'notes', 'department_id', 'due_date']
 
 function buildChanges(
   newRecord: Record<string, unknown>,
@@ -131,14 +131,6 @@ Deno.test('payload: untracked fields ignored', () => {
     { status: 'todo', version: 1, updated_at: '2024-01-01' },
   )
   assertEquals(Object.keys(changes).length, 0)
-})
-
-Deno.test('payload: null to value change tracked', () => {
-  const changes = buildChanges(
-    { assigned_to_agent_key_id: 'abc-123' },
-    { assigned_to_agent_key_id: null },
-  )
-  assertEquals(changes.assigned_to_agent_key_id, { old: null, new: 'abc-123' })
 })
 
 Deno.test('payload: deterministic webhook-id format', () => {

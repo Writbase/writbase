@@ -4,17 +4,17 @@ import {
   mcpError,
   invalidProjectError,
   invalidDepartmentError,
-  scopeNotAllowedError,
   validationError,
+  assignNotAllowedError,
   internalError,
 } from '../../_shared/errors.ts'
 import { validateTaskInput } from '../../_shared/validation.ts'
 import { parseRpcErrorCode } from '../../_shared/rpc-errors.ts'
 import { resolveDepartment } from '../../_shared/department-resolver.ts'
 
-interface AddTaskParams {
+interface AssignTaskParams {
   project: string
-  department?: string
+  department: string
   priority?: string
   description: string
   notes?: string
@@ -24,72 +24,44 @@ interface AddTaskParams {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-export async function handleAddTask(
-  params: AddTaskParams,
+export async function handleAssignTask(
+  params: AssignTaskParams,
   ctx: AgentContext,
   supabase: SupabaseClient
 ) {
-  // 1. Resolve project (slug or UUID) from ctx.permissions
+  // 1. Resolve project
   const isUuid = UUID_RE.test(params.project)
-
   const projectPerms = ctx.permissions.filter((p) =>
     isUuid ? p.projectId === params.project : p.projectSlug === params.project
   )
-
   if (projectPerms.length === 0) {
     return mcpError(invalidProjectError(params.project))
   }
-
   const projectId = projectPerms[0].projectId
 
-  // 2. Reject if project is archived
+  // 2. Reject archived project
   if (projectPerms[0].isProjectArchived) {
     return mcpError({
       code: 'invalid_project',
       message: `Project "${params.project}" is archived.`,
-      recovery: 'This project is archived. No new tasks can be created.',
+      recovery: 'This project is archived. No new tasks can be assigned.',
     })
   }
 
-  // 3. Check can_create for the appropriate scope
-  if (params.department) {
-    // Department specified — department-resolver (called below) will enforce can_create per-dept
-    // But still need at least one can_create row in the project for the early gate
-    const hasCreate = projectPerms.some((p) => p.canCreate)
-    if (!hasCreate) {
-      return mcpError(scopeNotAllowedError(params.project, 'create'))
-    }
-  } else {
-    // No department — require project-wide can_create (departmentId === null)
-    const hasProjectWideCreate = projectPerms.some((p) => p.departmentId === null && p.canCreate)
-    if (!hasProjectWideCreate) {
-      return mcpError(scopeNotAllowedError(params.project, 'create'))
-    }
+  // 3. Check can_assign (not can_create) for the department scope
+  const hasAssign = projectPerms.some((p) => p.canAssign)
+  if (!hasAssign) {
+    return mcpError(assignNotAllowedError(params.project))
   }
 
-  // 4. Resolve department if provided
-  let departmentId: string | null = null
-  if (params.department) {
-    const result = await resolveDepartment(params.department, projectPerms, supabase, 'create', params.project, ctx.workspaceId)
-    if ('error' in result) {
-      return mcpError(result.error)
-    }
-    departmentId = result.departmentId
-  } else {
-    // 5. If department not provided, check if department_required
-    const { data: settings } = await supabase
-      .from('app_settings')
-      .select('department_required')
-      .eq('workspace_id', ctx.workspaceId)
-      .abortSignal(AbortSignal.timeout(10_000))
-      .single()
-
-    if (settings?.department_required) {
-      return mcpError(validationError({ department: 'Department is required by system settings.' }))
-    }
+  // 4. Resolve department (required for assign_task)
+  const result = await resolveDepartment(params.department, projectPerms, supabase, 'assign', params.project, ctx.workspaceId)
+  if ('error' in result) {
+    return mcpError(result.error)
   }
+  const departmentId = result.departmentId
 
-  // 6. Validate task fields
+  // 5. Validate task fields
   const fieldsToValidate: Record<string, unknown> = { description: params.description }
   if (params.priority !== undefined) fieldsToValidate.priority = params.priority
   if (params.status !== undefined) fieldsToValidate.status = params.status
@@ -100,7 +72,7 @@ export async function handleAddTask(
     return mcpError(validationError(fieldErrors))
   }
 
-  // 7. Create task atomically via RPC (task + event_log in one transaction)
+  // 6. Create task via RPC
   const { data: task, error: rpcError } = await supabase
     .rpc('create_task_with_event', {
       p_payload: {
@@ -131,17 +103,16 @@ export async function handleAddTask(
         return mcpError({
           code: 'invalid_project',
           message: `Project "${params.project}" is archived.`,
-          recovery: 'This project is archived. No new tasks can be created.',
+          recovery: 'This project is archived. No new tasks can be assigned.',
         })
       case 'department_not_found':
       case 'department_archived':
-        return mcpError(invalidDepartmentError(params.department ?? 'unknown'))
+        return mcpError(invalidDepartmentError(params.department))
       default:
         return mcpError(internalError(rpcError.message))
     }
   }
 
-  // 8. Return created task
   return {
     content: [{ type: 'text' as const, text: JSON.stringify(task) }],
   }

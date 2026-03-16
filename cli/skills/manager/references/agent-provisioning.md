@@ -131,9 +131,9 @@ Confirm all three permission rows are present with correct flags.
 
 ---
 
-## 3. Delegation Setup
+## 3. Cross-Department Assignment Setup
 
-An agent that can assign tasks to other agents. This requires `can_assign` permission and an understanding of delegation constraints.
+An agent that can create tasks in other teams' queues. This requires `can_assign` permission.
 
 ### Step 1: Create the coordinating agent
 
@@ -141,7 +141,7 @@ An agent that can assign tasks to other agents. This requires `can_assign` permi
 writbase:manage_agent_keys {
   "action": "create",
   "name": "coordinator-agent",
-  "special_prompt": "You coordinate work across the team. Assign tasks to the most appropriate agent based on their skills."
+  "special_prompt": "You coordinate work across the team. Create tasks in the appropriate department based on the work needed."
 }
 ```
 
@@ -169,72 +169,23 @@ Or via CLI (operator shortcut — most common for adding `can_assign` after init
 writbase key permit coordinator-agent --grant --project my-project --can-read --can-create --can-update --can-assign
 ```
 
-### Step 3: Create worker agents that can be assigned to
+The `assign_task` tool creates tasks in departments where the agent has `can_assign` permission. Provenance (who requested the task) is tracked via event_log actor fields.
 
-The workers do not need `can_assign` themselves -- they just need permissions in the same project.
+### How the coordinator creates cross-department work
 
+Use `writbase:assign_task` to create tasks in another team's queue:
+
+**Create work in another department:**
 ```
-writbase:manage_agent_keys {
-  "action": "create",
-  "name": "frontend-agent"
-}
-
-writbase:manage_agent_permissions {
-  "action": "grant",
-  "key_id": "<frontend-agent-key-id>",
-  "permissions": [
-    {
-      "project_id": "<project-uuid>",
-      "department_id": "<frontend-dept-uuid>",
-      "can_read": true,
-      "can_update": true
-    }
-  ]
-}
-```
-
-### Delegation constraints
-
-WritBase enforces two safety mechanisms on task assignment:
-
-**`delegation_depth` (max 3)**: Each time a task is reassigned, the depth increments. After 3 reassignments, further delegation is blocked with `delegation_depth_exceeded`. The agent must either complete the task directly or create a new task.
-
-**`assignment_chain` (cycle detection)**: The database tracks every agent key ID that has been assigned the task. If an agent appears in the chain already, `circular_delegation` is returned. This prevents A -> B -> A loops.
-
-### How the coordinator assigns work
-
-There is no separate `assign_task` tool. Assignment is done via the `assign_to` parameter on both `add_task` and `update_task`.
-
-**Create and assign in one step:**
-```
-writbase:add_task {
+writbase:assign_task {
   "project": "my-project",
   "department": "frontend",
   "description": "Fix responsive layout on settings page",
-  "priority": "high",
-  "assign_to": "frontend-agent"
+  "priority": "high"
 }
 ```
 
-**Reassign an existing task:**
-```
-writbase:update_task {
-  "task_id": "<task-uuid>",
-  "version": 2,
-  "assign_to": "frontend-agent"
-}
-```
-
-The `assign_to` field accepts either the agent's name or key ID.
-
-**Unassign** (return to pool) by passing an empty string:
-```
-writbase:update_task {
-  "task_id": "<task-uuid>",
-  "version": 3,
-  "assign_to": ""
-}
-```
+The `assign_task` tool requires `department` (you're assigning to a specific team). It checks `can_assign` instead of `can_create`.
 
 ---
 
@@ -272,4 +223,4 @@ This agent can:
 - Read all tasks in the project
 - Change `status` (e.g., mark tasks `in_progress` or `done`)
 - Add/update `notes`
-- Cannot change `priority`, `description`, `department`, `due_date`, or `assign_to`
+- Cannot change `priority`, `description`, `department`, `due_date`, or `is_archived`

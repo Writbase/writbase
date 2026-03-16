@@ -56,7 +56,7 @@ See [permission-model.md](references/permission-model.md) for detailed rules and
 
 ### `can_comment` as Restricted Update
 
-`can_comment` allows changing only `notes` and `status`. It blocks changes to `priority`, `description`, `department`, `due_date`, and `assign_to`. Use this for agents that should report progress but not modify task scope.
+`can_comment` allows changing only `notes` and `status`. It blocks changes to `priority`, `description`, `department`, `due_date`, and `is_archived`. Use this for agents that should report progress but not modify task scope.
 
 ## Project and Department Management
 
@@ -86,7 +86,7 @@ Use `writbase:subscribe` to register webhooks for task event notifications:
 | `list` | -- | Lists all subscriptions for your agent key |
 | `delete` | `subscription_id` | Removes the subscription |
 
-Valid event types: `task.created`, `task.updated`, `task.completed`, `task.failed`, `task.assigned`, `task.reassigned`.
+Valid event types: `task.created`, `task.updated`, `task.completed`, `task.failed`, `task.archived`, `task.unarchived`.
 
 The `secret` for HMAC-SHA256 signature verification is returned only on creation -- store it securely.
 

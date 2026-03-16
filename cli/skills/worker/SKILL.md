@@ -23,8 +23,7 @@ Do not skip this step. Your permissions determine which tools will succeed.
 | Browse/filter/search tasks | `writbase:get_tasks` | Supports status, priority, department, search, date filters, pagination |
 | Create a task | `writbase:add_task` | Requires `can_create` permission |
 | Update a task | `writbase:update_task` | Requires `can_update` or `can_comment` permission |
-| Assign a task to an agent | `writbase:add_task` or `writbase:update_task` | Use `assign_to` param (name or key ID). Requires `can_assign` permission |
-| Unassign a task | `writbase:update_task` | Use `assign_to: ""` (empty string) to return task to the pool |
+| Create work in another team's queue | `writbase:assign_task` | Requires `can_assign` permission. Department is required. |
 
 ## Compact vs Verbose Shape
 
@@ -32,7 +31,7 @@ By default, task queries return a compact 9-field shape:
 
 `id`, `version`, `status`, `priority`, `description`, `due_date`, `department`, `created_at`, `updated_at`
 
-Set `verbose: true` only when you need additional fields: `notes`, `assigned_to_agent_key_id`, `requested_by_agent_key_id`, `delegation_depth`, `assignment_chain`, `project_id`, `is_archived`, or full audit metadata.
+Set `verbose: true` only when you need additional fields: `notes`, `project_id`, `is_archived`, or full audit metadata.
 
 ## Version Conflict Handling
 
@@ -50,23 +49,20 @@ Set `verbose: true` only when you need additional fields: `notes`, `assigned_to_
 - `status`: one of `todo`, `in_progress`, `blocked`, `done`, `cancelled`, `failed`
 - `due_date`: valid ISO 8601 string (`YYYY-MM-DD` or `YYYY-MM-DDThh:mm:ssZ`)
 
-## Task Assignment
+## Cross-Department Task Assignment
 
-There is no separate `assign_task` tool. Use the `assign_to` parameter on `add_task` or `update_task`:
+Use `writbase:assign_task` to create tasks in departments where you have `can_assign` permission. This is how you create work in another team's queue.
 
-- `assign_to` accepts an **agent name** or **agent key ID**
-- Requires `can_assign` permission for the task's scope (project + department)
-- The assignee must be active and have at least one permission row in the task's project
-- `assign_to: ""` (empty string) on `update_task` unassigns the task
-- `can_comment`-only agents cannot use `assign_to` -- it requires `can_update` or `can_assign`
-
-**Delegation safety**: Tasks track an `assignment_chain` to prevent circular delegation (A→B→A) and enforce a max delegation depth of 3 reassignments.
+- Department is **required** — you're assigning to a specific team
+- Requires `can_assign` permission for the target department scope
+- Same fields as `add_task` (project, department, description, priority, notes, due_date, status)
+- Provenance (who requested the task) is tracked via event_log actor fields
 
 ## Department Scoping
 
 - `writbase:add_task` without a `department` param requires project-wide `can_create` (a permission row with `department_id` = null)
 - `writbase:update_task` checks permissions against the task's current department, not the new one
-- With only `can_comment` permission: you can change `notes` and `status` only -- changes to `priority`, `description`, `department`, `due_date`, or `assign_to` are rejected
+- With only `can_comment` permission: you can change `notes` and `status` only -- changes to `priority`, `description`, `department`, `due_date`, or `is_archived` are rejected
 
 ## Error Recovery Quick Reference
 
@@ -75,7 +71,6 @@ There is no separate `assign_task` tool. Use the `assign_to` parameter on `add_t
 | `version_conflict` | Re-fetch the task, retry with `current_version` from the error |
 | `rate_limited` | Wait `retry_after` seconds, then retry |
 | `scope_not_allowed` | Check your permissions with `writbase:info` |
-| `invalid_assignee` | Verify the agent name or key ID is correct and active |
 | `validation_error` | Read the `fields` object for per-field error messages |
 | `task_not_found` | Verify the task ID and your read access |
 
@@ -120,38 +115,19 @@ writbase:add_task {
 }
 ```
 
-### 3. Create and assign a task to another agent
+### 3. Assign a task to another department
 
 ```
-# Create a task and immediately assign it (requires can_create + can_assign)
-writbase:add_task {
+# Create work in the frontend team's queue (requires can_assign for frontend dept)
+writbase:assign_task {
   "project": "my-project",
   "department": "frontend",
   "description": "Fix the responsive layout on the settings page",
-  "priority": "high",
-  "assign_to": "frontend-agent"
+  "priority": "high"
 }
 ```
 
-### 4. Reassign an existing task
-
-```
-# Reassign a task to a different agent (requires can_assign)
-writbase:update_task {
-  "task_id": "abc-123",
-  "version": 3,
-  "assign_to": "backend-agent"
-}
-
-# Unassign a task (return to pool)
-writbase:update_task {
-  "task_id": "abc-123",
-  "version": 4,
-  "assign_to": ""
-}
-```
-
-### 5. Version conflict retry pattern
+### 4. Version conflict retry pattern
 
 ```
 # First attempt -- fails because another agent updated the task

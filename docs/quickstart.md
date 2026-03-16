@@ -224,7 +224,7 @@ Create additional keys with different permission scopes:
 | `can_create` | Create new tasks |
 | `can_update` | Change any task field (priority, description, department, etc.) |
 | `can_comment` | Change only `status` and `notes` (restricted update) |
-| `can_assign` | Delegate tasks to other agents |
+| `can_assign` | Create tasks in other departments via assign_task |
 | `can_archive` | Archive/unarchive tasks |
 
 Permissions are scoped per **(project, department)** pair. An agent can have different permissions in different departments.

@@ -477,12 +477,9 @@ export type Database = {
       };
       tasks: {
         Row: {
-          assigned_to_agent_key_id: string | null;
-          assignment_chain: string[];
           created_at: string;
           created_by_id: string;
           created_by_type: Database['public']['Enums']['actor_type'];
-          delegation_depth: number;
           department_id: string | null;
           description: string;
           due_date: string | null;
@@ -490,7 +487,6 @@ export type Database = {
           notes: string | null;
           priority: Database['public']['Enums']['priority'];
           project_id: string;
-          requested_by_agent_key_id: string | null;
           search_vector: unknown;
           source: Database['public']['Enums']['source'];
           status: Database['public']['Enums']['status'];
@@ -501,12 +497,9 @@ export type Database = {
           workspace_id: string;
         };
         Insert: {
-          assigned_to_agent_key_id?: string | null;
-          assignment_chain?: string[];
           created_at?: string;
           created_by_id: string;
           created_by_type: Database['public']['Enums']['actor_type'];
-          delegation_depth?: number;
           department_id?: string | null;
           description: string;
           due_date?: string | null;
@@ -514,7 +507,6 @@ export type Database = {
           notes?: string | null;
           priority?: Database['public']['Enums']['priority'];
           project_id: string;
-          requested_by_agent_key_id?: string | null;
           search_vector?: unknown;
           source: Database['public']['Enums']['source'];
           status?: Database['public']['Enums']['status'];
@@ -525,12 +517,9 @@ export type Database = {
           workspace_id: string;
         };
         Update: {
-          assigned_to_agent_key_id?: string | null;
-          assignment_chain?: string[];
           created_at?: string;
           created_by_id?: string;
           created_by_type?: Database['public']['Enums']['actor_type'];
-          delegation_depth?: number;
           department_id?: string | null;
           description?: string;
           due_date?: string | null;
@@ -538,7 +527,6 @@ export type Database = {
           notes?: string | null;
           priority?: Database['public']['Enums']['priority'];
           project_id?: string;
-          requested_by_agent_key_id?: string | null;
           search_vector?: unknown;
           source?: Database['public']['Enums']['source'];
           status?: Database['public']['Enums']['status'];
@@ -549,13 +537,6 @@ export type Database = {
           workspace_id?: string;
         };
         Relationships: [
-          {
-            foreignKeyName: 'tasks_assigned_to_agent_key_id_fkey';
-            columns: ['assigned_to_agent_key_id'];
-            isOneToOne: false;
-            referencedRelation: 'agent_keys';
-            referencedColumns: ['id'];
-          },
           {
             foreignKeyName: 'tasks_department_id_fkey';
             columns: ['department_id'];
@@ -568,13 +549,6 @@ export type Database = {
             columns: ['project_id'];
             isOneToOne: false;
             referencedRelation: 'projects';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'tasks_requested_by_agent_key_id_fkey';
-            columns: ['requested_by_agent_key_id'];
-            isOneToOne: false;
-            referencedRelation: 'agent_keys';
             referencedColumns: ['id'];
           },
           {
@@ -732,12 +706,9 @@ export type Database = {
       create_task_with_event: {
         Args: { p_payload: Json };
         Returns: {
-          assigned_to_agent_key_id: string | null;
-          assignment_chain: string[];
           created_at: string;
           created_by_id: string;
           created_by_type: Database['public']['Enums']['actor_type'];
-          delegation_depth: number;
           department_id: string | null;
           description: string;
           due_date: string | null;
@@ -745,7 +716,6 @@ export type Database = {
           notes: string | null;
           priority: Database['public']['Enums']['priority'];
           project_id: string;
-          requested_by_agent_key_id: string | null;
           search_vector: unknown;
           source: Database['public']['Enums']['source'];
           status: Database['public']['Enums']['status'];
@@ -827,63 +797,22 @@ export type Database = {
           }
         | {
             Args: {
-              p_assigned_to?: string;
               p_cursor_created_at?: string;
               p_cursor_id?: string;
               p_department_id?: string;
+              p_include_archived?: boolean;
               p_limit?: number;
               p_priority?: Database['public']['Enums']['priority'];
               p_project_id: string;
-              p_requested_by?: string;
-              p_search?: string;
-              p_status?: Database['public']['Enums']['status'];
-              p_updated_after?: string;
-            };
-            Returns: {
-              assigned_to_agent_key_id: string;
-              assignment_chain: string[];
-              created_at: string;
-              created_by_id: string;
-              created_by_type: Database['public']['Enums']['actor_type'];
-              delegation_depth: number;
-              department_id: string;
-              description: string;
-              due_date: string;
-              id: string;
-              notes: string;
-              priority: Database['public']['Enums']['priority'];
-              project_id: string;
-              requested_by_agent_key_id: string;
-              source: Database['public']['Enums']['source'];
-              status: Database['public']['Enums']['status'];
-              updated_at: string;
-              updated_by_id: string;
-              updated_by_type: Database['public']['Enums']['actor_type'];
-              version: number;
-            }[];
-          }
-        | {
-            Args: {
-              p_assigned_to?: string;
-              p_cursor_created_at?: string;
-              p_cursor_id?: string;
-              p_department_id?: string;
-              p_limit?: number;
-              p_priority?: Database['public']['Enums']['priority'];
-              p_project_id: string;
-              p_requested_by?: string;
               p_search?: string;
               p_status?: Database['public']['Enums']['status'];
               p_updated_after?: string;
               p_workspace_id: string;
             };
             Returns: {
-              assigned_to_agent_key_id: string;
-              assignment_chain: string[];
               created_at: string;
               created_by_id: string;
               created_by_type: Database['public']['Enums']['actor_type'];
-              delegation_depth: number;
               department_id: string;
               description: string;
               due_date: string;
@@ -891,7 +820,6 @@ export type Database = {
               notes: string;
               priority: Database['public']['Enums']['priority'];
               project_id: string;
-              requested_by_agent_key_id: string;
               source: Database['public']['Enums']['source'];
               status: Database['public']['Enums']['status'];
               updated_at: string;
@@ -914,12 +842,9 @@ export type Database = {
       update_task_with_events: {
         Args: { p_payload: Json };
         Returns: {
-          assigned_to_agent_key_id: string | null;
-          assignment_chain: string[];
           created_at: string;
           created_by_id: string;
           created_by_type: Database['public']['Enums']['actor_type'];
-          delegation_depth: number;
           department_id: string | null;
           description: string;
           due_date: string | null;
@@ -927,7 +852,6 @@ export type Database = {
           notes: string | null;
           priority: Database['public']['Enums']['priority'];
           project_id: string;
-          requested_by_agent_key_id: string | null;
           search_vector: unknown;
           source: Database['public']['Enums']['source'];
           status: Database['public']['Enums']['status'];

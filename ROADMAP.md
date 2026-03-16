@@ -150,13 +150,10 @@ for architecture details.
 
 ## Inter-Agent Task Exchange
 
-### M19: Task assignment + delegation safety
-- [x] `assigned_to_agent_key_id`, `requested_by_agent_key_id` on tasks
-- [x] `delegation_depth` (max 3) + `assignment_chain` for cycle detection
+### M19: Cross-department task assignment
 - [x] `can_assign` permission
-- [x] `assign_to` param on `add_task` and `update_task`
-- [x] `assigned_to_me` / `requested_by_me` filters on `get_tasks`
-- [x] Assignment and reassignment events in event_log
+- [x] `assign_task` MCP tool (creates task in department where caller has `can_assign`)
+- [x] Provenance tracking via event_log actor fields
 
 ### M20: Webhook notifications
 - [x] `webhook_subscriptions` table

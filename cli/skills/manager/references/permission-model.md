@@ -75,11 +75,11 @@ CORRECT: { project_id: "P1", department_id: "D2", can_read: true, can_update: tr
 `can_comment` is intentionally separate from `can_update`. An agent with only `can_comment`:
 
 - **Can change**: `notes`, `status`
-- **Cannot change**: `priority`, `description`, `department`, `due_date`, `assign_to`
+- **Cannot change**: `priority`, `description`, `department`, `due_date`, `is_archived`
 
 Use `can_comment` for agents that should report progress (e.g., set status to `done` and add completion notes) but should not modify task scope or reassign work.
 
-An agent with `can_update` can change all task fields (except assignment, which requires `can_assign`).
+An agent with `can_update` can change all task fields (except archiving, which requires `can_archive`).
 
 ## Department Scoping Per Action
 
