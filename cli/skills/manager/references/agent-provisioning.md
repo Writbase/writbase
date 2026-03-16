@@ -4,6 +4,13 @@ Step-by-step guides for common agent provisioning patterns. All examples assume 
 
 Before provisioning, call `writbase:info` to get your project and department UUIDs from the `permissions.scopes` array.
 
+> **CLI alternative**: Operators can provision keys and permissions entirely from the CLI:
+> ```bash
+> writbase key add --name deploy-bot --role worker --mcp
+> writbase key permit deploy-bot --grant --project my-project --department ops --can-read --can-create --can-update
+> writbase key permit deploy-bot   # list current permissions
+> ```
+
 ---
 
 ## 1. Single-Project Worker
@@ -140,6 +147,7 @@ writbase:manage_agent_keys {
 
 ### Step 2: Grant permissions with `can_assign`
 
+Via MCP:
 ```
 writbase:manage_agent_permissions {
   "action": "grant",
@@ -154,6 +162,11 @@ writbase:manage_agent_permissions {
     }
   ]
 }
+```
+
+Or via CLI (operator shortcut — most common for adding `can_assign` after initial setup):
+```bash
+writbase key permit coordinator-agent --grant --project my-project --can-read --can-create --can-update --can-assign
 ```
 
 ### Step 3: Create worker agents that can be assigned to
@@ -190,8 +203,20 @@ WritBase enforces two safety mechanisms on task assignment:
 
 ### How the coordinator assigns work
 
-Once provisioned, the coordinator uses `writbase:update_task` with the `assign_to` param:
+There is no separate `assign_task` tool. Assignment is done via the `assign_to` parameter on both `add_task` and `update_task`.
 
+**Create and assign in one step:**
+```
+writbase:add_task {
+  "project": "my-project",
+  "department": "frontend",
+  "description": "Fix responsive layout on settings page",
+  "priority": "high",
+  "assign_to": "frontend-agent"
+}
+```
+
+**Reassign an existing task:**
 ```
 writbase:update_task {
   "task_id": "<task-uuid>",
@@ -202,8 +227,7 @@ writbase:update_task {
 
 The `assign_to` field accepts either the agent's name or key ID.
 
-To unassign a task (return it to the pool), pass an empty string:
-
+**Unassign** (return to pool) by passing an empty string:
 ```
 writbase:update_task {
   "task_id": "<task-uuid>",

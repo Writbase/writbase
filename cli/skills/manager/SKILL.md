@@ -36,6 +36,8 @@ Constraints:
 
 ## Permission Management
 
+> **CLI alternative**: Operators can manage permissions without MCP using `writbase key permit <name> --grant/--revoke --project <slug> [--department <slug>] --can-*`. See `writbase key permit --help`.
+
 Use `writbase:manage_agent_permissions` with these actions:
 
 | Action | Required Params | Notes |

@@ -8,6 +8,7 @@ import {
   keyListCommand,
   keyRotateCommand,
   keyDeactivateCommand,
+  keyPermitCommand,
 } from '../commands/key.js';
 import { statusCommand } from '../commands/status.js';
 
@@ -16,7 +17,7 @@ const program = new Command();
 program
   .name('writbase')
   .description('WritBase CLI — agent-first task management')
-  .version('0.2.3');
+  .version('0.2.4');
 
 program
   .command('init')
@@ -61,6 +62,27 @@ key
   .command('deactivate <name-or-id>')
   .description('Deactivate an agent key')
   .action(keyDeactivateCommand);
+
+key
+  .command('permit <name-or-id>')
+  .description('List or update permissions for an agent key')
+  .option('--grant', 'Grant permissions (additive, preserves unspecified flags)')
+  .option('--revoke', 'Revoke permission row')
+  .option('--project <slug>', 'Project slug (required for --grant/--revoke)')
+  .option('--department <slug>', 'Department slug (omit for project-wide)')
+  .option('--can-read', 'Read permission')
+  .option('--no-can-read', 'Remove read permission')
+  .option('--can-create', 'Create permission')
+  .option('--no-can-create', 'Remove create permission')
+  .option('--can-update', 'Update permission')
+  .option('--no-can-update', 'Remove update permission')
+  .option('--can-assign', 'Assign permission')
+  .option('--no-can-assign', 'Remove assign permission')
+  .option('--can-comment', 'Comment permission')
+  .option('--no-can-comment', 'Remove comment permission')
+  .option('--can-archive', 'Archive permission')
+  .option('--no-can-archive', 'Remove archive permission')
+  .action(keyPermitCommand);
 
 program
   .command('status')

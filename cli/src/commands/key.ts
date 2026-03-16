@@ -313,6 +313,290 @@ export async function keyRotateCommand(nameOrId: string) {
   }
 }
 
+// ── permit helpers ────────────────────────────────────────────────
+
+async function resolveProjectBySlug(
+  supabase: ReturnType<typeof createAdminClient>,
+  workspaceId: string,
+  slug: string,
+) {
+  const { data: project, error: err } = await supabase
+    .from('projects')
+    .select('id, name, slug, is_archived')
+    .eq('workspace_id', workspaceId)
+    .eq('slug', slug)
+    .single();
+
+  if (err || !project) {
+    const { data: all } = await supabase
+      .from('projects')
+      .select('slug')
+      .eq('workspace_id', workspaceId)
+      .order('slug');
+    const slugs = all?.map((p: { slug: string }) => p.slug).join(', ') ?? '(none)';
+    error(`Project "${slug}" not found. Available: ${slugs}`);
+    process.exit(1);
+  }
+  return project;
+}
+
+async function resolveDepartmentBySlug(
+  supabase: ReturnType<typeof createAdminClient>,
+  workspaceId: string,
+  slug: string,
+) {
+  const { data: dept, error: err } = await supabase
+    .from('departments')
+    .select('id, name, slug, is_archived')
+    .eq('workspace_id', workspaceId)
+    .eq('slug', slug)
+    .single();
+
+  if (err || !dept) {
+    const { data: all } = await supabase
+      .from('departments')
+      .select('slug')
+      .eq('workspace_id', workspaceId)
+      .order('slug');
+    const slugs = all?.map((d: { slug: string }) => d.slug).join(', ') ?? '(none)';
+    error(`Department "${slug}" not found. Available: ${slugs}`);
+    process.exit(1);
+  }
+  return dept;
+}
+
+const PERM_FLAGS = ['canRead', 'canCreate', 'canUpdate', 'canAssign', 'canComment', 'canArchive'] as const;
+const PERM_DB_COLS = ['can_read', 'can_create', 'can_update', 'can_assign', 'can_comment', 'can_archive'] as const;
+
+interface KeyPermitOptions {
+  grant?: boolean;
+  revoke?: boolean;
+  project?: string;
+  department?: string;
+  canRead?: boolean;
+  canCreate?: boolean;
+  canUpdate?: boolean;
+  canAssign?: boolean;
+  canComment?: boolean;
+  canArchive?: boolean;
+}
+
+export async function keyPermitCommand(nameOrId: string, opts: KeyPermitOptions) {
+  // ── Validation ──────────────────────────────────────────────────
+  if (opts.grant && opts.revoke) {
+    error('Cannot use --grant and --revoke together');
+    process.exit(1);
+  }
+
+  const hasAnyPermFlag = PERM_FLAGS.some((f) => opts[f] !== undefined);
+
+  if (opts.grant && !hasAnyPermFlag) {
+    error('--grant requires at least one permission flag: --can-read, --can-create, --can-update, --can-assign, --can-comment, --can-archive (or --no-can-* to remove)');
+    process.exit(1);
+  }
+
+  if (hasAnyPermFlag && !opts.grant) {
+    error('Permission flags (--can-*) require --grant');
+    process.exit(1);
+  }
+
+  if ((opts.grant || opts.revoke) && !opts.project) {
+    error('--project is required with --grant/--revoke');
+    process.exit(1);
+  }
+
+  if (opts.department && !opts.project) {
+    error('--department requires --project');
+    process.exit(1);
+  }
+
+  const config = loadConfig();
+  const supabase = createAdminClient(config.supabaseUrl, config.supabaseServiceRoleKey);
+  const key = await resolveKeyByNameOrId(supabase, config.workspaceId, nameOrId);
+
+  // ── List (default) ──────────────────────────────────────────────
+  if (!opts.grant && !opts.revoke) {
+    const spinner = createSpinner('Fetching permissions...').start();
+
+    const { data: perms, error: err } = await supabase
+      .from('agent_permissions')
+      .select('*, projects:project_id(name, slug, is_archived), departments:department_id(name, slug, is_archived)')
+      .eq('agent_key_id', key.id)
+      .eq('workspace_id', config.workspaceId);
+
+    if (err) {
+      spinner.error({ text: 'Failed to fetch permissions' });
+      error(err.message);
+      process.exit(1);
+    }
+
+    spinner.success({ text: `${perms.length} permission row(s) for "${key.name}"` });
+
+    if (perms.length === 0) {
+      info('No permissions granted. Use --grant to add permissions.');
+      return;
+    }
+
+    console.log();
+    const yn = (v: boolean) => (v ? 'yes' : 'no');
+    table(
+      ['Project', 'Department', 'read', 'create', 'update', 'assign', 'comment', 'archive'],
+      perms.map((p: Record<string, unknown>) => {
+        const proj = p.projects as { name: string; slug: string; is_archived: boolean } | null;
+        const dept = p.departments as { name: string; slug: string; is_archived: boolean } | null;
+        const projLabel = proj ? `${proj.slug}${proj.is_archived ? ' (archived)' : ''}` : '(unknown)';
+        const deptLabel = dept ? `${dept.slug}${dept.is_archived ? ' (archived)' : ''}` : '(all)';
+        return [
+          projLabel,
+          deptLabel,
+          yn(p.can_read as boolean),
+          yn(p.can_create as boolean),
+          yn(p.can_update as boolean),
+          yn(p.can_assign as boolean),
+          yn(p.can_comment as boolean),
+          yn(p.can_archive as boolean),
+        ];
+      }),
+    );
+    return;
+  }
+
+  // ── Resolve project & department ────────────────────────────────
+  const project = await resolveProjectBySlug(supabase, config.workspaceId, opts.project!);
+  if (project.is_archived) warn(`Project "${project.slug}" is archived`);
+
+  let departmentId: string | null = null;
+  if (opts.department) {
+    const dept = await resolveDepartmentBySlug(supabase, config.workspaceId, opts.department);
+    if (dept.is_archived) warn(`Department "${dept.slug}" is archived`);
+    departmentId = dept.id;
+  }
+
+  // ── Grant ───────────────────────────────────────────────────────
+  if (opts.grant) {
+    if (!key.is_active) {
+      error(`Key "${key.name}" is inactive — cannot grant permissions to inactive keys`);
+      process.exit(1);
+    }
+
+    const spinner = createSpinner('Granting permissions...').start();
+
+    // Fetch existing row
+    let query = supabase
+      .from('agent_permissions')
+      .select('*')
+      .eq('agent_key_id', key.id)
+      .eq('project_id', project.id)
+      .eq('workspace_id', config.workspaceId);
+
+    if (departmentId) {
+      query = query.eq('department_id', departmentId);
+    } else {
+      query = query.is('department_id', null);
+    }
+
+    const { data: existing } = await query.maybeSingle();
+
+    // Merge: CLI value if specified, else existing, else false
+    const merged: Record<string, unknown> = {
+      agent_key_id: key.id,
+      project_id: project.id,
+      department_id: departmentId,
+      workspace_id: config.workspaceId,
+    };
+
+    for (let i = 0; i < PERM_FLAGS.length; i++) {
+      const flag = PERM_FLAGS[i];
+      const col = PERM_DB_COLS[i];
+      if (opts[flag] !== undefined) {
+        merged[col] = opts[flag];
+      } else if (existing) {
+        merged[col] = existing[col];
+      } else {
+        merged[col] = false;
+      }
+    }
+
+    const { error: upsertErr } = await supabase
+      .from('agent_permissions')
+      .upsert(merged, { onConflict: 'agent_key_id,project_id,department_id' });
+
+    if (upsertErr) {
+      spinner.error({ text: 'Failed to grant permissions' });
+      error(upsertErr.message);
+      process.exit(1);
+    }
+
+    await logEvent(supabase, {
+      eventCategory: 'admin',
+      targetType: 'agent_key',
+      targetId: key.id,
+      eventType: 'agent_permission.granted',
+      actorType: 'system',
+      actorId: 'writbase-cli',
+      actorLabel: 'writbase-cli',
+      source: 'system',
+      workspaceId: config.workspaceId,
+    });
+
+    spinner.success({ text: 'Permissions granted' });
+
+    const scope = opts.department ? `${opts.project}/${opts.department}` : opts.project!;
+    const granted = PERM_FLAGS
+      .filter((f) => merged[PERM_DB_COLS[PERM_FLAGS.indexOf(f)]] === true)
+      .map((f) => f.replace('can', '').toLowerCase());
+    success(`${key.name} → ${scope}: ${granted.join(', ') || '(none)'}`);
+    return;
+  }
+
+  // ── Revoke ──────────────────────────────────────────────────────
+  if (opts.revoke) {
+    const spinner = createSpinner('Revoking permissions...').start();
+
+    let query = supabase
+      .from('agent_permissions')
+      .delete()
+      .eq('agent_key_id', key.id)
+      .eq('project_id', project.id)
+      .eq('workspace_id', config.workspaceId);
+
+    if (departmentId) {
+      query = query.eq('department_id', departmentId);
+    } else {
+      query = query.is('department_id', null);
+    }
+
+    const { data, error: delErr } = await query.select();
+
+    if (delErr) {
+      spinner.error({ text: 'Failed to revoke permissions' });
+      error(delErr.message);
+      process.exit(1);
+    }
+
+    if (!data || data.length === 0) {
+      spinner.warn({ text: 'No matching permission row found' });
+      return;
+    }
+
+    await logEvent(supabase, {
+      eventCategory: 'admin',
+      targetType: 'agent_key',
+      targetId: key.id,
+      eventType: 'agent_permission.revoked',
+      actorType: 'system',
+      actorId: 'writbase-cli',
+      actorLabel: 'writbase-cli',
+      source: 'system',
+      workspaceId: config.workspaceId,
+    });
+
+    spinner.success({ text: 'Permission revoked' });
+    const scope = opts.department ? `${opts.project}/${opts.department}` : opts.project!;
+    success(`Revoked ${key.name} → ${scope}`);
+  }
+}
+
 export async function keyDeactivateCommand(nameOrId: string) {
   const config = loadConfig();
   const supabase = createAdminClient(config.supabaseUrl, config.supabaseServiceRoleKey);

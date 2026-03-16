@@ -1,7 +1,7 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { existsSync, mkdirSync, writeFileSync, readFileSync, renameSync, cpSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, renameSync, cpSync, unlinkSync } from 'node:fs';
 import { WRITBASE_HOME } from './config.js';
 
 function atomicWriteJson(filePath: string, content: string) {
@@ -22,18 +22,43 @@ export function installSkills() {
   const skillsSource = join(packageRoot, 'skills');
   cpSync(skillsSource, join(WRITBASE_HOME, 'skills'), { recursive: true });
 
-  // Write plugin.json
-  const pluginJson = JSON.stringify(
+  // Write marketplace.json (Claude Code plugin discovery format)
+  const marketplaceJson = JSON.stringify(
     {
       name: 'writbase',
-      description:
-        'WritBase — agent-first task management. Skills for MCP tool usage, permissions, and error handling.',
-      version: '0.2.3',
+      owner: {
+        name: 'WritBase',
+        email: 'hello@writbase.io',
+      },
+      metadata: {
+        description:
+          'WritBase — agent-first task management. Skills for MCP tool usage, permissions, and error handling.',
+        version: '0.2.4',
+      },
+      plugins: [
+        {
+          name: 'writbase',
+          description:
+            'WritBase skills for worker agents, manager agents, and task extraction.',
+          source: './',
+          skills: [
+            './skills/extract-tasks',
+            './skills/worker',
+            './skills/manager',
+          ],
+        },
+      ],
     },
     null,
     2,
   );
-  writeFileSync(join(WRITBASE_HOME, '.claude-plugin', 'plugin.json'), pluginJson);
+  writeFileSync(join(WRITBASE_HOME, '.claude-plugin', 'marketplace.json'), marketplaceJson);
+
+  // Remove stale plugin.json from pre-0.2.4 installs
+  const stalePluginJson = join(WRITBASE_HOME, '.claude-plugin', 'plugin.json');
+  if (existsSync(stalePluginJson)) {
+    unlinkSync(stalePluginJson);
+  }
 
   // Register in Claude's known_marketplaces.json
   const pluginsDir = join(claudeDir, 'plugins');
@@ -47,6 +72,7 @@ export function installSkills() {
   marketplaces['writbase'] = {
     source: { source: 'directory', path: WRITBASE_HOME },
     installLocation: WRITBASE_HOME,
+    lastUpdated: new Date().toISOString(),
     autoUpdate: false,
   };
 

@@ -79,7 +79,7 @@ Via the CLI (`npx writbase key create`), the dashboard, or a manager agent:
 
 1. **Create a project** — e.g., `my-app`. Optionally add departments (`backend`, `frontend`, `devops`)
 2. **Create an agent key** — name it, pick the `worker` role, save the key (`wb_<key_id>_<secret>` — shown once)
-3. **Grant permissions** — select your project, check `can_read`, `can_create`, `can_update`
+3. **Grant permissions** — `writbase key permit my-agent --grant --project my-app --can-read --can-create --can-update` (or via dashboard)
 
 ### 3. Connect your MCP client
 

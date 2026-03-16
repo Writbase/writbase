@@ -68,6 +68,14 @@ Departments let you scope agent permissions to specific areas. If you skip depar
 
 ### Grant permissions
 
+**Option A — CLI** (recommended):
+
+```bash
+writbase key permit claude-code --grant --project my-app --can-read --can-create --can-update
+```
+
+**Option B — Dashboard**:
+
 Click into the key → **Permissions** → **Add Permission**:
 
 | Field | Value |
@@ -78,7 +86,13 @@ Click into the key → **Permissions** → **Add Permission**:
 | can_create | ✅ |
 | can_update | ✅ |
 
-This gives the agent read/write access to tasks in `my-app`. For a read-only agent, check only `can_read`.
+This gives the agent read/write access to tasks in `my-app`. For a read-only agent, grant only `can_read`.
+
+To add cross-department assignment later:
+```bash
+writbase key permit claude-code --grant --project my-app --can-assign
+```
+This preserves existing flags — only `can_assign` is added.
 
 ---
 

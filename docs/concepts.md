@@ -70,6 +70,18 @@ Managers can create worker keys and grant permissions, subject to:
 
 Changing a task's department via `update_task` requires authorization in **both** the source and destination scope (source needs `can_update`, destination needs `can_create` or `can_update`).
 
+### Managing Permissions via CLI
+
+Operators can grant, revoke, and list permissions from the command line:
+
+```bash
+writbase key permit <name>                                          # list permissions
+writbase key permit <name> --grant --project <slug> --can-assign    # additive grant
+writbase key permit <name> --revoke --project <slug> --department <slug>  # revoke row
+```
+
+Grants are additive: `--grant --can-assign` on a key that already has `can_read` preserves `can_read`. Use `--no-can-read` to explicitly remove a flag.
+
 ## Provenance
 
 All task mutations and admin actions produce entries in an append-only `event_log`:
@@ -112,10 +124,23 @@ MCP errors include a machine-readable code, human message, and recovery guidance
 
 ## Inter-Agent Delegation
 
-Agents can assign tasks to other agents:
+There is no separate `assign_task` tool. Assignment uses the `assign_to` parameter on `add_task` and `update_task`:
 
-- `assign_to` parameter on `add_task` and `update_task` (accepts key ID or agent name)
-- Requires `can_assign` permission
+```
+# Create and assign in one call
+writbase:add_task { "project": "my-app", "description": "...", "assign_to": "frontend-agent" }
+
+# Reassign an existing task
+writbase:update_task { "task_id": "...", "version": 3, "assign_to": "backend-agent" }
+
+# Unassign (return to pool)
+writbase:update_task { "task_id": "...", "version": 4, "assign_to": "" }
+```
+
+Rules:
+- `assign_to` accepts an agent **name** or **key ID**
+- Requires `can_assign` permission in the task's scope
+- Assignee must be active and have access to the task's project
 - **Delegation depth limit**: Maximum 3 levels of re-delegation (A→B→C→D)
 - **Cycle detection**: `assignment_chain` array prevents circular delegation
-- Assignee must be active and have access to the task's project
+- `can_comment`-only agents cannot assign — requires `can_update` or `can_assign`

@@ -38,7 +38,7 @@ Optional fields (`fields`, `current_version`, `retry_after`) are present only fo
 ### `scope_not_allowed`
 
 - **Message**: Agent does not have "{action}" permission for project "{project}".
-- **Recovery**: Request the needed permission from an admin via the dashboard.
+- **Recovery**: Request the needed permission from an admin. Operators can grant via CLI: `writbase key permit <agent-name> --grant --project <slug> --can-read` (or via the dashboard).
 - **Notes**: Call `writbase:info` to see your current permission scopes.
 
 ### `update_not_allowed`
@@ -62,7 +62,7 @@ Optional fields (`fields`, `current_version`, `retry_after`) are present only fo
 ### `assign_not_allowed`
 
 - **Message**: Agent does not have "assign" permission for project "{project}".
-- **Recovery**: Request the `can_assign` permission from an admin via the dashboard.
+- **Recovery**: Request the `can_assign` permission from an admin. Operators can grant via CLI: `writbase key permit <agent-name> --grant --project <slug> --can-assign` (or via the dashboard).
 - **Notes**: Separate from `can_update`. You need `can_assign` specifically to use the `assign_to` field.
 
 ---
