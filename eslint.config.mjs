@@ -5,7 +5,7 @@ import biomeConfig from "eslint-config-biome";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "supabase/**", "src/lib/types/database.ts"]),
+  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "supabase/**", "src/lib/types/database.ts", "src/lib/types/supabase.generated.ts"]),
   {
     files: ["src/**/*.ts", "src/**/*.tsx"],
     extends: [...tseslint.configs.strictTypeChecked],

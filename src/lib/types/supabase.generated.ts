@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
@@ -6,31 +5,6 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: '14.4';
-  };
-  graphql_public: {
-    Tables: {
-      [_ in never]: never;
-    };
-    Views: {
-      [_ in never]: never;
-    };
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json;
-          operationName?: string;
-          query?: string;
-          variables?: Json;
-        };
-        Returns: Json;
-      };
-    };
-    Enums: {
-      [_ in never]: never;
-    };
-    CompositeTypes: {
-      [_ in never]: never;
-    };
   };
   public: {
     Tables: {
@@ -83,12 +57,14 @@ export type Database = {
         Row: {
           created_at: string;
           created_by: string;
+          department_id: string | null;
           id: string;
           is_active: boolean;
           key_hash: string;
           key_prefix: string;
           last_used_at: string | null;
           name: string;
+          project_id: string | null;
           role: Database['public']['Enums']['agent_role'];
           special_prompt: string | null;
           workspace_id: string;
@@ -96,12 +72,14 @@ export type Database = {
         Insert: {
           created_at?: string;
           created_by: string;
+          department_id?: string | null;
           id?: string;
           is_active?: boolean;
           key_hash: string;
           key_prefix: string;
           last_used_at?: string | null;
           name: string;
+          project_id?: string | null;
           role?: Database['public']['Enums']['agent_role'];
           special_prompt?: string | null;
           workspace_id: string;
@@ -109,17 +87,33 @@ export type Database = {
         Update: {
           created_at?: string;
           created_by?: string;
+          department_id?: string | null;
           id?: string;
           is_active?: boolean;
           key_hash?: string;
           key_prefix?: string;
           last_used_at?: string | null;
           name?: string;
+          project_id?: string | null;
           role?: Database['public']['Enums']['agent_role'];
           special_prompt?: string | null;
           workspace_id?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: 'agent_keys_default_department_id_fkey';
+            columns: ['department_id'];
+            isOneToOne: false;
+            referencedRelation: 'departments';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'agent_keys_default_project_id_fkey';
+            columns: ['project_id'];
+            isOneToOne: false;
+            referencedRelation: 'projects';
+            referencedColumns: ['id'];
+          },
           {
             foreignKeyName: 'agent_keys_workspace_id_fkey';
             columns: ['workspace_id'];
@@ -132,6 +126,7 @@ export type Database = {
       agent_permissions: {
         Row: {
           agent_key_id: string;
+          can_archive: boolean;
           can_assign: boolean;
           can_comment: boolean;
           can_create: boolean;
@@ -145,6 +140,7 @@ export type Database = {
         };
         Insert: {
           agent_key_id: string;
+          can_archive?: boolean;
           can_assign?: boolean;
           can_comment?: boolean;
           can_create?: boolean;
@@ -158,6 +154,7 @@ export type Database = {
         };
         Update: {
           agent_key_id?: string;
+          can_archive?: boolean;
           can_assign?: boolean;
           can_comment?: boolean;
           can_create?: boolean;
@@ -484,6 +481,7 @@ export type Database = {
           description: string;
           due_date: string | null;
           id: string;
+          is_archived: boolean;
           notes: string | null;
           priority: Database['public']['Enums']['priority'];
           project_id: string;
@@ -504,6 +502,7 @@ export type Database = {
           description: string;
           due_date?: string | null;
           id?: string;
+          is_archived?: boolean;
           notes?: string | null;
           priority?: Database['public']['Enums']['priority'];
           project_id: string;
@@ -524,6 +523,7 @@ export type Database = {
           description?: string;
           due_date?: string | null;
           id?: string;
+          is_archived?: boolean;
           notes?: string | null;
           priority?: Database['public']['Enums']['priority'];
           project_id?: string;
@@ -577,6 +577,66 @@ export type Database = {
           window_start?: string;
         };
         Relationships: [];
+      };
+      webhook_delivery_log: {
+        Row: {
+          attempts: number;
+          created_at: string;
+          event_type: string;
+          id: string;
+          last_attempt_at: string | null;
+          last_error: string | null;
+          next_retry_at: string | null;
+          payload: Json;
+          status: string;
+          subscription_id: string;
+          task_id: string;
+          workspace_id: string;
+        };
+        Insert: {
+          attempts?: number;
+          created_at?: string;
+          event_type: string;
+          id?: string;
+          last_attempt_at?: string | null;
+          last_error?: string | null;
+          next_retry_at?: string | null;
+          payload: Json;
+          status?: string;
+          subscription_id: string;
+          task_id: string;
+          workspace_id: string;
+        };
+        Update: {
+          attempts?: number;
+          created_at?: string;
+          event_type?: string;
+          id?: string;
+          last_attempt_at?: string | null;
+          last_error?: string | null;
+          next_retry_at?: string | null;
+          payload?: Json;
+          status?: string;
+          subscription_id?: string;
+          task_id?: string;
+          workspace_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'webhook_delivery_log_subscription_id_fkey';
+            columns: ['subscription_id'];
+            isOneToOne: false;
+            referencedRelation: 'webhook_subscriptions';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'webhook_delivery_log_workspace_id_fkey';
+            columns: ['workspace_id'];
+            isOneToOne: false;
+            referencedRelation: 'workspaces';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       webhook_subscriptions: {
         Row: {
@@ -668,6 +728,50 @@ export type Database = {
           },
         ];
       };
+      workspace_usage: {
+        Row: {
+          agent_keys_active: number;
+          api_requests: number;
+          computed_at: string;
+          id: string;
+          period_end: string;
+          period_start: string;
+          tasks_active: number;
+          tasks_created: number;
+          workspace_id: string;
+        };
+        Insert: {
+          agent_keys_active?: number;
+          api_requests?: number;
+          computed_at?: string;
+          id?: string;
+          period_end: string;
+          period_start: string;
+          tasks_active?: number;
+          tasks_created?: number;
+          workspace_id: string;
+        };
+        Update: {
+          agent_keys_active?: number;
+          api_requests?: number;
+          computed_at?: string;
+          id?: string;
+          period_end?: string;
+          period_start?: string;
+          tasks_active?: number;
+          tasks_created?: number;
+          workspace_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'workspace_usage_workspace_id_fkey';
+            columns: ['workspace_id'];
+            isOneToOne: false;
+            referencedRelation: 'workspaces';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       workspaces: {
         Row: {
           created_at: string;
@@ -700,8 +804,12 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      aggregate_workspace_usage: { Args: never; Returns: number };
+      auto_archive_stale_tasks: { Args: never; Returns: number };
       check_auth_rate_limit: { Args: { p_ip: string }; Returns: number };
       cleanup_auth_rate_limits: { Args: never; Returns: undefined };
+      cleanup_dead_webhooks: { Args: never; Returns: number };
+      cleanup_event_log: { Args: never; Returns: number };
       cleanup_rate_limits: { Args: never; Returns: number };
       create_task_with_event: {
         Args: { p_payload: Json };
@@ -713,6 +821,7 @@ export type Database = {
           description: string;
           due_date: string | null;
           id: string;
+          is_archived: boolean;
           notes: string | null;
           priority: Database['public']['Enums']['priority'];
           project_id: string;
@@ -732,6 +841,7 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      deactivate_stale_agent_keys: { Args: never; Returns: number };
       ensure_user_workspace: { Args: never; Returns: string };
       get_tasks_page:
         | {
@@ -797,6 +907,43 @@ export type Database = {
           }
         | {
             Args: {
+              p_assigned_to?: string;
+              p_cursor_created_at?: string;
+              p_cursor_id?: string;
+              p_department_id?: string;
+              p_limit?: number;
+              p_priority?: Database['public']['Enums']['priority'];
+              p_project_id: string;
+              p_requested_by?: string;
+              p_search?: string;
+              p_status?: Database['public']['Enums']['status'];
+              p_updated_after?: string;
+            };
+            Returns: {
+              assigned_to_agent_key_id: string;
+              assignment_chain: string[];
+              created_at: string;
+              created_by_id: string;
+              created_by_type: Database['public']['Enums']['actor_type'];
+              delegation_depth: number;
+              department_id: string;
+              description: string;
+              due_date: string;
+              id: string;
+              notes: string;
+              priority: Database['public']['Enums']['priority'];
+              project_id: string;
+              requested_by_agent_key_id: string;
+              source: Database['public']['Enums']['source'];
+              status: Database['public']['Enums']['status'];
+              updated_at: string;
+              updated_by_id: string;
+              updated_by_type: Database['public']['Enums']['actor_type'];
+              version: number;
+            }[];
+          }
+        | {
+            Args: {
               p_cursor_created_at?: string;
               p_cursor_id?: string;
               p_department_id?: string;
@@ -813,21 +960,66 @@ export type Database = {
               created_at: string;
               created_by_id: string;
               created_by_type: Database['public']['Enums']['actor_type'];
-              department_id: string;
+              department_id: string | null;
               description: string;
-              due_date: string;
+              due_date: string | null;
               id: string;
-              notes: string;
+              is_archived: boolean;
+              notes: string | null;
               priority: Database['public']['Enums']['priority'];
               project_id: string;
+              search_vector: unknown;
               source: Database['public']['Enums']['source'];
               status: Database['public']['Enums']['status'];
               updated_at: string;
               updated_by_id: string;
               updated_by_type: Database['public']['Enums']['actor_type'];
               version: number;
+              workspace_id: string;
             }[];
+            SetofOptions: {
+              from: '*';
+              to: 'tasks';
+              isOneToOne: false;
+              isSetofReturn: true;
+            };
           };
+      get_top_tasks: {
+        Args: {
+          p_department_id?: string;
+          p_limit?: number;
+          p_project_id: string;
+          p_status?: string;
+          p_workspace_id: string;
+        };
+        Returns: {
+          created_at: string;
+          created_by_id: string;
+          created_by_type: Database['public']['Enums']['actor_type'];
+          department_id: string | null;
+          description: string;
+          due_date: string | null;
+          id: string;
+          is_archived: boolean;
+          notes: string | null;
+          priority: Database['public']['Enums']['priority'];
+          project_id: string;
+          search_vector: unknown;
+          source: Database['public']['Enums']['source'];
+          status: Database['public']['Enums']['status'];
+          updated_at: string;
+          updated_by_id: string;
+          updated_by_type: Database['public']['Enums']['actor_type'];
+          version: number;
+          workspace_id: string;
+        }[];
+        SetofOptions: {
+          from: '*';
+          to: 'tasks';
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
       get_user_workspace_ids: { Args: never; Returns: string[] };
       increment_auth_rate_limit: { Args: { p_ip: string }; Returns: number };
       increment_rate_limit: { Args: { p_key_id: string }; Returns: number };
@@ -835,6 +1027,7 @@ export type Database = {
         Args: { p_user_id: string };
         Returns: number;
       };
+      process_webhook_retries: { Args: never; Returns: number };
       update_agent_permissions: {
         Args: { p_key_id: string; p_rows: Json };
         Returns: undefined;
@@ -849,6 +1042,7 @@ export type Database = {
           description: string;
           due_date: string | null;
           id: string;
+          is_archived: boolean;
           notes: string | null;
           priority: Database['public']['Enums']['priority'];
           project_id: string;
@@ -1001,9 +1195,6 @@ export type CompositeTypes<
     : never;
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       actor_type: ['human', 'agent', 'system'],
