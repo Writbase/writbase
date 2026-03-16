@@ -28,7 +28,7 @@ export function installSkills() {
       name: 'writbase',
       description:
         'WritBase — agent-first task management. Skills for MCP tool usage, permissions, and error handling.',
-      version: '0.2.2',
+      version: '0.2.3',
     },
     null,
     2,

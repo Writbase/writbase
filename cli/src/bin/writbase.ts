@@ -4,7 +4,7 @@ import { Command } from 'commander';
 import { initCommand } from '../commands/init.js';
 import { migrateCommand } from '../commands/migrate.js';
 import {
-  keyCreateCommand,
+  keyAddCommand,
   keyListCommand,
   keyRotateCommand,
   keyDeactivateCommand,
@@ -16,7 +16,7 @@ const program = new Command();
 program
   .name('writbase')
   .description('WritBase CLI — agent-first task management')
-  .version('0.2.2');
+  .version('0.2.3');
 
 program
   .command('init')
@@ -39,9 +39,13 @@ const key = program
   .description('Manage agent keys');
 
 key
-  .command('create')
-  .description('Create a new agent key')
-  .action(keyCreateCommand);
+  .command('add')
+  .description('Create an agent key, grant permissions, and optionally write .mcp.json')
+  .option('--name <name>', 'Key name (non-interactive)')
+  .option('--role <role>', 'Role: worker or manager (non-interactive)')
+  .option('--mcp', 'Write .mcp.json to current directory')
+  .option('--no-mcp', 'Skip writing .mcp.json')
+  .action(keyAddCommand);
 
 key
   .command('list')

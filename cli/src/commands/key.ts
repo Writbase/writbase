@@ -1,9 +1,12 @@
+import { existsSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
+import { join } from 'node:path';
 import { confirm, input, select } from '@inquirer/prompts';
 import { createSpinner } from 'nanospinner';
 import { loadConfig } from '../lib/config.js';
 import { createAdminClient } from '../lib/supabase.js';
 import { createAgentKey, listAgentKeys, rotateAgentKey, deactivateAgentKey } from '../lib/agent-keys.js';
-import { success, error, warn, table } from '../lib/output.js';
+import { logEvent } from '../lib/event-log.js';
+import { success, error, warn, info, table } from '../lib/output.js';
 import type { AgentRole } from '../lib/types.js';
 
 async function resolveKeyByNameOrId(
@@ -28,24 +31,40 @@ async function resolveKeyByNameOrId(
   process.exit(1);
 }
 
-export async function keyCreateCommand() {
+interface KeyAddOptions {
+  name?: string;
+  role?: string;
+  mcp?: boolean;
+}
+
+export async function keyAddCommand(opts: KeyAddOptions) {
   const config = loadConfig();
   const supabase = createAdminClient(config.supabaseUrl, config.supabaseServiceRoleKey);
+  const headless = !!(opts.name || opts.role || opts.mcp === true || opts.mcp === false);
 
-  const name = await input({ message: 'Key name:' });
-  if (!name.trim()) {
+  const nameInput = opts.name ?? await input({ message: 'Key name:' });
+  if (!nameInput.trim()) {
     error('Name is required');
     process.exit(1);
   }
 
-  const role = await select<AgentRole>({
-    message: 'Role:',
-    choices: [
-      { name: 'worker', value: 'worker' },
-      { name: 'manager', value: 'manager' },
-    ],
-    default: 'worker',
-  });
+  let role: AgentRole;
+  if (opts.role) {
+    if (opts.role !== 'worker' && opts.role !== 'manager') {
+      error(`Invalid role: "${opts.role}". Must be "worker" or "manager".`);
+      process.exit(1);
+    }
+    role = opts.role;
+  } else {
+    role = await select<AgentRole>({
+      message: 'Role:',
+      choices: [
+        { name: 'worker', value: 'worker' },
+        { name: 'manager', value: 'manager' },
+      ],
+      default: 'worker',
+    });
+  }
 
   // Fetch projects for optional scoping
   let projectId: string | null = null;
@@ -53,8 +72,9 @@ export async function keyCreateCommand() {
 
   const { data: projects } = await supabase
     .from('projects')
-    .select('id, name')
+    .select('id, name, slug')
     .eq('workspace_id', config.workspaceId)
+    .eq('is_archived', false)
     .order('name');
 
   if (projects && projects.length > 0) {
@@ -98,14 +118,20 @@ export async function keyCreateCommand() {
 
   const spinner = createSpinner('Creating agent key...').start();
 
+  let keyId: string;
+  let fullKey: string;
+
   try {
-    const { key, fullKey } = await createAgentKey(supabase, {
-      name: name.trim(),
+    const { key, fullKey: fk } = await createAgentKey(supabase, {
+      name: nameInput.trim(),
       role,
       workspaceId: config.workspaceId,
       projectId,
       departmentId,
     });
+
+    keyId = key.id;
+    fullKey = fk;
 
     spinner.success({ text: 'Agent key created' });
     console.log();
@@ -120,17 +146,108 @@ export async function keyCreateCommand() {
         ['Active', String(key.is_active)],
       ],
     );
-
-    console.log();
-    warn('Save this key now — it cannot be retrieved later:');
-    console.log();
-    console.log(`  ${fullKey}`);
-    console.log();
   } catch (err) {
     spinner.error({ text: 'Failed to create key' });
     error(err instanceof Error ? err.message : String(err));
     process.exit(1);
   }
+
+  // ── Grant permissions for all active projects ──────────────────────
+
+  const projectIds = projects?.map((p: { id: string }) => p.id) ?? [];
+
+  if (projectIds.length > 0) {
+    try {
+      const rows = projectIds.map((pid: string) => ({
+        agent_key_id: keyId,
+        project_id: pid,
+        workspace_id: config.workspaceId,
+        can_read: true,
+        can_create: true,
+        can_update: true,
+        can_assign: role === 'manager',
+        can_comment: false,
+        can_archive: role === 'manager',
+      }));
+
+      const { error: permError } = await supabase
+        .from('agent_permissions')
+        .upsert(rows, { onConflict: 'agent_key_id,project_id,department_id' });
+
+      if (permError) throw permError;
+
+      await logEvent(supabase, {
+        eventCategory: 'admin',
+        targetType: 'agent_key',
+        targetId: keyId,
+        eventType: 'agent_permission.granted',
+        actorType: 'system',
+        actorId: 'writbase-cli',
+        actorLabel: 'writbase-cli',
+        source: 'system',
+        workspaceId: config.workspaceId,
+      });
+
+      const projectNames = projects!.map((p: { name: string; slug: string }) => `${p.name} (${p.slug})`);
+      success(`Permissions granted for ${projectIds.length} project(s): ${projectNames.join(', ')}`);
+    } catch (err) {
+      warn(`Failed to grant permissions: ${err instanceof Error ? err.message : String(err)}`);
+      info('Grant permissions manually via the dashboard or `writbase:manage_agent_permissions`');
+    }
+  } else {
+    warn('No projects found. Create a project first, then grant permissions.');
+  }
+
+  // ── Write .mcp.json to current directory (optional) ─────────────
+
+  let writeMcp: boolean;
+  if (opts.mcp === true) {
+    writeMcp = true;
+  } else if (opts.mcp === false) {
+    writeMcp = false;
+  } else if (headless) {
+    writeMcp = false;
+  } else {
+    writeMcp = await confirm({
+      message: `Write .mcp.json to ${process.cwd()}?`,
+      default: true,
+    });
+  }
+
+  if (writeMcp) {
+    const mcpUrl = `${config.supabaseUrl}/functions/v1/mcp-server`;
+    const mcpPath = join(process.cwd(), '.mcp.json');
+
+    // Merge with existing .mcp.json if present
+    let mcpConfig: Record<string, unknown> = {};
+    if (existsSync(mcpPath)) {
+      try {
+        mcpConfig = JSON.parse(readFileSync(mcpPath, 'utf-8'));
+      } catch {
+        // Corrupted — overwrite
+      }
+    }
+
+    mcpConfig.writbase = {
+      type: 'http',
+      url: mcpUrl,
+      headers: {
+        Authorization: `Bearer ${fullKey}`,
+      },
+    };
+
+    const mcpTmpPath = mcpPath + '.tmp';
+    writeFileSync(mcpTmpPath, JSON.stringify(mcpConfig, null, 2) + '\n', { mode: 0o600 });
+    renameSync(mcpTmpPath, mcpPath);
+
+    success(`MCP config written to ${mcpPath}`);
+  }
+
+  console.log();
+  warn('Save this key now — it cannot be retrieved later:');
+  console.log();
+  console.log(`  ${fullKey}`);
+  console.log();
 }
 
 export async function keyListCommand() {

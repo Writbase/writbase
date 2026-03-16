@@ -347,7 +347,7 @@ export async function initCommand(opts: InitOptions) {
 
   console.log();
   info('Next steps:');
-  console.log('  writbase key create   (create an agent key)');
+  console.log('  writbase key add      (create an agent key + .mcp.json)');
   console.log('  writbase status       (verify connection)');
   console.log();
 }
