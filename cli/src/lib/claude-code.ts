@@ -39,7 +39,7 @@ export function installSkills() {
         {
           name: 'writbase',
           description:
-            'WritBase skills for worker agents, manager agents, and task extraction.',
+            'WritBase skills for task management, autonomous loops, and session-end extraction.',
           source: './',
           skills: [
             './skills/extract-tasks',
