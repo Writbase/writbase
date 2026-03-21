@@ -33,7 +33,7 @@ export function installSkills() {
       metadata: {
         description:
           'WritBase — agent-first task management. Skills for MCP tool usage, permissions, and error handling.',
-        version: '0.2.4',
+        version: '0.3.0',
       },
       plugins: [
         {
@@ -43,8 +43,9 @@ export function installSkills() {
           source: './',
           skills: [
             './skills/extract-tasks',
-            './skills/worker',
-            './skills/manager',
+            './skills/loop',
+            './skills/writbase-router',
+            './skills/writbase-recipes',
           ],
         },
       ],
@@ -88,6 +89,43 @@ export function installSkills() {
     settings.enabledPlugins = {};
   }
   settings.enabledPlugins['writbase@writbase'] = true;
+
+  // Install WritBase Stop hook (agent-type: checks if tasks were tracked)
+  if (!settings.hooks) {
+    settings.hooks = {};
+  }
+  if (!settings.hooks.Stop) {
+    settings.hooks.Stop = [];
+  }
+
+  const writbaseHookPrompt =
+    'Check if WritBase MCP tools are available in this session by looking for ' +
+    "'mcp__writbase' in the transcript at $ARGUMENTS. If no WritBase tools were used, " +
+    'approve the stop. If WritBase tools were used, check whether work items from this ' +
+    'session were tracked: look for mcp__writbase__add_task or mcp__writbase__update_task ' +
+    'calls, or /extract-tasks invocation. If tasks were created or updated, approve. ' +
+    'If WritBase was used (e.g. info, get_tasks) but no tasks were added/updated and ' +
+    "/extract-tasks was not run, block with reason: 'Work was done with WritBase " +
+    "connected but no tasks were created or updated. Run /extract-tasks to capture " +
+    "untracked items.'";
+
+  // Check if WritBase hook already exists (idempotent)
+  const hasWritbaseHook = settings.hooks.Stop.some(
+    (entry: { hooks?: Array<{ prompt?: string }> }) =>
+      entry.hooks?.some((h: { prompt?: string }) => h.prompt?.includes('mcp__writbase')),
+  );
+
+  if (!hasWritbaseHook) {
+    settings.hooks.Stop.push({
+      hooks: [
+        {
+          type: 'agent',
+          prompt: writbaseHookPrompt,
+          timeout: 30,
+        },
+      ],
+    });
+  }
 
   atomicWriteJson(settingsPath, JSON.stringify(settings, null, 2));
 }
