@@ -63,6 +63,16 @@ export function Sidebar({ userEmail, workspaceName }: SidebarProps) {
   }, []);
 
   useEffect(() => {
+    const handler = () => {
+      setMobileOpen((prev) => !prev);
+    };
+    window.addEventListener('toggle-sidebar', handler);
+    return () => {
+      window.removeEventListener('toggle-sidebar', handler);
+    };
+  }, []);
+
+  useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- setState in async fetch callbacks is intentional
     void fetchProjects();
     void fetchDepartments();
@@ -266,24 +276,6 @@ export function Sidebar({ userEmail, workspaceName }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile hamburger */}
-      <button
-        onClick={() => {
-          setMobileOpen(true);
-        }}
-        className="fixed left-4 top-4 z-40 rounded-md bg-slate-900 p-2 text-white md:hidden"
-        aria-label="Open menu"
-      >
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M4 6h16M4 12h16M4 18h16"
-          />
-        </svg>
-      </button>
-
       {/* Mobile overlay */}
       {mobileOpen && (
         <div

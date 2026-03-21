@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TaskTable } from '../task-table';
 
 // Helper to create a mock fetch that returns typed JSON

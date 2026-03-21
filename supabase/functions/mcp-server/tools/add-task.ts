@@ -6,6 +6,8 @@ import {
   invalidDepartmentError,
   scopeNotAllowedError,
   validationError,
+  dependencyNotFoundError,
+  dependencyCycleError,
   internalError,
 } from '../../_shared/errors.ts'
 import { validateTaskInput } from '../../_shared/validation.ts'
@@ -20,6 +22,8 @@ interface AddTaskParams {
   notes?: string
   due_date?: string
   status?: string
+  session_id?: string
+  blocked_by?: string[]
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -118,6 +122,8 @@ export async function handleAddTask(
         actor_id: ctx.keyId,
         actor_label: ctx.name,
         source: 'mcp',
+        session_id: params.session_id ?? null,
+        blocked_by: params.blocked_by ?? [],
       },
     })
     .single()
@@ -136,6 +142,12 @@ export async function handleAddTask(
       case 'department_not_found':
       case 'department_archived':
         return mcpError(invalidDepartmentError(params.department ?? 'unknown'))
+      case 'dependency_not_found':
+        return mcpError(dependencyNotFoundError(rpcError.message.split(':')[1]?.trim() ?? 'unknown'))
+      case 'dependency_cycle':
+        return mcpError(dependencyCycleError())
+      case 'dependency_cross_workspace':
+        return mcpError(dependencyNotFoundError('cross-workspace'))
       default:
         return mcpError(internalError(rpcError.message))
     }

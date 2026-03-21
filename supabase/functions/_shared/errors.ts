@@ -22,6 +22,8 @@ export const ErrorCodes = {
   INSUFFICIENT_MANAGER_SCOPE: 'insufficient_manager_scope',
   SELF_MODIFICATION_DENIED: 'self_modification_denied',
   ASSIGN_NOT_ALLOWED: 'assign_not_allowed',
+  DEPENDENCY_NOT_FOUND: 'dependency_not_found',
+  DEPENDENCY_CYCLE: 'dependency_cycle',
   INTERNAL_ERROR: 'internal_error',
 } as const
 
@@ -129,6 +131,22 @@ export function assignNotAllowedError(project: string): WritBaseError {
     code: ErrorCodes.ASSIGN_NOT_ALLOWED,
     message: `Agent does not have "assign" permission for project "${project}".`,
     recovery: 'Request the can_assign permission from an admin via the dashboard.',
+  }
+}
+
+export function dependencyNotFoundError(taskId: string): WritBaseError {
+  return {
+    code: ErrorCodes.DEPENDENCY_NOT_FOUND,
+    message: `Blocking task "${taskId}" was not found.`,
+    recovery: 'Verify the blocking task UUID exists and is in the same workspace.',
+  }
+}
+
+export function dependencyCycleError(): WritBaseError {
+  return {
+    code: ErrorCodes.DEPENDENCY_CYCLE,
+    message: 'Adding this dependency would create a circular chain.',
+    recovery: 'Remove an existing dependency in the chain first, then retry.',
   }
 }
 

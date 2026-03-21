@@ -2,12 +2,15 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { createTaskAction, updateTaskAction } from '@/app/(dashboard)/actions/task-actions';
 import { TaskHistoryPanel } from '@/components/task-history-panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { Select } from '@/components/ui/select';
+import { useOnlineStatus } from '@/lib/hooks/use-online-status';
+import { addMutation } from '@/lib/offline/mutation-queue';
 import type { Task } from '@/lib/types/database';
 
 interface Department {
@@ -36,6 +39,7 @@ export function TaskForm({
   onSuccess,
 }: TaskFormProps) {
   const router = useRouter();
+  const isOnline = useOnlineStatus();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [versionConflict, setVersionConflict] = useState(false);
@@ -51,6 +55,36 @@ export function TaskForm({
 
     const form = e.currentTarget;
     const formData = new FormData(form);
+
+    if (!isOnline) {
+      if (task) {
+        await addMutation({
+          type: 'update_task',
+          payload: {
+            id: task.id,
+            version: task.version,
+            projectId,
+            departmentId: (formData.get('departmentId') as string | null) ?? null,
+            priority: formData.get('priority') as string,
+            description: formData.get('description') as string,
+            notes: (formData.get('notes') as string | null) ?? null,
+            dueDate: (formData.get('dueDate') as string | null) ?? null,
+            status: formData.get('status') as string,
+          },
+        });
+      } else {
+        formData.set('projectId', projectId);
+        await addMutation({
+          type: 'create_task',
+          payload: Object.fromEntries(formData.entries()),
+        });
+      }
+      toast.info('Saved offline. Will sync when back online.');
+      setLoading(false);
+      onSuccess();
+      onClose();
+      return;
+    }
 
     if (task) {
       const result = await updateTaskAction({
@@ -93,7 +127,7 @@ export function TaskForm({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={isEdit ? 'Edit Task' : 'New Task'}>
+    <Modal open={open} onClose={onClose} title={isEdit ? 'Edit Task' : 'New Task'} fullScreenMobile>
       {versionConflict ? (
         <div className="space-y-4">
           <div className="rounded-md border border-yellow-300 bg-yellow-50 p-4 dark:border-yellow-700 dark:bg-yellow-900/30">

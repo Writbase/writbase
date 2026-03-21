@@ -65,6 +65,18 @@ export interface Task {
   source: Source;
   is_archived: boolean;
   workspace_id: string;
+  session_id: string | null;
+  blocked_by?: string[];
+}
+
+export interface TaskDependency {
+  id: string;
+  task_id: string;
+  blocked_by_task_id: string;
+  workspace_id: string;
+  created_at: string;
+  created_by_type: ActorType;
+  created_by_id: string;
 }
 
 export interface EventLog {

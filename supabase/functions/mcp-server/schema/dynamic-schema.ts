@@ -139,6 +139,8 @@ export async function createMcpServerForAgent(
       notes: z.string().optional().describe('Additional notes'),
       due_date: z.string().optional().describe('Due date as ISO 8601 string'),
       status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled', 'failed']).optional().describe('Initial status'),
+      session_id: z.string().optional().describe('Claude session ID (for session-to-task linking)'),
+      blocked_by: z.array(z.string()).optional().describe('Task UUIDs that block this new task'),
     },
     { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     (params) => handleAddTask(params, ctx, supabase)
@@ -179,6 +181,9 @@ export async function createMcpServerForAgent(
       due_date: z.string().optional().describe('New due date as ISO 8601'),
       status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'cancelled', 'failed']).optional().describe('New status'),
       is_archived: z.boolean().optional().describe('Archive or unarchive this task (requires can_archive permission)'),
+      session_id: z.string().optional().describe('Claude session ID (for session-to-task linking)'),
+      add_blocked_by: z.array(z.string()).optional().describe('Task UUIDs to add as blockers'),
+      remove_blocked_by: z.array(z.string()).optional().describe('Task UUIDs to remove from blockers'),
     },
     { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     (params) => handleUpdateTask(params, ctx, supabase)

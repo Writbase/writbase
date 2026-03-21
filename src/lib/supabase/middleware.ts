@@ -64,6 +64,7 @@ export async function updateSession(request: NextRequest) {
     "img-src 'self' data:",
     "font-src 'self'",
     "connect-src 'self' https://*.supabase.co",
+    "worker-src 'self'",
   ].join('; ');
 
   supabaseResponse.headers.set('Content-Security-Policy', csp);

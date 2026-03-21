@@ -51,6 +51,9 @@ next-env.d.ts
 # internal docs (dotfile convention)
 docs/.*
 
+# Service worker build artifact
+/public/sw.js
+
 # CLI build artifacts
 /cli/dist
 /cli/migrations

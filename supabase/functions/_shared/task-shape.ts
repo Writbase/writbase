@@ -9,6 +9,8 @@ const COMPACT_KEYS = [
   'due_date',
   'updated_at',
   'created_at',
+  'session_id',
+  'blocked_by',
 ] as const
 
 /** Build UUID→slug lookup maps from agent permissions. */

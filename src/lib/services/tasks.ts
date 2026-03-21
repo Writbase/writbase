@@ -80,6 +80,7 @@ export async function createTask(
     createdById: string;
     source: Source;
     workspaceId: string;
+    sessionId?: string | null;
   },
 ): Promise<Task> {
   // Enforce department_required setting
@@ -110,6 +111,7 @@ export async function createTask(
     actor_label: params.createdByType === 'human' ? 'admin' : params.createdById,
     source: params.source,
     workspace_id: params.workspaceId,
+    session_id: params.sessionId ?? null,
   };
 
   const { data, error } = await supabase
@@ -147,6 +149,7 @@ export async function updateTask(
       notes?: string | null;
       dueDate?: string | null;
       status?: Status;
+      sessionId?: string | null;
     };
     updatedByType: ActorType;
     updatedById: string;
@@ -161,6 +164,7 @@ export async function updateTask(
     notes: 'notes',
     dueDate: 'due_date',
     status: 'status',
+    sessionId: 'session_id',
   };
 
   // Build the fields object with DB column names

@@ -7,9 +7,10 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: ReactNode;
+  fullScreenMobile?: boolean;
 }
 
-export function Modal({ open, onClose, title, children }: ModalProps) {
+export function Modal({ open, onClose, title, children, fullScreenMobile }: ModalProps) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -29,7 +30,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
       ref={dialogRef}
       onClose={onClose}
       aria-labelledby={titleId}
-      className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-0 shadow-xl backdrop:bg-black/50 dark:border-slate-700 dark:bg-slate-900"
+      className={`w-full max-w-md rounded-lg border border-slate-200 bg-white p-0 shadow-xl backdrop:bg-black/50 dark:border-slate-700 dark:bg-slate-900 ${fullScreenMobile ? 'max-md:m-0 max-md:h-full max-md:w-full max-md:max-h-full max-md:max-w-full max-md:rounded-none' : ''}`}
     >
       <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-700">
         <h2 id={titleId} className="text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -43,7 +44,11 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
           &times;
         </button>
       </div>
-      <div className="px-6 py-4">{children}</div>
+      <div
+        className={`px-6 py-4 ${fullScreenMobile ? 'max-md:overflow-y-auto max-md:max-h-[calc(100vh-60px)]' : ''}`}
+      >
+        {children}
+      </div>
     </dialog>
   );
 }

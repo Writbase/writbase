@@ -6,6 +6,8 @@ import {
   taskNotFoundError,
   validationError,
   versionConflictError,
+  dependencyNotFoundError,
+  dependencyCycleError,
   internalError,
 } from '../../_shared/errors.ts'
 import { validateTaskInput } from '../../_shared/validation.ts'
@@ -22,6 +24,9 @@ interface UpdateTaskParams {
   due_date?: string
   status?: string
   is_archived?: boolean
+  session_id?: string
+  add_blocked_by?: string[]
+  remove_blocked_by?: string[]
 }
 
 export async function handleUpdateTask(
@@ -152,6 +157,7 @@ export async function handleUpdateTask(
   if (params.status !== undefined) fields.status = params.status
   if (newDepartmentId !== undefined) fields.department_id = newDepartmentId
   if (params.is_archived !== undefined) fields.is_archived = params.is_archived
+  if (params.session_id !== undefined) fields.session_id = params.session_id
 
   // 7. Atomic update via RPC (task + field-level event_log in one transaction)
   const { data: updated, error: rpcError } = await supabase
@@ -182,7 +188,53 @@ export async function handleUpdateTask(
     }
   }
 
-  // 8. Return updated task
+  // 8. Handle dependency changes if requested
+  if (params.add_blocked_by?.length || params.remove_blocked_by?.length) {
+    const { data: _depResult, error: depError } = await supabase
+      .rpc('set_task_dependencies', {
+        p_payload: {
+          task_id: params.task_id,
+          version: updated.version,
+          add_blocked_by: params.add_blocked_by ?? [],
+          remove_blocked_by: params.remove_blocked_by ?? [],
+          actor_type: 'agent',
+          actor_id: ctx.keyId,
+          actor_label: ctx.name,
+          source: 'mcp',
+        },
+      })
+      .single()
+
+    if (depError) {
+      const depCode = parseRpcErrorCode(depError.message)
+      switch (depCode) {
+        case 'dependency_not_found':
+          return mcpError(dependencyNotFoundError(depError.message.split(':')[1]?.trim() ?? 'unknown'))
+        case 'dependency_cycle':
+          return mcpError(dependencyCycleError())
+        case 'version_conflict': {
+          const cv = parseVersionFromError(depError.message) ?? updated.version
+          return mcpError(versionConflictError(cv))
+        }
+        default:
+          return mcpError(internalError(depError.message))
+      }
+    }
+
+    // Return the updated task with the new version from dependency changes
+    const { data: refreshed } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('id', params.task_id)
+      .eq('workspace_id', ctx.workspaceId)
+      .single()
+
+    return {
+      content: [{ type: 'text' as const, text: JSON.stringify(refreshed ?? updated) }],
+    }
+  }
+
+  // 9. Return updated task
   return {
     content: [{ type: 'text' as const, text: JSON.stringify(updated) }],
   }

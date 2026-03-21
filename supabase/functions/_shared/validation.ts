@@ -3,6 +3,23 @@ import type { Priority, Status } from './types.ts'
 const VALID_PRIORITIES: Priority[] = ['low', 'medium', 'high', 'critical']
 const VALID_STATUSES: Status[] = ['todo', 'in_progress', 'blocked', 'done', 'cancelled', 'failed']
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * Validate an array of UUIDs. Returns an error message or null if valid.
+ */
+export function validateUuidArray(arr: unknown[], fieldName: string): string | null {
+  if (arr.length > 20) {
+    return `${fieldName} cannot contain more than 20 items.`
+  }
+  for (const item of arr) {
+    if (typeof item !== 'string' || !UUID_RE.test(item)) {
+      return `${fieldName} must contain valid UUIDs.`
+    }
+  }
+  return null
+}
+
 const ISO_DATE_RE =
   /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])(?:T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d))?$/
 
