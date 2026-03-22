@@ -14,6 +14,8 @@ A control plane for AI agents and human supervisors. Persistent task registry wi
 
 <img src="docs/assets/demo.svg" alt="WritBase MCP demo — agent creates a task and delegates to another agent" width="100%"/>
 
+[![WritBase MCP server](https://glama.ai/mcp/servers/Writbase/writbase/badges/card.svg)](https://glama.ai/mcp/servers/Writbase/writbase)
+
 </div>
 
 ---
