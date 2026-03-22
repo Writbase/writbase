@@ -28,12 +28,12 @@ const MOCK_PERMS: AgentPermission[] = [
   },
 ]
 
-Deno.test('compactTask keeps exactly 9 fields', () => {
+Deno.test('compactTask keeps exactly 11 fields', () => {
   const result = compactTask(FULL_TASK)
-  assertEquals(Object.keys(result).length, 9)
+  assertEquals(Object.keys(result).length, 11)
   assertEquals(Object.keys(result).sort(), [
-    'created_at', 'department', 'description', 'due_date', 'id',
-    'priority', 'status', 'updated_at', 'version',
+    'blocked_by', 'created_at', 'department', 'description', 'due_date', 'id',
+    'priority', 'session_id', 'status', 'updated_at', 'version',
   ])
 })
 
@@ -78,7 +78,7 @@ Deno.test('compactTasks maps correctly over array', () => {
   const tasks = [FULL_TASK, { ...FULL_TASK, id: 'id-2', description: 'Second' }]
   const result = compactTasks(tasks, slugs)
   assertEquals(result.length, 2)
-  assertEquals(Object.keys(result[0]).length, 9)
+  assertEquals(Object.keys(result[0]).length, 11)
   assertEquals(result[0].department, 'core')
   assertEquals(result[1].description, 'Second')
   assertEquals('notes' in result[0], false)
