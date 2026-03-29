@@ -6,7 +6,7 @@ import { WRITBASE_HOME } from './config.js';
 
 export function atomicWriteJson(filePath: string, content: string) {
   const tmpPath = filePath + '.tmp';
-  writeFileSync(tmpPath, content);
+  writeFileSync(tmpPath, content, { mode: 0o600 });
   renameSync(tmpPath, filePath);
 }
 
@@ -22,8 +22,12 @@ export function installSkills(supabaseUrl?: string) {
   const skillsSource = join(packageRoot, 'skills');
   cpSync(skillsSource, join(WRITBASE_HOME, 'skills'), { recursive: true });
 
-  // Copy hooks from package (if present)
+  // Copy hooks from package
   const hooksSource = join(packageRoot, 'hooks');
+  if (!existsSync(hooksSource)) {
+    // eslint-disable-next-line no-console
+    console.warn('⚠ Hooks not found in package — PostToolUse and SubagentStop hooks will not be registered');
+  }
   if (existsSync(hooksSource)) {
     mkdirSync(join(WRITBASE_HOME, 'hooks'), { recursive: true });
     cpSync(hooksSource, join(WRITBASE_HOME, 'hooks'), { recursive: true });

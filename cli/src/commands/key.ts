@@ -347,6 +347,26 @@ export async function keyRotateCommand(nameOrId: string) {
       }
     }
 
+    // Update .mcp.json if present
+    const mcpPath = join(process.cwd(), '.mcp.json');
+    if (existsSync(mcpPath)) {
+      try {
+        const mcpConfig = JSON.parse(readFileSync(mcpPath, 'utf-8'));
+        if (mcpConfig.mcpServers?.writbase?.headers?.Authorization || mcpConfig.writbase?.headers?.Authorization) {
+          const entry = mcpConfig.mcpServers?.writbase ?? mcpConfig.writbase;
+          if (entry?.headers) {
+            entry.headers.Authorization = `Bearer ${fullKey}`;
+            const mcpTmpPath = mcpPath + '.tmp';
+            writeFileSync(mcpTmpPath, JSON.stringify(mcpConfig, null, 2) + '\n', { mode: 0o600 });
+            renameSync(mcpTmpPath, mcpPath);
+            success('Updated agent key in .mcp.json');
+          }
+        }
+      } catch {
+        // Non-critical — skip
+      }
+    }
+
     console.log();
     warn('Save this new key — it cannot be retrieved later:');
     console.log();
@@ -676,7 +696,7 @@ export async function keyDeactivateCommand(nameOrId: string) {
     if (existsSync(localSettingsPath)) {
       try {
         const ls = JSON.parse(readFileSync(localSettingsPath, 'utf-8'));
-        if (ls.env?.WRITBASE_AGENT_KEY?.startsWith(key.key_prefix)) {
+        if (ls.env?.WRITBASE_AGENT_KEY?.includes(key.key_prefix)) {
           removeLocalEnv('WRITBASE_AGENT_KEY');
           warn('Removed deactivated key from .claude/settings.local.json — create a new key for hooks to work');
         }
