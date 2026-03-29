@@ -17,7 +17,7 @@ const program = new Command();
 program
   .name('writbase')
   .description('WritBase CLI — agent-first task management')
-  .version('0.2.4');
+  .version('0.3.1');
 
 program
   .command('init')
@@ -42,8 +42,10 @@ const key = program
 key
   .command('add')
   .description('Create an agent key, grant permissions, and optionally write .mcp.json')
-  .option('--name <name>', 'Key name (non-interactive)')
-  .option('--role <role>', 'Role: worker or manager (non-interactive)')
+  .option('--name <name>', 'Key name')
+  .option('--role <role>', 'Role: worker or manager')
+  .option('--project <slug>', 'Default project (by slug)')
+  .option('--department <slug>', 'Default department (by slug, requires --project)')
   .option('--mcp', 'Write .mcp.json to current directory')
   .option('--no-mcp', 'Skip writing .mcp.json')
   .action(keyAddCommand);
@@ -56,11 +58,13 @@ key
 key
   .command('rotate <name-or-id>')
   .description('Rotate an agent key (generates new secret)')
+  .option('-y, --yes', 'Skip confirmation prompt')
   .action(keyRotateCommand);
 
 key
   .command('deactivate <name-or-id>')
   .description('Deactivate an agent key')
+  .option('-y, --yes', 'Skip confirmation prompt')
   .action(keyDeactivateCommand);
 
 key

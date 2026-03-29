@@ -58,13 +58,15 @@ async function resolveKeyByNameOrId(
 interface KeyAddOptions {
   name?: string;
   role?: string;
+  project?: string;
+  department?: string;
   mcp?: boolean;
 }
 
 export async function keyAddCommand(opts: KeyAddOptions) {
   const config = loadConfig();
   const supabase = createAdminClient(config.supabaseUrl, config.supabaseServiceRoleKey);
-  const headless = !!(opts.name || opts.role || opts.mcp === true || opts.mcp === false);
+  const headless = !!(opts.name || opts.role || opts.project || opts.mcp === true || opts.mcp === false);
 
   const nameInput = opts.name ?? await input({ message: 'Key name:' });
   if (!nameInput.trim()) {
@@ -101,7 +103,36 @@ export async function keyAddCommand(opts: KeyAddOptions) {
     .eq('is_archived', false)
     .order('name');
 
-  if (projects && projects.length > 0) {
+  if (opts.project) {
+    // Headless: resolve project by slug
+    const match = projects?.find(
+      (p: { slug: string }) => p.slug.toLowerCase() === opts.project!.toLowerCase(),
+    );
+    if (!match) {
+      const slugs = projects?.map((p: { slug: string }) => p.slug).join(', ') ?? '(none)';
+      error(`Project "${opts.project}" not found. Available: ${slugs}`);
+      process.exit(1);
+    }
+    projectId = match.id;
+
+    if (opts.department) {
+      const { data: departments } = await supabase
+        .from('departments')
+        .select('id, name, slug')
+        .eq('project_id', projectId)
+        .order('name');
+      const deptMatch = departments?.find(
+        (d: { slug: string }) => d.slug.toLowerCase() === opts.department!.toLowerCase(),
+      );
+      if (!deptMatch) {
+        const slugs = departments?.map((d: { slug: string }) => d.slug).join(', ') ?? '(none)';
+        error(`Department "${opts.department}" not found. Available: ${slugs}`);
+        process.exit(1);
+      }
+      departmentId = deptMatch.id;
+    }
+  } else if (!headless && projects && projects.length > 0) {
+    // Interactive: prompt for project and department
     const projectChoice = await select({
       message: 'Default project (optional):',
       choices: [
@@ -310,18 +341,19 @@ export async function keyListCommand() {
   }
 }
 
-export async function keyRotateCommand(nameOrId: string) {
+export async function keyRotateCommand(nameOrId: string, opts: { yes?: boolean }) {
   const config = loadConfig();
   const supabase = createAdminClient(config.supabaseUrl, config.supabaseServiceRoleKey);
 
   const key = await resolveKeyByNameOrId(supabase, config.workspaceId, nameOrId);
 
-  const confirmed = await confirm({
-    message: `Rotate key "${key.name}" (${key.key_prefix}...)? The old key will stop working immediately.`,
-    default: false,
-  });
-
-  if (!confirmed) return;
+  if (!opts.yes) {
+    const confirmed = await confirm({
+      message: `Rotate key "${key.name}" (${key.key_prefix}...)? The old key will stop working immediately.`,
+      default: false,
+    });
+    if (!confirmed) return;
+  }
 
   const spinner = createSpinner('Rotating key...').start();
 
@@ -663,7 +695,7 @@ export async function keyPermitCommand(nameOrId: string, opts: KeyPermitOptions)
   }
 }
 
-export async function keyDeactivateCommand(nameOrId: string) {
+export async function keyDeactivateCommand(nameOrId: string, opts: { yes?: boolean }) {
   const config = loadConfig();
   const supabase = createAdminClient(config.supabaseUrl, config.supabaseServiceRoleKey);
 
@@ -674,12 +706,13 @@ export async function keyDeactivateCommand(nameOrId: string) {
     return;
   }
 
-  const confirmed = await confirm({
-    message: `Deactivate key "${key.name}" (${key.key_prefix}...)? This key will stop working immediately.`,
-    default: false,
-  });
-
-  if (!confirmed) return;
+  if (!opts.yes) {
+    const confirmed = await confirm({
+      message: `Deactivate key "${key.name}" (${key.key_prefix}...)? This key will stop working immediately.`,
+      default: false,
+    });
+    if (!confirmed) return;
+  }
 
   const spinner = createSpinner('Deactivating key...').start();
 
