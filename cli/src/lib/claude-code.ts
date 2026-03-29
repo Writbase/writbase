@@ -1,17 +1,17 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { existsSync, mkdirSync, writeFileSync, readFileSync, renameSync, cpSync, unlinkSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, renameSync, cpSync, unlinkSync, chmodSync } from 'node:fs';
 import { WRITBASE_HOME } from './config.js';
 
-function atomicWriteJson(filePath: string, content: string) {
+export function atomicWriteJson(filePath: string, content: string) {
   const tmpPath = filePath + '.tmp';
   writeFileSync(tmpPath, content);
   renameSync(tmpPath, filePath);
 }
 
-/** Copy skills from package to ~/.writbase/skills/ and register as Claude Code plugin. */
-export function installSkills() {
+/** Copy skills + hooks from package to ~/.writbase/ and register as Claude Code plugin. */
+export function installSkills(supabaseUrl?: string) {
   const claudeDir = join(homedir(), '.claude');
 
   mkdirSync(join(WRITBASE_HOME, '.claude-plugin'), { recursive: true });
@@ -21,6 +21,17 @@ export function installSkills() {
   const packageRoot = fileURLToPath(new URL('..', import.meta.url));
   const skillsSource = join(packageRoot, 'skills');
   cpSync(skillsSource, join(WRITBASE_HOME, 'skills'), { recursive: true });
+
+  // Copy hooks from package (if present)
+  const hooksSource = join(packageRoot, 'hooks');
+  if (existsSync(hooksSource)) {
+    mkdirSync(join(WRITBASE_HOME, 'hooks'), { recursive: true });
+    cpSync(hooksSource, join(WRITBASE_HOME, 'hooks'), { recursive: true });
+    const auditHookPath = join(WRITBASE_HOME, 'hooks', 'audit-trail-hook.sh');
+    const subagentHookPath = join(WRITBASE_HOME, 'hooks', 'subagent-stop-sync.sh');
+    if (existsSync(auditHookPath)) chmodSync(auditHookPath, 0o755);
+    if (existsSync(subagentHookPath)) chmodSync(subagentHookPath, 0o755);
+  }
 
   // Write marketplace.json (Claude Code plugin discovery format)
   const marketplaceJson = JSON.stringify(
@@ -33,7 +44,7 @@ export function installSkills() {
       metadata: {
         description:
           'WritBase — agent-first task management. Skills for MCP tool usage, permissions, and error handling.',
-        version: '0.3.0',
+        version: '0.3.1',
       },
       plugins: [
         {
@@ -125,6 +136,45 @@ export function installSkills() {
         },
       ],
     });
+  }
+
+  // Install PostToolUse hook (audit-trail: captures git commits + PRs as task provenance)
+  const auditHookCmd = join(homedir(), '.writbase', 'hooks', 'audit-trail-hook.sh');
+  if (!settings.hooks.PostToolUse) {
+    settings.hooks.PostToolUse = [];
+  }
+  const hasAuditHook = settings.hooks.PostToolUse.some(
+    (entry: { hooks?: Array<{ command?: string }> }) =>
+      entry.hooks?.some((h: { command?: string }) => h.command?.includes('audit-trail-hook')),
+  );
+  if (!hasAuditHook && existsSync(auditHookCmd)) {
+    settings.hooks.PostToolUse.push({
+      matcher: 'Bash',
+      hooks: [{ type: 'command', command: auditHookCmd }],
+    });
+  }
+
+  // Install SubagentStop hook (auto-marks tasks done when subagents complete)
+  const subagentHookCmd = join(homedir(), '.writbase', 'hooks', 'subagent-stop-sync.sh');
+  if (!settings.hooks.SubagentStop) {
+    settings.hooks.SubagentStop = [];
+  }
+  const hasSubagentHook = settings.hooks.SubagentStop.some(
+    (entry: { hooks?: Array<{ command?: string }> }) =>
+      entry.hooks?.some((h: { command?: string }) => h.command?.includes('subagent-stop-sync')),
+  );
+  if (!hasSubagentHook && existsSync(subagentHookCmd)) {
+    settings.hooks.SubagentStop.push({
+      hooks: [{ type: 'command', command: subagentHookCmd }],
+    });
+  }
+
+  // Set WRITBASE_MCP_URL in global env if supabaseUrl provided
+  if (supabaseUrl) {
+    if (!settings.env) {
+      settings.env = {};
+    }
+    settings.env.WRITBASE_MCP_URL = supabaseUrl + '/functions/v1/mcp-server/mcp';
   }
 
   atomicWriteJson(settingsPath, JSON.stringify(settings, null, 2));

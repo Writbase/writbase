@@ -338,8 +338,8 @@ export async function initCommand(opts: InitOptions) {
 
   const skillsSpinner = createSpinner('Installing skills...').start();
   try {
-    installSkills();
-    skillsSpinner.success({ text: 'Skills installed and plugin registered' });
+    installSkills(supabaseUrl);
+    skillsSpinner.success({ text: 'Skills and hooks installed, plugin registered' });
   } catch (err) {
     skillsSpinner.error({ text: 'Skills installation failed' });
     error(err instanceof Error ? err.message : String(err));

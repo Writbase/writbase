@@ -1,13 +1,37 @@
-import { existsSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { confirm, input, select } from '@inquirer/prompts';
 import { createSpinner } from 'nanospinner';
 import { loadConfig } from '../lib/config.js';
 import { createAdminClient } from '../lib/supabase.js';
+import { atomicWriteJson } from '../lib/claude-code.js';
 import { createAgentKey, listAgentKeys, rotateAgentKey, deactivateAgentKey } from '../lib/agent-keys.js';
 import { logEvent } from '../lib/event-log.js';
 import { success, error, warn, info, table } from '../lib/output.js';
 import type { AgentRole } from '../lib/types.js';
+
+/** Read, merge, and write env vars to .claude/settings.local.json in cwd. */
+function writeLocalEnv(vars: Record<string, string>) {
+  const claudeDir = join(process.cwd(), '.claude');
+  mkdirSync(claudeDir, { recursive: true });
+  const localSettingsPath = join(claudeDir, 'settings.local.json');
+  const localSettings = existsSync(localSettingsPath)
+    ? JSON.parse(readFileSync(localSettingsPath, 'utf-8'))
+    : {};
+  if (!localSettings.env) localSettings.env = {};
+  Object.assign(localSettings.env, vars);
+  atomicWriteJson(localSettingsPath, JSON.stringify(localSettings, null, 2));
+}
+
+/** Remove an env var from .claude/settings.local.json if present. */
+function removeLocalEnv(key: string) {
+  const localSettingsPath = join(process.cwd(), '.claude', 'settings.local.json');
+  if (!existsSync(localSettingsPath)) return;
+  const localSettings = JSON.parse(readFileSync(localSettingsPath, 'utf-8'));
+  if (!localSettings.env?.[key]) return;
+  delete localSettings.env[key];
+  atomicWriteJson(localSettingsPath, JSON.stringify(localSettings, null, 2));
+}
 
 async function resolveKeyByNameOrId(
   supabase: ReturnType<typeof createAdminClient>,
@@ -241,6 +265,13 @@ export async function keyAddCommand(opts: KeyAddOptions) {
     renameSync(mcpTmpPath, mcpPath);
 
     success(`MCP config written to ${mcpPath}`);
+
+    // Write env vars for hook integration (.claude/settings.local.json)
+    writeLocalEnv({
+      WRITBASE_AGENT_KEY: fullKey,
+      WRITBASE_MCP_URL: mcpUrl + '/mcp',
+    });
+    success('Hook env vars written to .claude/settings.local.json');
   }
 
   console.log();
@@ -301,6 +332,21 @@ export async function keyRotateCommand(nameOrId: string) {
     });
 
     spinner.success({ text: 'Key rotated' });
+
+    // Update hook env var if present in local settings
+    const localSettingsPath = join(process.cwd(), '.claude', 'settings.local.json');
+    if (existsSync(localSettingsPath)) {
+      try {
+        const ls = JSON.parse(readFileSync(localSettingsPath, 'utf-8'));
+        if (ls.env?.WRITBASE_AGENT_KEY) {
+          writeLocalEnv({ WRITBASE_AGENT_KEY: fullKey });
+          success('Updated agent key in .claude/settings.local.json');
+        }
+      } catch {
+        // Non-critical — skip
+      }
+    }
+
     console.log();
     warn('Save this new key — it cannot be retrieved later:');
     console.log();
@@ -624,6 +670,20 @@ export async function keyDeactivateCommand(nameOrId: string) {
     });
 
     spinner.success({ text: `Key "${key.name}" deactivated` });
+
+    // Remove from local hook env if this was the active key
+    const localSettingsPath = join(process.cwd(), '.claude', 'settings.local.json');
+    if (existsSync(localSettingsPath)) {
+      try {
+        const ls = JSON.parse(readFileSync(localSettingsPath, 'utf-8'));
+        if (ls.env?.WRITBASE_AGENT_KEY?.startsWith(key.key_prefix)) {
+          removeLocalEnv('WRITBASE_AGENT_KEY');
+          warn('Removed deactivated key from .claude/settings.local.json — create a new key for hooks to work');
+        }
+      } catch {
+        // Non-critical — skip
+      }
+    }
   } catch (err) {
     spinner.error({ text: 'Failed to deactivate key' });
     error(err instanceof Error ? err.message : String(err));

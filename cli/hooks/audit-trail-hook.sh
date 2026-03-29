@@ -12,6 +12,10 @@
 # Reads JSON from stdin: { tool_name, tool_input, tool_response, session_id }
 # Outputs nothing to stdout.
 
+# --- Gate: jq required ----------------------------------------------------
+
+command -v jq &>/dev/null || exit 0
+
 # --- Read stdin -----------------------------------------------------------
 
 INPUT="$(cat)"

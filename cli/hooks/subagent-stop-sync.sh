@@ -8,6 +8,10 @@
 # This hook ALWAYS outputs {"decision":"approve"} — it never blocks.
 # The WritBase update is best-effort (fire-and-forget).
 
+# --- Gate: jq required ----------------------------------------------------
+
+command -v jq &>/dev/null || { echo '{"decision":"approve"}'; exit 0; }
+
 APPROVE='{"decision":"approve"}'
 DEFAULT_MCP_URL="https://bblhnneesokjhcbvffkp.supabase.co/functions/v1/mcp-server/mcp"
 MCP_URL="${WRITBASE_MCP_URL:-$DEFAULT_MCP_URL}"
